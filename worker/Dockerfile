@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ../backend/requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir --prefix=/install -r requirements.txt
 
@@ -24,13 +24,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
 RUN groupadd --gid 1001 appgroup && \
     useradd --uid 1001 --gid appgroup --shell /bin/bash --create-home appuser
 
 COPY --from=builder /install /usr/local
-
-COPY --chown=appuser:appgroup ../backend .
+COPY --chown=appuser:appgroup backend/ .
 
 USER appuser
 
