@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY ../backend/requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir --prefix=/install -r requirements.txt
 
@@ -30,7 +30,7 @@ RUN groupadd --gid 1001 appgroup && \
 
 COPY --from=builder /install /usr/local
 
-COPY --chown=appuser:appgroup . .
+COPY --chown=appuser:appgroup ../backend .
 
 USER appuser
 
