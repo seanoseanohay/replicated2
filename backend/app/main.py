@@ -41,6 +41,8 @@ app.add_middleware(
 # Routers
 from app.api.routes.health import router as health_router  # noqa: E402
 from app.api.routes.bundles import router as bundles_router  # noqa: E402
+from app.api.routes.evidence import router as evidence_router  # noqa: E402
 
 app.include_router(health_router)
 app.include_router(bundles_router)
+app.include_router(evidence_router)

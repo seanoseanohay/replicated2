@@ -12,10 +12,11 @@ Deliverables: Upload, validation, storage
 Success: End-to-end ingestion works
 Built: POST /api/v1/bundles (multipart, size validation, S3 upload), GET list/detail endpoints, tenant isolation via X-Tenant-ID header, Celery task dispatch, Bundle model + migrations scaffold
 
-## Phase 2 — Parsing
+## Phase 2 — Parsing ✓ COMPLETE
 Goal: Structured evidence
 Deliverables: Parsers, normalization
 Success: Reliable structured data
+Built: Evidence model (JSONB), alembic migration, BundleExtractor (tar.gz→tempdir), parsers for cluster-info/nodes/version, cluster-resources (all k8s kinds + Lists), pod-logs (tail-500, 10MB limit), host-collectors; run_all_parsers registry; GET /api/v1/bundles/{id}/evidence endpoint; 25 tests passing
 
 ## Phase 3 — Detection
 Goal: Baseline diagnosis
