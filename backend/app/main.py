@@ -3,8 +3,14 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
+from app.core.config import settings
+from app.core.limiter import limiter
 from app.core.logging import get_logger, setup_logging
+from app.middleware.logging import AccessLogMiddleware
+from app.middleware.request_id import RequestIDMiddleware
 from app.services.storage import storage_service
 
 setup_logging()
@@ -30,9 +36,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Middleware — order matters: request_id first (outermost), then access log
+app.add_middleware(AccessLogMiddleware)
+app.add_middleware(RequestIDMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

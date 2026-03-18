@@ -106,6 +106,43 @@ export const bundleApi = {
       tenantId
     );
   },
+
+  uploadWithProgress(
+    file: File,
+    tenantId = "default",
+    onProgress?: (pct: number) => void
+  ): Promise<Bundle> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const form = new FormData();
+      form.append("file", file);
+
+      xhr.open("POST", `${API_BASE}/api/v1/bundles`);
+      xhr.setRequestHeader("X-Tenant-ID", tenantId);
+
+      if (onProgress) {
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) {
+            onProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        });
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(JSON.parse(xhr.responseText));
+        } else {
+          reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(form);
+    });
+  },
+
+  delete(id: string, tenantId = "default"): Promise<void> {
+    return request<void>(`/api/v1/bundles/${id}`, { method: "DELETE" }, tenantId);
+  },
 };
 
 export const findingApi = {

@@ -8,14 +8,18 @@ export default function BundleUpload() {
   const [state, setState] = useState<UploadState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   async function handleUpload(file: File) {
     setState("uploading");
     setError(null);
+    setUploadProgress(0);
     try {
-      const bundle = await bundleApi.upload(file);
+      const bundle = await bundleApi.uploadWithProgress(file, "default", (pct) => {
+        setUploadProgress(pct);
+      });
       setState("success");
       setTimeout(() => navigate(`/bundles/${bundle.id}`), 800);
     } catch (e: unknown) {
@@ -91,6 +95,13 @@ export default function BundleUpload() {
           <div className="flex flex-col items-center gap-3">
             <div className="h-10 w-10 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
             <p className="text-gray-600">Uploading...</p>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="text-sm text-gray-500">{uploadProgress}%</p>
           </div>
         )}
 

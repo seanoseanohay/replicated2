@@ -1,3 +1,5 @@
+import warnings
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +18,22 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     AI_ENABLED: bool = False
     AI_MODEL: str = "claude-opus-4-6"
+    CORS_ALLOWED_ORIGINS: str = "*"          # comma-separated or "*"
+    DB_POOL_SIZE: int = 5
+    DB_POOL_OVERFLOW: int = 10
+    RATE_LIMIT_UPLOAD: str = "10/minute"     # slowapi format
+    RATE_LIMIT_AI: str = "20/minute"         # slowapi format
+
+    @model_validator(mode="after")
+    def check_secret_key(self):
+        if self.APP_ENV not in ("development", "test") and self.SECRET_KEY == "dev-secret-key-change-in-prod":
+            warnings.warn("SECRET_KEY is set to the default dev value in a non-development environment!", stacklevel=2)
+        return self
+
+    def get_cors_origins(self) -> list[str]:
+        if self.CORS_ALLOWED_ORIGINS.strip() == "*":
+            return ["*"]
+        return [o.strip() for o in self.CORS_ALLOWED_ORIGINS.split(",") if o.strip()]
 
 
 settings = Settings()

@@ -1,15 +1,17 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.core.logging import get_logger
 from app.models.bundle import Bundle
 from app.schemas.bundle import BundleListResponse, BundleRead
 from app.services.storage import storage_service
+from app.utils.security import sanitize_filename, validate_magic_bytes
 from app.workers.tasks import process_bundle
 
 logger = get_logger(__name__)
@@ -30,7 +32,9 @@ def get_tenant_id(x_tenant_id: str = Header(default="default")) -> str:
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=BundleRead)
+@limiter.limit("10/minute")
 async def upload_bundle(
+    request: Request,
     file: UploadFile,
     tenant_id: str = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db),
@@ -38,6 +42,14 @@ async def upload_bundle(
     max_bytes = settings.MAX_BUNDLE_SIZE_MB * 1024 * 1024
 
     file_bytes = await file.read()
+
+    # Validate magic bytes before size check
+    if not validate_magic_bytes(file_bytes):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported file format. Expected gzip or zip archive.",
+        )
+
     if len(file_bytes) > max_bytes:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -49,15 +61,23 @@ async def upload_bundle(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Filename is required"
         )
 
+    try:
+        safe_filename = sanitize_filename(file.filename)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename",
+        )
+
     logger.info(
         "bundle_upload_start",
-        filename=file.filename,
+        filename=safe_filename,
         size=len(file_bytes),
         tenant_id=tenant_id,
     )
 
     try:
-        s3_key = storage_service.upload_bundle(file_bytes, file.filename, tenant_id)
+        s3_key = storage_service.upload_bundle(file_bytes, safe_filename, tenant_id)
     except Exception as exc:
         logger.error("bundle_upload_s3_error", error=str(exc))
         raise HTTPException(
@@ -67,7 +87,7 @@ async def upload_bundle(
 
     bundle = Bundle(
         filename=s3_key.rsplit("/", 1)[-1],
-        original_filename=file.filename,
+        original_filename=safe_filename,
         size_bytes=len(file_bytes),
         status="uploaded",
         tenant_id=tenant_id,
@@ -124,3 +144,28 @@ async def get_bundle(
     if bundle is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
     return BundleRead.model_validate(bundle)
+
+
+@router.delete("/{bundle_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_bundle(
+    bundle_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    result = await db.execute(
+        select(Bundle).where(Bundle.id == bundle_id, Bundle.tenant_id == tenant_id)
+    )
+    bundle = result.scalar_one_or_none()
+    if bundle is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+
+    # Delete from S3 (best-effort)
+    if bundle.s3_key:
+        try:
+            storage_service.delete_bundle(bundle.s3_key)
+        except Exception as exc:
+            logger.warning("s3_delete_failed", s3_key=bundle.s3_key, error=str(exc))
+
+    # Delete from DB (cascades to evidence + findings via DB cascade)
+    await db.delete(bundle)
+    await db.flush()

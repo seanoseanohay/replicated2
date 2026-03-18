@@ -25,6 +25,16 @@ Decision: Findings stored in PostgreSQL with status workflow (open/acknowledged/
 Reason: Persistent audit trail; supports async review workflow across multiple engineers
 Tradeoffs: Requires migration management as rules evolve
 
+## Rate Limiting
+Decision: slowapi (per-IP, per-endpoint)
+Reason: Protect upload and AI endpoints from abuse without requiring auth infrastructure
+Tradeoffs: IP-based limiting is bypassable behind NAT; can upgrade to tenant-key-based later
+
+## Container Security
+Decision: Non-root appuser in Docker, resource limits on worker
+Reason: Defense-in-depth; worker processes untrusted bundle content
+Tradeoffs: Slight complexity in Dockerfile; file permission care needed for volume mounts
+
 ## Deployment
 Decision: Hosted + Offline
 Reason: Enterprise requirements

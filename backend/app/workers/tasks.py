@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path
 
 from celery import Celery
+from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -23,6 +24,15 @@ celery_app.conf.update(
     task_track_started=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    task_soft_time_limit=540,   # seconds — raises SoftTimeLimitExceeded
+    task_time_limit=600,        # hard kill
+    task_reject_on_worker_lost=True,
+    beat_schedule={
+        "cleanup-stuck-bundles": {
+            "task": "tasks.cleanup_stuck_bundles",
+            "schedule": 300.0,  # every 5 minutes
+        }
+    },
 )
 
 log = logging.getLogger(__name__)
@@ -103,6 +113,20 @@ def process_bundle(self, bundle_id: str) -> dict:
             "finding_count": len(findings),
         }
 
+    except SoftTimeLimitExceeded:
+        log.error(f"Bundle {bundle_id} timed out")
+        # mark error, don't retry
+        try:
+            session.rollback()
+            bundle = session.get(Bundle, uuid.UUID(bundle_id))
+            if bundle:
+                bundle.status = "error"
+                bundle.error_message = "Processing timed out"
+                session.commit()
+        except Exception:
+            pass
+        return {"bundle_id": bundle_id, "status": "error", "error": "timeout"}
+
     except Exception as exc:
         log.error(f"Failed to process bundle {bundle_id}: {exc}")
         try:
@@ -115,6 +139,39 @@ def process_bundle(self, bundle_id: str) -> dict:
         except Exception as inner_exc:
             log.error(f"Failed to update error status for bundle {bundle_id}: {inner_exc}")
         raise self.retry(exc=exc, countdown=5)
+    finally:
+        session.close()
+        engine.dispose()
+
+
+@celery_app.task(name="tasks.cleanup_stuck_bundles")
+def cleanup_stuck_bundles() -> dict:
+    """Reset bundles stuck in 'processing' for more than 30 minutes."""
+    from datetime import datetime, timezone, timedelta
+    from app.models.bundle import Bundle
+
+    engine, session = _make_sync_session()
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
+        # Find bundles stuck in processing
+        from sqlalchemy import and_
+        stuck = session.query(Bundle).filter(
+            and_(
+                Bundle.status == "processing",
+                Bundle.updated_at < cutoff,
+            )
+        ).all()
+        count = len(stuck)
+        for bundle in stuck:
+            bundle.status = "error"
+            bundle.error_message = "Processing timed out (cleaned up)"
+        session.commit()
+        log.info(f"cleanup_stuck_bundles: reset {count} stuck bundles")
+        return {"cleaned": count}
+    except Exception as exc:
+        session.rollback()
+        log.error(f"cleanup_stuck_bundles failed: {exc}")
+        return {"error": str(exc)}
     finally:
         session.close()
         engine.dispose()

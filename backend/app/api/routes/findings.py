@@ -1,12 +1,13 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.core.logging import get_logger
 from app.models.bundle import Bundle
 from app.models.evidence import Evidence
@@ -125,7 +126,9 @@ async def update_finding(
     "/{bundle_id}/findings/{finding_id}/explain",
     response_model=FindingRead,
 )
+@limiter.limit("20/minute")
 async def explain_finding(
+    request: Request,
     bundle_id: uuid.UUID,
     finding_id: uuid.UUID,
     tenant_id: str = Depends(get_tenant_id),
