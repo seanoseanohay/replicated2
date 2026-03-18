@@ -1,10 +1,6 @@
 [build]
-builder = "dockerfile"
+builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-buildCommand = "npm install && npm run build"
-
-[build.buildEnvironment]
-VITE_API_URL = "https://backend-production-6587.up.railway.app"
 
 [deploy]
 startCommand = "/bin/sh -c \"envsubst '${PORT}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'\""
