@@ -18,20 +18,23 @@ Deliverables: Parsers, normalization
 Success: Reliable structured data
 Built: Evidence model (JSONB), alembic migration, BundleExtractor (tar.gz→tempdir), parsers for cluster-info/nodes/version, cluster-resources (all k8s kinds + Lists), pod-logs (tail-500, 10MB limit), host-collectors; run_all_parsers registry; GET /api/v1/bundles/{id}/evidence endpoint; 25 tests passing
 
-## Phase 3 — Detection
+## Phase 3 — Detection ✓ COMPLETE
 Goal: Baseline diagnosis
 Deliverables: Rules engine, findings
 Success: Evidence-backed output
+Built: Finding model, alembic migration 0002, 8 detection rules (node_not_ready, pod_crashloop, oom_killed, image_pull_error, pod_pending, pvc_pending, warning_events, resource_quota), run_all_rules registry, GET+PATCH /api/v1/bundles/{id}/findings, Celery task now runs rules after parsing; 55 tests passing
 
-## Phase 4 — AI Assistance
+## Phase 4 — AI Assistance ✓ COMPLETE
 Goal: Improve coverage
 Deliverables: Retrieval + AI explanations
 Success: Improved quality
+Built: Anthropic client wrapper, prompt templates, explain_finding() service, POST /api/v1/bundles/{id}/findings/{id}/explain, AI_ENABLED/ANTHROPIC_API_KEY/AI_MODEL config, graceful 503 when disabled
 
-## Phase 5 — Review & Reporting
+## Phase 5 — Review & Reporting ✓ COMPLETE
 Goal: Usable workflows
 Deliverables: UI, reports, feedback
 Success: Full support workflow
+Built: build_report() JSON + build_markdown_report(), GET /api/v1/bundles/{id}/report + /report.md (attachment), frontend FindingCard with severity/status badges + Acknowledge/Resolve/Reopen + AI explanation collapsible + reviewer notes, BundleDetail findings grouped by severity, markdown report download button
 
 ## Phase 6 — Hardening
 Goal: Enterprise readiness

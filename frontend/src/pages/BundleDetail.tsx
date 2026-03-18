@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { bundleApi, type Bundle } from "../api/client";
-import FindingCard, { type Finding } from "../components/FindingCard";
+import { bundleApi, findingApi, type Bundle, type Finding } from "../api/client";
+import FindingCard from "../components/FindingCard";
 
 const STATUS_COLORS: Record<string, string> = {
   uploaded: "bg-blue-100 text-blue-800",
@@ -10,20 +10,30 @@ const STATUS_COLORS: Record<string, string> = {
   error: "bg-red-100 text-red-800",
 };
 
+const SEVERITY_ORDER = ["critical", "high", "medium", "low", "info"] as const;
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-// Placeholder findings — Phase 2+ will populate these from the analysis engine
-const PLACEHOLDER_FINDINGS: Finding[] = [];
+function groupFindingsBySeverity(findings: Finding[]): Record<string, Finding[]> {
+  const groups: Record<string, Finding[]> = {};
+  for (const sev of SEVERITY_ORDER) {
+    groups[sev] = findings.filter((f) => f.severity === sev);
+  }
+  return groups;
+}
 
 export default function BundleDetail() {
   const { id } = useParams<{ id: string }>();
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [findingsLoading, setFindingsLoading] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -38,9 +48,10 @@ export default function BundleDetail() {
           if (!cancelled) {
             setBundle(b);
             setLoading(false);
-            // Keep polling while processing
             if (b.status === "uploaded" || b.status === "processing") {
               setTimeout(poll, 2000);
+            } else if (b.status === "ready") {
+              loadFindings(b.id);
             }
           }
         })
@@ -52,11 +63,53 @@ export default function BundleDetail() {
         });
     }
 
+    function loadFindings(bundleId: string) {
+      setFindingsLoading(true);
+      findingApi
+        .list(bundleId)
+        .then((resp) => {
+          if (!cancelled) {
+            setFindings(resp.items);
+          }
+        })
+        .catch(() => {
+          // silently fail findings load
+        })
+        .finally(() => {
+          if (!cancelled) setFindingsLoading(false);
+        });
+    }
+
     poll();
     return () => {
       cancelled = true;
     };
   }, [id]);
+
+  function handleFindingUpdate(updated: Finding) {
+    setFindings((prev) => prev.map((f) => (f.id === updated.id ? updated : f)));
+  }
+
+  async function handleDownloadReport() {
+    if (!id) return;
+    setDownloadingReport(true);
+    try {
+      const md = await findingApi.downloadReport(id);
+      const blob = new Blob([md], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `report-${id}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Failed to download report", e);
+    } finally {
+      setDownloadingReport(false);
+    }
+  }
 
   if (loading) {
     return <div className="text-center py-16 text-gray-400">Loading bundle...</div>;
@@ -71,6 +124,8 @@ export default function BundleDetail() {
   }
 
   if (!bundle) return null;
+
+  const grouped = groupFindingsBySeverity(findings);
 
   return (
     <div>
@@ -132,22 +187,79 @@ export default function BundleDetail() {
         )}
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Findings</h2>
+      {/* Findings section */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Findings
+            {findings.length > 0 && (
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                ({findings.length})
+              </span>
+            )}
+          </h2>
+          {bundle.status === "ready" && findings.length > 0 && (
+            <button
+              onClick={handleDownloadReport}
+              disabled={downloadingReport}
+              className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {downloadingReport ? "Downloading..." : "Download Report (Markdown)"}
+            </button>
+          )}
+        </div>
+
         {bundle.status !== "ready" ? (
           <p className="text-sm text-gray-400">
             Findings will appear here once analysis is complete.
           </p>
-        ) : PLACEHOLDER_FINDINGS.length === 0 ? (
-          <p className="text-sm text-gray-400">No findings yet — analysis engine coming in Phase 2.</p>
+        ) : findingsLoading ? (
+          <p className="text-sm text-gray-400">Loading findings...</p>
+        ) : findings.length === 0 ? (
+          <p className="text-sm text-gray-400">No findings detected for this bundle.</p>
         ) : (
-          <div className="space-y-3">
-            {PLACEHOLDER_FINDINGS.map((f) => (
-              <FindingCard key={f.id} finding={f} />
-            ))}
+          <div className="space-y-6">
+            {SEVERITY_ORDER.map((sev) => {
+              const group = grouped[sev];
+              if (!group || group.length === 0) return null;
+              return (
+                <div key={sev}>
+                  <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide mb-2">
+                    {sev} ({group.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {group.map((f) => (
+                      <FindingCard
+                        key={f.id}
+                        finding={f}
+                        onUpdate={handleFindingUpdate}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Report section */}
+      {bundle.status === "ready" && (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Report</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Download a full analysis report including all findings, AI explanations, and
+            reviewer notes in Markdown format.
+          </p>
+          <button
+            onClick={handleDownloadReport}
+            disabled={downloadingReport}
+            className="px-4 py-2 text-sm rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {downloadingReport ? "Downloading..." : "Download Report (Markdown)"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

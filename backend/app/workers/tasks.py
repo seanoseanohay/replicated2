@@ -82,13 +82,26 @@ def process_bundle(self, bundle_id: str) -> dict:
             session.commit()
             log.info(f"Inserted {len(evidence_list)} evidence records for bundle {bundle_id}")
 
-        # 6. Mark as ready
+        # 6. Run detection rules
+        from app.detection.registry import run_all_rules
+        findings = run_all_rules(uuid.UUID(bundle_id), session)
+        if findings:
+            session.bulk_save_objects(findings)
+            session.commit()
+            log.info(f"Inserted {len(findings)} findings for bundle {bundle_id}")
+
+        # 7. Mark as ready
         bundle.status = "ready"
         bundle.error_message = None
         session.commit()
         log.info(f"Bundle {bundle_id} marked as ready")
 
-        return {"bundle_id": bundle_id, "status": "ready", "evidence_count": len(evidence_list)}
+        return {
+            "bundle_id": bundle_id,
+            "status": "ready",
+            "evidence_count": len(evidence_list),
+            "finding_count": len(findings),
+        }
 
     except Exception as exc:
         log.error(f"Failed to process bundle {bundle_id}: {exc}")

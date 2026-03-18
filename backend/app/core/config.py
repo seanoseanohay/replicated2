@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     MAX_BUNDLE_SIZE_MB: int = 500
     APP_ENV: str = "development"
     SECRET_KEY: str = "dev-secret-key-change-in-prod"
+    ANTHROPIC_API_KEY: str = ""
+    AI_ENABLED: bool = False
+    AI_MODEL: str = "claude-opus-4-6"
 
 
 settings = Settings()
