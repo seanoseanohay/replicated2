@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { dashboardApi, type DashboardStats } from "../api/client";
+import { bundleApi, dashboardApi, type BundleHealthSummary, type DashboardStats } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import HealthBar from "../components/HealthBar";
 
@@ -41,14 +41,35 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<BundleHealthSummary | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  function loadStats() {
     dashboardApi
       .getStats()
       .then(setStats)
       .catch((e: unknown) => setError(String(e)))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadStats();
   }, []);
+
+  async function handleDelete() {
+    if (!confirmTarget) return;
+    setDeleting(true);
+    try {
+      await bundleApi.delete(confirmTarget.bundle_id);
+      setConfirmTarget(null);
+      setLoading(true);
+      loadStats();
+    } catch (e) {
+      console.error("Failed to delete bundle", e);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -184,12 +205,22 @@ export default function Dashboard() {
                       {new Date(b.uploaded_at).toLocaleDateString()}
                     </td>
                     <td className="px-5 py-3">
-                      <button
-                        onClick={() => navigate(`/bundles/${b.bundle_id}`)}
-                        className="text-indigo-600 hover:text-indigo-500 text-xs font-medium"
-                      >
-                        View
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => navigate(`/bundles/${b.bundle_id}`)}
+                          className="text-indigo-600 hover:text-indigo-500 text-xs font-medium"
+                        >
+                          View
+                        </button>
+                        {isManager && (
+                          <button
+                            onClick={() => setConfirmTarget(b)}
+                            className="text-red-400 hover:text-red-600 text-xs font-medium"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -198,6 +229,40 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {confirmTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl border border-gray-200 p-6 max-w-md w-full mx-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-1">Delete bundle?</h3>
+            <p className="text-sm text-gray-600 mb-1">
+              You're about to permanently delete:
+            </p>
+            <p className="text-sm font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded px-3 py-2 mb-4 break-all">
+              {confirmTarget.filename}
+            </p>
+            <p className="text-sm text-red-600 mb-5">
+              This will remove the bundle file, all parsed evidence, all findings, comments, and history. <strong>This cannot be undone.</strong>
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmTarget(null)}
+                disabled={deleting}
+                className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Yes, delete it"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Most Recent Critical Findings — manager only */}
       {isManager && stats.most_recent_critical.length > 0 && (
