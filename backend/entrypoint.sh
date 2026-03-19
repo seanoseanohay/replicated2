@@ -8,7 +8,7 @@ case "$SERVICE_ROLE" in
     ;;
   beat)
     echo "Starting Celery beat..."
-    exec celery -A app.workers.tasks beat --loglevel=info
+    exec celery -A app.workers.tasks beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     ;;
   *)
     echo "Running migrations..."
