@@ -6,9 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.deps import get_tenant_id, require_manager
 from app.core.limiter import limiter
 from app.core.logging import get_logger
 from app.models.bundle import Bundle
+from app.models.user import User
 from app.schemas.bundle import BundleListResponse, BundleRead
 from app.services.storage import storage_service
 from app.utils.security import sanitize_filename, validate_magic_bytes
@@ -25,10 +27,6 @@ ALLOWED_CONTENT_TYPES = {
     "application/zip",
     "application/octet-stream",
 }
-
-
-def get_tenant_id(x_tenant_id: str = Header(default="default")) -> str:
-    return x_tenant_id
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=BundleRead)
@@ -150,6 +148,7 @@ async def get_bundle(
 async def delete_bundle(
     bundle_id: uuid.UUID,
     tenant_id: str = Depends(get_tenant_id),
+    _manager: User = Depends(require_manager),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     result = await db.execute(

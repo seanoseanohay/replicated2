@@ -48,11 +48,11 @@ Deliverables: Scaling, security, ops
 Success: Production-ready system
 Built: RequestIDMiddleware (X-Request-ID header + structlog binding), AccessLogMiddleware (method/path/status/duration), magic byte validation (gzip/zip), filename sanitization (path traversal + unsafe chars), slowapi rate limiting (upload 10/min, AI explain 20/min), /health/live + /health/ready (DB+Redis+S3 checks), DELETE /api/v1/bundles/{id} with S3 cleanup, Celery soft/hard time limits (540s/600s) + stuck-bundle cleanup beat task (5min), configurable CORS origins, DB pool settings, non-root Docker user + HEALTHCHECK, Celery beat service in Docker Compose, resource limits on worker (1g/1CPU) and backend (512m/0.5CPU), frontend ErrorBoundary, upload progress bar (XHR); 71 tests passing
 
-## Phase 7 — Authentication & Roles
+## Phase 7 — Authentication & Roles ✓ COMPLETE
 Goal: Real user identity, not just X-Tenant-ID header
 Deliverables: Login, JWT tokens, role-based access control
 Success: Users log in; managers see more than analysts
-Planned: User model + migration 0003, POST /auth/register + /auth/login + /auth/refresh, JWT middleware replacing X-Tenant-ID, role enum (analyst|manager|admin), route guards per role, frontend login page + auth context + protected routes
+Built: User model + alembic migration 0003 (email/tenant_id unique constraint), passlib[bcrypt] password hashing, python-jose JWT (access 60min + refresh 30d), POST /auth/register + /auth/login + /auth/refresh + GET /auth/me, get_tenant_id dep (JWT preferred, X-Tenant-ID fallback for backward compat), require_auth + require_manager deps, analyst blocked from resolving findings (403), DELETE /bundles requires manager role, frontend AuthContext (localStorage token, session restore via /auth/me), LoginPage (sign in / create account tabs, dark Tailwind card), Navbar (email + role badge + logout), App.tsx protected routes (redirect to /login if unauthenticated); 90 tests passing
 
 ## Phase 8 — Dashboard & Health Overview
 Goal: At-a-glance cluster health across all bundles

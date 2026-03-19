@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.deps import get_tenant_id
 from app.core.logging import get_logger
 from app.models.bundle import Bundle
 from app.models.evidence import Evidence
@@ -15,10 +16,6 @@ from app.reporting.report import build_markdown_report, build_report
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/bundles", tags=["reports"])
-
-
-def get_tenant_id(x_tenant_id: str = Header(default="default")) -> str:
-    return x_tenant_id
 
 
 async def _get_bundle_for_tenant(

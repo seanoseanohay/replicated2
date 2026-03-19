@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     DB_POOL_OVERFLOW: int = 10
     RATE_LIMIT_UPLOAD: str = "10/minute"     # slowapi format
     RATE_LIMIT_AI: str = "20/minute"         # slowapi format
+    JWT_SECRET_KEY: str = "dev-jwt-secret-change-in-prod"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    ALLOW_REGISTRATION: bool = True
 
     @model_validator(mode="after")
     def check_secret_key(self):

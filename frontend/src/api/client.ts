@@ -1,5 +1,24 @@
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
+// ---- Auth types ----
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  role: string;
+  tenant_id: string;
+}
+
+export interface UserRead {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  tenant_id: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface Bundle {
   id: string;
   filename: string;
@@ -59,16 +78,29 @@ export interface EvidenceRead {
   created_at: string;
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("access_token");
+  const headers: Record<string, string> = {
+    "X-Tenant-ID": "default",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
   tenantId = "default"
 ): Promise<T> {
   const url = `${API_BASE}${path}`;
+  const authHeaders = getAuthHeaders();
+  authHeaders["X-Tenant-ID"] = tenantId;
   const res = await fetch(url, {
     ...options,
     headers: {
-      "X-Tenant-ID": tenantId,
+      ...authHeaders,
       ...options.headers,
     },
   });
@@ -85,10 +117,12 @@ async function requestText(
   tenantId = "default"
 ): Promise<string> {
   const url = `${API_BASE}${path}`;
+  const authHeaders = getAuthHeaders();
+  authHeaders["X-Tenant-ID"] = tenantId;
   const res = await fetch(url, {
     ...options,
     headers: {
-      "X-Tenant-ID": tenantId,
+      ...authHeaders,
       ...options.headers,
     },
   });
@@ -210,5 +244,35 @@ export const evidenceApi = {
       {},
       tenantId
     );
+  },
+};
+
+export const authApi = {
+  login(email: string, password: string): Promise<TokenResponse> {
+    return request<TokenResponse>("/api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+  },
+
+  register(email: string, password: string, fullName?: string): Promise<TokenResponse> {
+    return request<TokenResponse>("/api/v1/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, full_name: fullName ?? null }),
+    });
+  },
+
+  refresh(refreshToken: string): Promise<TokenResponse> {
+    return request<TokenResponse>("/api/v1/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  },
+
+  me(): Promise<UserRead> {
+    return request<UserRead>("/api/v1/auth/me");
   },
 };

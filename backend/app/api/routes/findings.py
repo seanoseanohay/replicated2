@@ -7,20 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.deps import get_current_user, get_tenant_id
 from app.core.limiter import limiter
 from app.core.logging import get_logger
 from app.models.bundle import Bundle
 from app.models.evidence import Evidence
 from app.models.finding import Finding
+from app.models.user import User
 from app.schemas.finding import FindingListResponse, FindingRead, FindingUpdate
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/bundles", tags=["findings"])
-
-
-def get_tenant_id(x_tenant_id: str = Header(default="default")) -> str:
-    return x_tenant_id
 
 
 async def _get_bundle_for_tenant(
@@ -87,6 +85,7 @@ async def update_finding(
     finding_id: uuid.UUID,
     update: FindingUpdate,
     tenant_id: str = Depends(get_tenant_id),
+    current_user: User | None = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FindingRead:
     await _get_bundle_for_tenant(bundle_id, tenant_id, db)
@@ -99,6 +98,13 @@ async def update_finding(
     finding = result.scalar_one_or_none()
     if finding is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+
+    if update.status == "resolved":
+        if current_user is None or current_user.role not in ("manager", "admin"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Manager role required to resolve findings",
+            )
 
     if update.status is not None:
         finding.status = update.status
@@ -133,6 +139,7 @@ async def explain_finding(
     finding_id: uuid.UUID,
     tenant_id: str = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db),
+    _user: User | None = Depends(get_current_user),
 ) -> FindingRead:
     if not settings.AI_ENABLED:
         raise HTTPException(

@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.deps import get_tenant_id
 from app.core.logging import get_logger
 from app.models.bundle import Bundle
 from app.models.evidence import Evidence
@@ -13,10 +14,6 @@ from app.schemas.evidence import EvidenceListResponse, EvidenceRead
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/bundles", tags=["evidence"])
-
-
-def get_tenant_id(x_tenant_id: str = Header(default="default")) -> str:
-    return x_tenant_id
 
 
 @router.get("/{bundle_id}/evidence", response_model=EvidenceListResponse)
