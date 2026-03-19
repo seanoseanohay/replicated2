@@ -96,7 +96,9 @@ def process_bundle(self, bundle_id: str) -> dict:
         from app.detection.registry import run_all_rules
         findings = run_all_rules(uuid.UUID(bundle_id), session)
         if findings:
-            session.bulk_save_objects(findings)
+            # add_all + flush populates f.id (uuid.uuid4 default) back onto Python objects
+            session.add_all(findings)
+            session.flush()
             session.commit()
             log.info(f"Inserted {len(findings)} findings for bundle {bundle_id}")
 
@@ -112,9 +114,11 @@ def process_bundle(self, bundle_id: str) -> dict:
                     )
                     for f in findings
                 ]
-                session.bulk_save_objects(created_events)
+                session.add_all(created_events)
+                session.flush()
                 session.commit()
             except Exception as evt_exc:
+                session.rollback()
                 log.warning(f"Failed to record finding created events: {evt_exc}")
 
         # 7. Send notifications (best-effort)
@@ -197,7 +201,8 @@ def reanalyze_bundle(self, bundle_id: str) -> dict:
         from app.detection.registry import run_all_rules
         findings = run_all_rules(uuid.UUID(bundle_id), session)
         if findings:
-            session.bulk_save_objects(findings)
+            session.add_all(findings)
+            session.flush()
             session.commit()
             log.info(f"Reanalysis inserted {len(findings)} findings for bundle {bundle_id}")
 
@@ -212,9 +217,11 @@ def reanalyze_bundle(self, bundle_id: str) -> dict:
                     )
                     for f in findings
                 ]
-                session.bulk_save_objects(created_events)
+                session.add_all(created_events)
+                session.flush()
                 session.commit()
             except Exception as evt_exc:
+                session.rollback()
                 log.warning(f"Failed to record finding created events: {evt_exc}")
 
         bundle.status = "ready"
