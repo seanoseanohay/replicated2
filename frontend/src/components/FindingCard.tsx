@@ -269,6 +269,17 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
         </div>
       </div>
 
+      {/* Reviewed by */}
+      {finding.reviewed_by && finding.status !== "open" && (
+        <p className="mt-1 text-xs text-gray-400">
+          {finding.status === "resolved" ? "Resolved" : "Acknowledged"} by{" "}
+          <span className="font-medium text-gray-500">{finding.reviewed_by}</span>
+          {finding.reviewed_at && (
+            <> &middot; {new Date(finding.reviewed_at).toLocaleString()}</>
+          )}
+        </p>
+      )}
+
       {/* Summary */}
       <p className="mt-2 text-sm text-gray-600">{finding.summary}</p>
 

@@ -136,10 +136,9 @@ async def update_finding(
     if update.status is not None:
         finding.status = update.status
         finding.reviewed_at = datetime.now(timezone.utc)
+        finding.reviewed_by = actor  # always stamp who changed the status
     if update.reviewer_notes is not None:
         finding.reviewer_notes = update.reviewer_notes
-    if update.reviewed_by is not None:
-        finding.reviewed_by = update.reviewed_by
 
     finding.updated_at = datetime.now(timezone.utc)
     await db.flush()
