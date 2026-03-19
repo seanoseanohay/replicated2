@@ -54,11 +54,11 @@ Deliverables: Login, JWT tokens, role-based access control
 Success: Users log in; managers see more than analysts
 Built: User model + alembic migration 0003 (email/tenant_id unique constraint), passlib[bcrypt] password hashing, python-jose JWT (access 60min + refresh 30d), POST /auth/register + /auth/login + /auth/refresh + GET /auth/me, get_tenant_id dep (JWT preferred, X-Tenant-ID fallback for backward compat), require_auth + require_manager deps, analyst blocked from resolving findings (403), DELETE /bundles requires manager role, frontend AuthContext (localStorage token, session restore via /auth/me), LoginPage (sign in / create account tabs, dark Tailwind card), Navbar (email + role badge + logout), App.tsx protected routes (redirect to /login if unauthenticated); 90 tests passing
 
-## Phase 8 — Dashboard & Health Overview
+## Phase 8 — Dashboard & Health Overview ✓ COMPLETE
 Goal: At-a-glance cluster health across all bundles
 Deliverables: Global dashboard, per-bundle health bar, aggregate stats
 Success: Green means go, red means wake someone up
-Planned: GET /api/v1/dashboard (aggregate stats per tenant), per-bundle health score (weighted severity → 0–100 → color band), dashboard page with summary cards, stacked health bar component per bundle, manager cross-bundle critical findings table
+Built: GET /api/v1/dashboard (DashboardStats + BundleHealthSummary schemas, compute_health_score helper with critical=-30/high=-15/medium=-7/low=-2 deductions, clamped 0–100, green/yellow/orange/red color bands), tenant-isolated aggregate stats (total_bundles, bundles_ready/processing/error, total_open_findings, findings_by_severity, most_recent_critical up to 5), dashboard router registered in main.py; HealthBar.tsx stacked proportional bar component (red/orange/yellow/blue/gray segments, "All Clear" green when zero), Dashboard.tsx page with 4 summary cards (Total Bundles/Open Criticals/Open Highs/Bundles with Issues), bundle health table (filename, status badge, health bar, score with color, open count, uploaded date, View button), most-recent-critical findings table (manager-only via isManager); dashboardApi.getStats() + BundleHealthSummary/DashboardStats interfaces in client.ts; /dashboard route added to App.tsx, / redirects to /dashboard, Dashboard + Bundles nav links added to Navbar; 8 new tests; 98 tests passing
 
 ## Phase 9 — Audit Trail & Finding Events
 Goal: Full history of who did what to every finding

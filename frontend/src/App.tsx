@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
 import BundleUpload from "./pages/BundleUpload";
 import BundleDetail from "./pages/BundleDetail";
 import LoginPage from "./pages/LoginPage";
@@ -26,7 +27,9 @@ function ProtectedLayout() {
       <Navbar />
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/bundles" element={<Home />} />
           <Route path="/upload" element={<BundleUpload />} />
           <Route path="/bundles/:id" element={<BundleDetail />} />
         </Routes>
@@ -50,7 +53,7 @@ function AuthRoute() {
   }
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <LoginPage />;

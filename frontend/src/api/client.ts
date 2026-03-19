@@ -247,6 +247,41 @@ export const evidenceApi = {
   },
 };
 
+export interface BundleHealthSummary {
+  bundle_id: string;
+  filename: string;
+  status: string;
+  uploaded_at: string;
+  health_score: number;
+  health_color: "green" | "yellow" | "orange" | "red";
+  findings_by_severity: Record<string, number>;
+  open_findings: number;
+  total_findings: number;
+}
+
+export interface DashboardStats {
+  total_bundles: number;
+  bundles_ready: number;
+  bundles_processing: number;
+  bundles_error: number;
+  total_open_findings: number;
+  findings_by_severity: Record<string, number>;
+  most_recent_critical: Array<{
+    bundle_id: string;
+    filename: string;
+    finding_title: string;
+    rule_id: string;
+    created_at: string;
+  }>;
+  bundles: BundleHealthSummary[];
+}
+
+export const dashboardApi = {
+  getStats(): Promise<DashboardStats> {
+    return request<DashboardStats>("/api/v1/dashboard");
+  },
+};
+
 export const authApi = {
   login(email: string, password: string): Promise<TokenResponse> {
     return request<TokenResponse>("/api/v1/auth/login", {

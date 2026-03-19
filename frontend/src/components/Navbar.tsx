@@ -21,12 +21,26 @@ export default function Navbar() {
   return (
     <header className="bg-gray-900 border-b border-gray-700 shadow-sm">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link
-          to="/"
-          className="text-xl font-bold text-indigo-400 tracking-tight hover:text-indigo-300 transition-colors"
-        >
-          Bundle Analyzer
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link
+            to="/"
+            className="text-xl font-bold text-indigo-400 tracking-tight hover:text-indigo-300 transition-colors"
+          >
+            Bundle Analyzer
+          </Link>
+          <Link
+            to="/dashboard"
+            className="text-sm text-gray-300 hover:text-white transition-colors"
+          >
+            Dashboard
+          </Link>
+          <Link
+            to="/bundles"
+            className="text-sm text-gray-300 hover:text-white transition-colors"
+          >
+            Bundles
+          </Link>
+        </div>
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
