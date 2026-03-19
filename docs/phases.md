@@ -24,6 +24,12 @@ Deliverables: Rules engine, findings
 Success: Evidence-backed output
 Built: Finding model, alembic migration 0002, 8 detection rules (node_not_ready, pod_crashloop, oom_killed, image_pull_error, pod_pending, pvc_pending, warning_events, resource_quota), run_all_rules registry, GET+PATCH /api/v1/bundles/{id}/findings, Celery task now runs rules after parsing; 55 tests passing
 
+## Phase 3.1 — Extended Detection (Warnings & Capacity) ✓ COMPLETE
+Goal: Catch degraded-but-not-down cluster states
+Deliverables: 5 new detection rules, updated registry, new tests
+Success: Warning-level issues surface before they become critical
+Built: node_pressure (DiskPressure/MemoryPressure/PIDPressure node conditions, medium), deployment_unavailable (availableReplicas < desiredReplicas, medium), statefulset_unavailable (readyReplicas < replicas, medium), hpa_maxed (HPA at maxReplicas cannot scale further, medium), warning_event_reasons (dangerous Warning event reasons grouped by reason with high/medium severity, threshold=3); registry updated with all 5 rules; 9 new tests added; 81 tests passing
+
 ## Phase 4 — AI Assistance ✓ COMPLETE
 Goal: Improve coverage
 Deliverables: Retrieval + AI explanations
@@ -41,12 +47,6 @@ Goal: Enterprise readiness
 Deliverables: Scaling, security, ops
 Success: Production-ready system
 Built: RequestIDMiddleware (X-Request-ID header + structlog binding), AccessLogMiddleware (method/path/status/duration), magic byte validation (gzip/zip), filename sanitization (path traversal + unsafe chars), slowapi rate limiting (upload 10/min, AI explain 20/min), /health/live + /health/ready (DB+Redis+S3 checks), DELETE /api/v1/bundles/{id} with S3 cleanup, Celery soft/hard time limits (540s/600s) + stuck-bundle cleanup beat task (5min), configurable CORS origins, DB pool settings, non-root Docker user + HEALTHCHECK, Celery beat service in Docker Compose, resource limits on worker (1g/1CPU) and backend (512m/0.5CPU), frontend ErrorBoundary, upload progress bar (XHR); 71 tests passing
-
-## Phase 3.1 — Extended Detection (Warnings & Capacity) ✓ COMPLETE
-Goal: Catch degraded-but-not-down cluster states
-Deliverables: 5 new detection rules, updated registry, new tests
-Success: Warning-level issues surface before they become critical
-Built: node_pressure (DiskPressure/MemoryPressure/PIDPressure node conditions, medium), deployment_unavailable (availableReplicas < desiredReplicas, medium), statefulset_unavailable (readyReplicas < replicas, medium), hpa_maxed (HPA at maxReplicas cannot scale further, medium), warning_event_reasons (dangerous Warning event reasons grouped by reason with high/medium severity, threshold=3); registry updated with all 5 rules; 9 new tests added
 
 ## Phase 7 — Authentication & Roles
 Goal: Real user identity, not just X-Tenant-ID header
