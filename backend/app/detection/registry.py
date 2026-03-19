@@ -11,6 +11,11 @@ from app.detection.rules.pod_pending import PodPendingRule
 from app.detection.rules.pvc_pending import PVCPendingRule
 from app.detection.rules.resource_quota import ResourceQuotaRule
 from app.detection.rules.warning_events import WarningEventsRule
+from app.detection.rules.node_pressure import NodePressureRule
+from app.detection.rules.deployment_unavailable import DeploymentUnavailableRule
+from app.detection.rules.statefulset_unavailable import StatefulSetUnavailableRule
+from app.detection.rules.hpa_maxed import HPAMaxedRule
+from app.detection.rules.warning_event_reasons import WarningEventReasonsRule
 from app.models.finding import Finding
 
 logger = logging.getLogger(__name__)
@@ -24,6 +29,11 @@ ALL_RULES = [
     PVCPendingRule(),
     WarningEventsRule(),
     ResourceQuotaRule(),
+    NodePressureRule(),
+    DeploymentUnavailableRule(),
+    StatefulSetUnavailableRule(),
+    HPAMaxedRule(),
+    WarningEventReasonsRule(),
 ]
 
 
