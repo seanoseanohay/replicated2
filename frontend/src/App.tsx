@@ -5,6 +5,8 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import BundleUpload from "./pages/BundleUpload";
 import BundleDetail from "./pages/BundleDetail";
+import BundleCompare from "./pages/BundleCompare";
+import NotificationSettings from "./pages/NotificationSettings";
 import LoginPage from "./pages/LoginPage";
 
 function ProtectedLayout() {
@@ -30,8 +32,10 @@ function ProtectedLayout() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/bundles" element={<Home />} />
+          <Route path="/bundles/compare" element={<BundleCompare />} />
           <Route path="/upload" element={<BundleUpload />} />
           <Route path="/bundles/:id" element={<BundleDetail />} />
+          <Route path="/settings/notifications" element={<NotificationSettings />} />
         </Routes>
       </main>
       <footer className="border-t border-gray-200 text-center text-xs text-gray-400 py-4">

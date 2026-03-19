@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+
 const ROLE_BADGE: Record<string, string> = {
   analyst: "bg-blue-900/50 text-blue-300 border border-blue-700",
   manager: "bg-purple-900/50 text-purple-300 border border-purple-700",
@@ -14,7 +15,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, isManager } = useAuth();
 
   if (!user) return null;
 
@@ -40,6 +41,20 @@ export default function Navbar() {
           >
             Bundles
           </Link>
+          <Link
+            to="/bundles/compare"
+            className="text-sm text-gray-300 hover:text-white transition-colors"
+          >
+            Compare
+          </Link>
+          {isManager && (
+            <Link
+              to="/settings/notifications"
+              className="text-sm text-gray-300 hover:text-white transition-colors"
+            >
+              Settings
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center gap-4">

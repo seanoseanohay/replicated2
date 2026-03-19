@@ -13,8 +13,10 @@ from app.core.logging import get_logger
 from app.models.bundle import Bundle
 from app.models.evidence import Evidence
 from app.models.finding import Finding
+from app.models.finding_event import FindingEvent
 from app.models.user import User
 from app.schemas.finding import FindingListResponse, FindingRead, FindingUpdate
+from app.schemas.finding_event import FindingEventRead
 
 logger = get_logger(__name__)
 
@@ -106,6 +108,31 @@ async def update_finding(
                 detail="Manager role required to resolve findings",
             )
 
+    actor = current_user.email if current_user is not None else "anonymous"
+
+    # Track events
+    if update.status is not None and update.status != finding.status:
+        event = FindingEvent(
+            finding_id=finding.id,
+            user_id=current_user.id if current_user else None,
+            actor=actor,
+            event_type="status_changed",
+            old_value=finding.status,
+            new_value=update.status,
+        )
+        db.add(event)
+
+    if update.reviewer_notes is not None and update.reviewer_notes != finding.reviewer_notes:
+        event = FindingEvent(
+            finding_id=finding.id,
+            user_id=current_user.id if current_user else None,
+            actor=actor,
+            event_type="note_added",
+            old_value=finding.reviewer_notes,
+            new_value=update.reviewer_notes,
+        )
+        db.add(event)
+
     if update.status is not None:
         finding.status = update.status
         finding.reviewed_at = datetime.now(timezone.utc)
@@ -189,6 +216,17 @@ async def explain_finding(
     await db.flush()
     await db.refresh(finding)
 
+    # Record ai_explained event
+    actor = _user.email if _user is not None else "system"
+    event = FindingEvent(
+        finding_id=finding.id,
+        user_id=_user.id if _user else None,
+        actor=actor,
+        event_type="ai_explained",
+    )
+    db.add(event)
+    await db.flush()
+
     logger.info(
         "finding_explained",
         finding_id=str(finding_id),
@@ -196,3 +234,35 @@ async def explain_finding(
     )
 
     return FindingRead.model_validate(finding)
+
+
+@router.get(
+    "/{bundle_id}/findings/{finding_id}/events",
+    response_model=list[FindingEventRead],
+)
+async def list_finding_events(
+    bundle_id: uuid.UUID,
+    finding_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db),
+) -> list[FindingEventRead]:
+    await _get_bundle_for_tenant(bundle_id, tenant_id, db)
+
+    # Verify finding belongs to bundle
+    result = await db.execute(
+        select(Finding).where(
+            Finding.id == finding_id, Finding.bundle_id == bundle_id
+        )
+    )
+    finding = result.scalar_one_or_none()
+    if finding is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+
+    events_result = await db.execute(
+        select(FindingEvent)
+        .where(FindingEvent.finding_id == finding_id)
+        .order_by(FindingEvent.created_at.asc())
+    )
+    events = events_result.scalars().all()
+
+    return [FindingEventRead.model_validate(e) for e in events]

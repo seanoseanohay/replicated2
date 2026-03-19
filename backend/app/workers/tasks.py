@@ -100,7 +100,31 @@ def process_bundle(self, bundle_id: str) -> dict:
             session.commit()
             log.info(f"Inserted {len(findings)} findings for bundle {bundle_id}")
 
-        # 7. Mark as ready
+            # Record "created" events for all findings
+            try:
+                from app.models.finding_event import FindingEvent
+                created_events = [
+                    FindingEvent(
+                        finding_id=f.id,
+                        actor="system",
+                        event_type="created",
+                        new_value=f.status,
+                    )
+                    for f in findings
+                ]
+                session.bulk_save_objects(created_events)
+                session.commit()
+            except Exception as evt_exc:
+                log.warning(f"Failed to record finding created events: {evt_exc}")
+
+        # 7. Send notifications (best-effort)
+        try:
+            from app.services.notifications import notify_bundle_findings
+            notify_bundle_findings(bundle_id, session)
+        except Exception as notif_exc:
+            log.warning(f"Notification delivery failed for bundle {bundle_id}: {notif_exc}")
+
+        # 8. Mark as ready
         bundle.status = "ready"
         bundle.error_message = None
         session.commit()

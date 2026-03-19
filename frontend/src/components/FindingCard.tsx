@@ -1,5 +1,16 @@
 import { useState } from "react";
-import { findingApi, evidenceApi, type Finding, type FindingUpdate, type EvidenceRead } from "../api/client";
+import {
+  findingApi,
+  evidenceApi,
+  eventsApi,
+  commentApi,
+  type Finding,
+  type FindingUpdate,
+  type EvidenceRead,
+  type FindingEvent,
+  type Comment,
+} from "../api/client";
+import { useAuth } from "../context/AuthContext";
 
 export type { Finding };
 
@@ -25,6 +36,13 @@ const STATUS_BADGE: Record<string, string> = {
   resolved: "bg-green-50 text-green-700 border border-green-200",
 };
 
+const EVENT_DOT: Record<string, string> = {
+  status_changed: "bg-blue-500",
+  note_added: "bg-gray-400",
+  ai_explained: "bg-purple-500",
+  created: "bg-green-500",
+};
+
 interface Props {
   finding: Finding;
   onUpdate?: (updated: Finding) => void;
@@ -41,7 +59,33 @@ function kindBadgeClass(kind: string): string {
   return KIND_BADGE_COLORS[kind] ?? "bg-gray-100 text-gray-700";
 }
 
+function timeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diff = Math.floor((now - then) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function eventDescription(event: FindingEvent): string {
+  switch (event.event_type) {
+    case "status_changed":
+      return `changed status: ${event.old_value ?? "?"} → ${event.new_value ?? "?"}`;
+    case "note_added":
+      return `updated reviewer notes`;
+    case "ai_explained":
+      return `generated AI explanation`;
+    case "created":
+      return `finding created`;
+    default:
+      return event.event_type;
+  }
+}
+
 export default function FindingCard({ finding: initialFinding, onUpdate }: Props) {
+  const { user } = useAuth();
   const [finding, setFinding] = useState<Finding>(initialFinding);
   const [reviewerNotes, setReviewerNotes] = useState(finding.reviewer_notes ?? "");
   const [explaining, setExplaining] = useState(false);
@@ -51,6 +95,19 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
   const [evidenceItems, setEvidenceItems] = useState<Record<string, EvidenceRead>>({});
   const [evidenceLoading, setEvidenceLoading] = useState(false);
 
+  // History (events)
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [events, setEvents] = useState<FindingEvent[] | null>(null);
+  const [eventsLoading, setEventsLoading] = useState(false);
+
+  // Comments
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState<Comment[] | null>(null);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+
   const handleStatusChange = async (newStatus: "open" | "acknowledged" | "resolved") => {
     setUpdating(true);
     try {
@@ -58,6 +115,8 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
       const updated = await findingApi.update(finding.bundle_id, finding.id, update);
       setFinding(updated);
       onUpdate?.(updated);
+      // Invalidate events cache so timeline refreshes
+      setEvents(null);
     } catch (e) {
       console.error("Failed to update finding status", e);
     } finally {
@@ -73,6 +132,7 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
       const updated = await findingApi.update(finding.bundle_id, finding.id, update);
       setFinding(updated);
       onUpdate?.(updated);
+      setEvents(null);
     } catch (e) {
       console.error("Failed to save reviewer notes", e);
     } finally {
@@ -85,7 +145,6 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
     setEvidenceOpen(nextOpen);
     if (!nextOpen) return;
 
-    // Only fetch IDs we haven't fetched yet
     const missing = finding.evidence_ids.filter((eid) => !(eid in evidenceItems));
     if (missing.length === 0) return;
 
@@ -115,10 +174,71 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
       const updated = await findingApi.explain(finding.bundle_id, finding.id);
       setFinding(updated);
       onUpdate?.(updated);
+      setEvents(null);
     } catch (e: unknown) {
       setExplainError(String(e));
     } finally {
       setExplaining(false);
+    }
+  };
+
+  const handleHistoryToggle = async () => {
+    const nextOpen = !historyOpen;
+    setHistoryOpen(nextOpen);
+    if (!nextOpen || events !== null) return;
+
+    setEventsLoading(true);
+    try {
+      const data = await eventsApi.getEvents(finding.bundle_id, finding.id);
+      setEvents(data);
+    } catch (e) {
+      console.error("Failed to fetch events", e);
+      setEvents([]);
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
+  const handleCommentsToggle = async () => {
+    const nextOpen = !commentsOpen;
+    setCommentsOpen(nextOpen);
+    if (!nextOpen || comments !== null) return;
+
+    setCommentsLoading(true);
+    try {
+      const data = await commentApi.list(finding.bundle_id, finding.id);
+      setComments(data);
+    } catch (e) {
+      console.error("Failed to fetch comments", e);
+      setComments([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!newComment.trim()) return;
+    setSubmittingComment(true);
+    try {
+      const created = await commentApi.create(finding.bundle_id, finding.id, newComment.trim());
+      setComments((prev) => (prev ? [...prev, created] : [created]));
+      setNewComment("");
+    } catch (e) {
+      console.error("Failed to create comment", e);
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    setDeletingCommentId(commentId);
+    try {
+      await commentApi.delete(finding.bundle_id, finding.id, commentId);
+      setComments((prev) => (prev ? prev.filter((c) => c.id !== commentId) : prev));
+    } catch (e) {
+      console.error("Failed to delete comment", e);
+    } finally {
+      setDeletingCommentId(null);
     }
   };
 
@@ -289,6 +409,118 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
           onBlur={handleNotesBlur}
         />
       </div>
+
+      {/* History (Events Timeline) */}
+      <details
+        className="mt-3"
+        open={historyOpen}
+        onToggle={(e) => {
+          const target = e.currentTarget as HTMLDetailsElement;
+          if (target.open !== historyOpen) {
+            handleHistoryToggle();
+          }
+        }}
+      >
+        <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
+          History
+        </summary>
+        <div className="mt-2">
+          {eventsLoading ? (
+            <p className="text-xs text-gray-400 italic">Loading history...</p>
+          ) : events && events.length === 0 ? (
+            <p className="text-xs text-gray-400 italic">No events yet.</p>
+          ) : (
+            <ul className="space-y-2 pl-1">
+              {(events ?? []).map((ev) => (
+                <li key={ev.id} className="flex items-start gap-2">
+                  <span
+                    className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
+                      EVENT_DOT[ev.event_type] ?? "bg-gray-300"
+                    }`}
+                  />
+                  <div className="text-xs text-gray-700">
+                    <span className="font-semibold">{ev.actor}</span>{" "}
+                    {eventDescription(ev)}{" "}
+                    <span className="text-gray-400">{timeAgo(ev.created_at)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </details>
+
+      {/* Comments */}
+      <details
+        className="mt-3"
+        open={commentsOpen}
+        onToggle={(e) => {
+          const target = e.currentTarget as HTMLDetailsElement;
+          if (target.open !== commentsOpen) {
+            handleCommentsToggle();
+          }
+        }}
+      >
+        <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
+          Comments {comments !== null ? `(${comments.length})` : ""}
+        </summary>
+        <div className="mt-2 space-y-2">
+          {commentsLoading ? (
+            <p className="text-xs text-gray-400 italic">Loading comments...</p>
+          ) : (
+            <>
+              {(comments ?? []).length === 0 ? (
+                <p className="text-xs text-gray-400 italic">No comments yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {(comments ?? []).map((c) => {
+                    const isOwn = user?.email === c.actor;
+                    const isManager = user?.role === "manager" || user?.role === "admin";
+                    const canDelete = isOwn || isManager;
+                    return (
+                      <li key={c.id} className="bg-white rounded border border-gray-200 p-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-gray-700">{c.actor}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">{timeAgo(c.created_at)}</span>
+                            {canDelete && (
+                              <button
+                                onClick={() => handleDeleteComment(c.id)}
+                                disabled={deletingCommentId === c.id}
+                                className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-600 whitespace-pre-wrap">{c.body}</p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {/* New comment input */}
+              <div className="mt-2">
+                <textarea
+                  rows={2}
+                  className="w-full text-xs border border-gray-200 rounded px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300 resize-none"
+                  placeholder="Add a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                />
+                <button
+                  onClick={handleSubmitComment}
+                  disabled={submittingComment || !newComment.trim()}
+                  className="mt-1 px-3 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {submittingComment ? "Posting..." : "Add Comment"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

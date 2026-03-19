@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,8 +10,10 @@ from app.core.deps import get_tenant_id, require_manager
 from app.core.limiter import limiter
 from app.core.logging import get_logger
 from app.models.bundle import Bundle
+from app.models.finding import Finding
 from app.models.user import User
 from app.schemas.bundle import BundleListResponse, BundleRead
+from app.schemas.comparison import ComparisonResult, FindingSummary
 from app.services.storage import storage_service
 from app.utils.security import sanitize_filename, validate_magic_bytes
 from app.workers.tasks import process_bundle
@@ -126,6 +128,92 @@ async def list_bundles(
     return BundleListResponse(
         items=[BundleRead.model_validate(b) for b in bundles],
         total=total,
+    )
+
+
+# NOTE: /compare must be defined BEFORE /{bundle_id} so FastAPI doesn't try
+# to parse "compare" as a UUID path param.
+@router.get("/compare", response_model=ComparisonResult)
+async def compare_bundles(
+    bundle_a: uuid.UUID = Query(..., description="ID of bundle A"),
+    bundle_b: uuid.UUID = Query(..., description="ID of bundle B"),
+    tenant_id: str = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db),
+) -> ComparisonResult:
+    # Validate both bundles belong to tenant
+    result_a = await db.execute(
+        select(Bundle).where(Bundle.id == bundle_a, Bundle.tenant_id == tenant_id)
+    )
+    b_a = result_a.scalar_one_or_none()
+    if b_a is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle A not found")
+
+    result_b = await db.execute(
+        select(Bundle).where(Bundle.id == bundle_b, Bundle.tenant_id == tenant_id)
+    )
+    b_b = result_b.scalar_one_or_none()
+    if b_b is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle B not found")
+
+    # Load findings for each bundle
+    findings_a_result = await db.execute(
+        select(Finding).where(Finding.bundle_id == bundle_a)
+    )
+    findings_a = findings_a_result.scalars().all()
+
+    findings_b_result = await db.execute(
+        select(Finding).where(Finding.bundle_id == bundle_b)
+    )
+    findings_b = findings_b_result.scalars().all()
+
+    # Index by rule_id (last one wins if duplicates)
+    a_by_rule: dict[str, Finding] = {f.rule_id: f for f in findings_a}
+    b_by_rule: dict[str, Finding] = {f.rule_id: f for f in findings_b}
+
+    a_rules = set(a_by_rule.keys())
+    b_rules = set(b_by_rule.keys())
+
+    new_findings = [
+        FindingSummary(
+            rule_id=r,
+            title=b_by_rule[r].title,
+            severity=b_by_rule[r].severity,
+            status=b_by_rule[r].status,
+        )
+        for r in sorted(b_rules - a_rules)
+    ]
+    resolved_findings = [
+        FindingSummary(
+            rule_id=r,
+            title=a_by_rule[r].title,
+            severity=a_by_rule[r].severity,
+            status=a_by_rule[r].status,
+        )
+        for r in sorted(a_rules - b_rules)
+    ]
+    persisting_findings = [
+        FindingSummary(
+            rule_id=r,
+            title=b_by_rule[r].title,
+            severity=b_by_rule[r].severity,
+            status=b_by_rule[r].status,
+        )
+        for r in sorted(a_rules & b_rules)
+    ]
+
+    return ComparisonResult(
+        bundle_a_id=str(bundle_a),
+        bundle_a_filename=b_a.original_filename,
+        bundle_b_id=str(bundle_b),
+        bundle_b_filename=b_b.original_filename,
+        new_findings=new_findings,
+        resolved_findings=resolved_findings,
+        persisting_findings=persisting_findings,
+        summary={
+            "new": len(new_findings),
+            "resolved": len(resolved_findings),
+            "persisting": len(persisting_findings),
+        },
     )
 
 

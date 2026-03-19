@@ -282,6 +282,121 @@ export const dashboardApi = {
   },
 };
 
+// ---- Finding Events ----
+export interface FindingEvent {
+  id: string;
+  finding_id: string;
+  actor: string;
+  event_type: string;
+  old_value: string | null;
+  new_value: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export const eventsApi = {
+  getEvents(bundleId: string, findingId: string, tenantId = "default"): Promise<FindingEvent[]> {
+    return request<FindingEvent[]>(
+      `/api/v1/bundles/${bundleId}/findings/${findingId}/events`,
+      {},
+      tenantId
+    );
+  },
+};
+
+// ---- Notifications ----
+export interface NotificationConfig {
+  id: string;
+  tenant_id: string;
+  email_enabled: boolean;
+  email_recipients: string | null;
+  slack_enabled: boolean;
+  slack_webhook_url: string | null;
+  notify_on_severities: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const notificationApi = {
+  getConfig(): Promise<NotificationConfig> {
+    return request<NotificationConfig>("/api/v1/notifications/config");
+  },
+  updateConfig(update: Partial<NotificationConfig>): Promise<NotificationConfig> {
+    return request<NotificationConfig>("/api/v1/notifications/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(update),
+    });
+  },
+};
+
+// ---- Comments ----
+export interface Comment {
+  id: string;
+  finding_id: string;
+  actor: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const commentApi = {
+  list(bundleId: string, findingId: string, tenantId = "default"): Promise<Comment[]> {
+    return request<Comment[]>(
+      `/api/v1/bundles/${bundleId}/findings/${findingId}/comments`,
+      {},
+      tenantId
+    );
+  },
+  create(bundleId: string, findingId: string, body: string, tenantId = "default"): Promise<Comment> {
+    return request<Comment>(
+      `/api/v1/bundles/${bundleId}/findings/${findingId}/comments`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      },
+      tenantId
+    );
+  },
+  delete(bundleId: string, findingId: string, commentId: string, tenantId = "default"): Promise<void> {
+    return request<void>(
+      `/api/v1/bundles/${bundleId}/findings/${findingId}/comments/${commentId}`,
+      { method: "DELETE" },
+      tenantId
+    );
+  },
+};
+
+// ---- Bundle Comparison ----
+export interface FindingSummary {
+  rule_id: string;
+  title: string;
+  severity: string;
+  status: string;
+}
+
+export interface ComparisonResult {
+  bundle_a_id: string;
+  bundle_a_filename: string;
+  bundle_b_id: string;
+  bundle_b_filename: string;
+  new_findings: FindingSummary[];
+  resolved_findings: FindingSummary[];
+  persisting_findings: FindingSummary[];
+  summary: { new: number; resolved: number; persisting: number };
+}
+
+export const comparisonApi = {
+  compare(bundleAId: string, bundleBId: string, tenantId = "default"): Promise<ComparisonResult> {
+    return request<ComparisonResult>(
+      `/api/v1/bundles/compare?bundle_a=${bundleAId}&bundle_b=${bundleBId}`,
+      {},
+      tenantId
+    );
+  },
+};
+
 export const authApi = {
   login(email: string, password: string): Promise<TokenResponse> {
     return request<TokenResponse>("/api/v1/auth/login", {
