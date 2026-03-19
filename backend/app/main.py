@@ -17,6 +17,43 @@ setup_logging()
 logger = get_logger(__name__)
 
 
+async def _bootstrap_admin() -> None:
+    """Create an admin account from env vars if it doesn't already exist."""
+    if not settings.BOOTSTRAP_ADMIN_EMAIL or not settings.BOOTSTRAP_ADMIN_PASSWORD:
+        return
+    import uuid as _uuid
+    from sqlalchemy import select as _select
+    from app.core.database import AsyncSessionLocal
+    from app.core.auth import hash_password
+    from app.models.user import User
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            _select(User).where(
+                User.email == settings.BOOTSTRAP_ADMIN_EMAIL,
+                User.tenant_id == "default",
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing is not None:
+            if existing.role != "admin":
+                existing.role = "admin"
+                await db.flush()
+                logger.info("bootstrap_admin_promoted", email=settings.BOOTSTRAP_ADMIN_EMAIL)
+            return
+        user = User(
+            id=_uuid.uuid4(),
+            email=settings.BOOTSTRAP_ADMIN_EMAIL,
+            hashed_password=hash_password(settings.BOOTSTRAP_ADMIN_PASSWORD),
+            full_name="Admin",
+            role="admin",
+            tenant_id="default",
+            is_active=True,
+        )
+        db.add(user)
+        await db.flush()
+        logger.info("bootstrap_admin_created", email=settings.BOOTSTRAP_ADMIN_EMAIL)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("startup_begin")
@@ -24,6 +61,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         storage_service.ensure_bucket_exists()
     except Exception as exc:
         logger.warning("storage_init_failed", error=str(exc))
+    try:
+        await _bootstrap_admin()
+    except Exception as exc:
+        logger.warning("bootstrap_admin_failed", error=str(exc))
     logger.info("startup_complete")
     yield
     logger.info("shutdown")
