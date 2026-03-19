@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { bundleApi, findingApi, type Bundle, type Finding } from "../api/client";
 import FindingCard from "../components/FindingCard";
+import { useAuth } from "../context/AuthContext";
 
 const STATUS_COLORS: Record<string, string> = {
   uploaded: "bg-blue-100 text-blue-800",
@@ -28,66 +29,87 @@ function groupFindingsBySeverity(findings: Finding[]): Record<string, Finding[]>
 
 export default function BundleDetail() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const isManager = user?.role === "manager" || user?.role === "admin";
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [findingsLoading, setFindingsLoading] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
+  const [reanalyzing, setReanalyzing] = useState(false);
+  // Bump this to force the polling effect to restart after reanalysis
+  const [pollKey, setPollKey] = useState(0);
+
+  const loadFindings = useCallback((bundleId: string, cancelled: { v: boolean }) => {
+    setFindingsLoading(true);
+    findingApi
+      .list(bundleId)
+      .then((resp) => {
+        if (!cancelled.v) {
+          setFindings(resp.items);
+        }
+      })
+      .catch(() => {
+        // silently fail findings load
+      })
+      .finally(() => {
+        if (!cancelled.v) setFindingsLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     if (!id) return;
 
-    let cancelled = false;
+    const cancelled = { v: false };
 
     function poll() {
-      if (cancelled) return;
+      if (cancelled.v) return;
       bundleApi
         .get(id!)
         .then((b) => {
-          if (!cancelled) {
+          if (!cancelled.v) {
             setBundle(b);
             setLoading(false);
             if (b.status === "uploaded" || b.status === "processing") {
               setTimeout(poll, 2000);
             } else if (b.status === "ready") {
-              loadFindings(b.id);
+              loadFindings(b.id, cancelled);
             }
           }
         })
         .catch((e: unknown) => {
-          if (!cancelled) {
+          if (!cancelled.v) {
             setError(String(e));
             setLoading(false);
           }
         });
     }
 
-    function loadFindings(bundleId: string) {
-      setFindingsLoading(true);
-      findingApi
-        .list(bundleId)
-        .then((resp) => {
-          if (!cancelled) {
-            setFindings(resp.items);
-          }
-        })
-        .catch(() => {
-          // silently fail findings load
-        })
-        .finally(() => {
-          if (!cancelled) setFindingsLoading(false);
-        });
-    }
-
     poll();
     return () => {
-      cancelled = true;
+      cancelled.v = true;
     };
-  }, [id]);
+  }, [id, pollKey, loadFindings]);
 
   function handleFindingUpdate(updated: Finding) {
     setFindings((prev) => prev.map((f) => (f.id === updated.id ? updated : f)));
+  }
+
+  async function handleReanalyze() {
+    if (!id) return;
+    setReanalyzing(true);
+    setFindings([]);
+    try {
+      await bundleApi.reanalyze(id);
+      // Reset bundle state to processing and start polling again
+      setBundle((prev) => prev ? { ...prev, status: "processing" } : prev);
+      setPollKey((k) => k + 1);
+    } catch (e) {
+      console.error("Failed to reanalyze bundle", e);
+    } finally {
+      setReanalyzing(false);
+    }
   }
 
   async function handleDownloadReport() {
@@ -176,6 +198,21 @@ export default function BundleDetail() {
         {bundle.error_message && (
           <div className="mt-4 rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
             <strong>Error:</strong> {bundle.error_message}
+          </div>
+        )}
+
+        {bundle.status === "ready" && isManager && (
+          <div className="mt-4">
+            <button
+              onClick={handleReanalyze}
+              disabled={reanalyzing}
+              className="px-3 py-1.5 text-sm rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+            >
+              {reanalyzing ? "Re-running..." : "Re-run Analysis"}
+            </button>
+            <span className="ml-2 text-xs text-gray-400">
+              Re-runs all detection rules on existing evidence (picks up new rules)
+            </span>
           </div>
         )}
 

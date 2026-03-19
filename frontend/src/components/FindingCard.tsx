@@ -72,6 +72,9 @@ function timeAgo(dateStr: string): string {
 function eventDescription(event: FindingEvent): string {
   switch (event.event_type) {
     case "status_changed":
+      if (event.new_value === "open") {
+        return `reopened (was: ${event.old_value ?? "?"})`;
+      }
       return `changed status: ${event.old_value ?? "?"} → ${event.new_value ?? "?"}`;
     case "note_added":
       return `updated reviewer notes`;
@@ -86,6 +89,7 @@ function eventDescription(event: FindingEvent): string {
 
 export default function FindingCard({ finding: initialFinding, onUpdate }: Props) {
   const { user } = useAuth();
+  const isManager = user?.role === "manager" || user?.role === "admin";
   const [finding, setFinding] = useState<Finding>(initialFinding);
   const [reviewerNotes, setReviewerNotes] = useState(finding.reviewer_notes ?? "");
   const [explaining, setExplaining] = useState(false);
@@ -275,7 +279,7 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
           {finding.status === "resolved" ? "Resolved" : "Acknowledged"} by{" "}
           <span className="font-medium text-gray-500">{finding.reviewed_by}</span>
           {finding.reviewed_at && (
-            <> &middot; {new Date(finding.reviewed_at).toLocaleString()}</>
+            <> &middot; {new Date(finding.reviewed_at + (finding.reviewed_at.endsWith("Z") ? "" : "Z")).toLocaleString()}</>
           )}
         </p>
       )}
@@ -294,7 +298,7 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
             Acknowledge
           </button>
         )}
-        {finding.status !== "resolved" && (
+        {isManager && finding.status !== "resolved" && (
           <button
             disabled={updating}
             onClick={() => handleStatusChange("resolved")}

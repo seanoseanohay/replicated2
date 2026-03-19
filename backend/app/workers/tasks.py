@@ -168,6 +168,96 @@ def process_bundle(self, bundle_id: str) -> dict:
         engine.dispose()
 
 
+@celery_app.task(bind=True, name="tasks.reanalyze_bundle", max_retries=3)
+def reanalyze_bundle(self, bundle_id: str) -> dict:
+    """
+    Re-run detection rules on existing evidence for a bundle.
+    Clears old findings then inserts fresh ones.
+    """
+    from app.models.bundle import Bundle
+    from app.models.finding import Finding
+
+    log.info(f"Starting reanalysis for bundle {bundle_id}")
+
+    engine, session = _make_sync_session()
+    try:
+        bundle = session.get(Bundle, uuid.UUID(bundle_id))
+        if bundle is None:
+            return {"bundle_id": bundle_id, "status": "error", "error": "not found"}
+
+        bundle.status = "processing"
+        bundle.error_message = None
+        session.commit()
+
+        # Delete old findings (cascades to events/comments via DB)
+        session.query(Finding).filter(Finding.bundle_id == uuid.UUID(bundle_id)).delete()
+        session.commit()
+
+        # Re-run detection rules on existing evidence
+        from app.detection.registry import run_all_rules
+        findings = run_all_rules(uuid.UUID(bundle_id), session)
+        if findings:
+            session.bulk_save_objects(findings)
+            session.commit()
+            log.info(f"Reanalysis inserted {len(findings)} findings for bundle {bundle_id}")
+
+            try:
+                from app.models.finding_event import FindingEvent
+                created_events = [
+                    FindingEvent(
+                        finding_id=f.id,
+                        actor="system",
+                        event_type="created",
+                        new_value=f.status,
+                    )
+                    for f in findings
+                ]
+                session.bulk_save_objects(created_events)
+                session.commit()
+            except Exception as evt_exc:
+                log.warning(f"Failed to record finding created events: {evt_exc}")
+
+        bundle.status = "ready"
+        bundle.error_message = None
+        session.commit()
+        log.info(f"Bundle {bundle_id} reanalysis complete")
+
+        return {
+            "bundle_id": bundle_id,
+            "status": "ready",
+            "finding_count": len(findings) if findings else 0,
+        }
+
+    except SoftTimeLimitExceeded:
+        log.error(f"Bundle {bundle_id} reanalysis timed out")
+        try:
+            session.rollback()
+            bundle = session.get(Bundle, uuid.UUID(bundle_id))
+            if bundle:
+                bundle.status = "error"
+                bundle.error_message = "Reanalysis timed out"
+                session.commit()
+        except Exception:
+            pass
+        return {"bundle_id": bundle_id, "status": "error", "error": "timeout"}
+
+    except Exception as exc:
+        log.error(f"Failed to reanalyze bundle {bundle_id}: {exc}")
+        try:
+            session.rollback()
+            bundle = session.get(Bundle, uuid.UUID(bundle_id))
+            if bundle:
+                bundle.status = "error"
+                bundle.error_message = str(exc)[:2048]
+                session.commit()
+        except Exception as inner_exc:
+            log.error(f"Failed to update error status for bundle {bundle_id}: {inner_exc}")
+        raise self.retry(exc=exc, countdown=5)
+    finally:
+        session.close()
+        engine.dispose()
+
+
 @celery_app.task(name="tasks.cleanup_stuck_bundles")
 def cleanup_stuck_bundles() -> dict:
     """Reset bundles stuck in 'processing' for more than 30 minutes."""

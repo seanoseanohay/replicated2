@@ -188,6 +188,14 @@ export const bundleApi = {
   delete(id: string, tenantId = "default"): Promise<void> {
     return request<void>(`/api/v1/bundles/${id}`, { method: "DELETE" }, tenantId);
   },
+
+  reanalyze(id: string, tenantId = "default"): Promise<{ bundle_id: string; status: string }> {
+    return request<{ bundle_id: string; status: string }>(
+      `/api/v1/bundles/${id}/reanalyze`,
+      { method: "POST" },
+      tenantId
+    );
+  },
 };
 
 export const findingApi = {

@@ -16,7 +16,7 @@ from app.schemas.bundle import BundleListResponse, BundleRead
 from app.schemas.comparison import ComparisonResult, FindingSummary
 from app.services.storage import storage_service
 from app.utils.security import sanitize_filename, validate_magic_bytes
-from app.workers.tasks import process_bundle
+from app.workers.tasks import process_bundle, reanalyze_bundle
 
 logger = get_logger(__name__)
 
@@ -230,6 +230,34 @@ async def get_bundle(
     if bundle is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
     return BundleRead.model_validate(bundle)
+
+
+@router.post("/{bundle_id}/reanalyze", status_code=status.HTTP_202_ACCEPTED)
+async def reanalyze_bundle_endpoint(
+    bundle_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    result = await db.execute(
+        select(Bundle).where(Bundle.id == bundle_id, Bundle.tenant_id == tenant_id)
+    )
+    bundle = result.scalar_one_or_none()
+    if bundle is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+
+    if bundle.status == "processing":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Bundle is already being processed",
+        )
+
+    bundle.status = "processing"
+    await db.flush()
+
+    reanalyze_bundle.delay(str(bundle_id))
+    logger.info("bundle_reanalysis_queued", bundle_id=str(bundle_id))
+
+    return {"bundle_id": str(bundle_id), "status": "processing"}
 
 
 @router.delete("/{bundle_id}", status_code=status.HTTP_204_NO_CONTENT)
