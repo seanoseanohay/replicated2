@@ -48,6 +48,17 @@ export interface FindingUpdate {
   reviewed_by?: string;
 }
 
+export interface EvidenceRead {
+  id: string;
+  bundle_id: string;
+  kind: string;
+  name: string;
+  namespace: string | null;
+  source_path: string;
+  raw_data: Record<string, unknown>;
+  created_at: string;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -189,5 +200,15 @@ export const findingApi = {
 
   downloadReport(bundleId: string, tenantId = "default"): Promise<string> {
     return requestText(`/api/v1/bundles/${bundleId}/report.md`, {}, tenantId);
+  },
+};
+
+export const evidenceApi = {
+  getEvidence(bundleId: string, evidenceId: string, tenantId = "default"): Promise<EvidenceRead> {
+    return request<EvidenceRead>(
+      `/api/v1/bundles/${bundleId}/evidence/${evidenceId}`,
+      {},
+      tenantId
+    );
   },
 };

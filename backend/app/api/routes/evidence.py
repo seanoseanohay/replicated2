@@ -69,3 +69,42 @@ async def list_evidence(
         items=[EvidenceRead.model_validate(e) for e in evidence_items],
         total=total,
     )
+
+
+@router.get("/{bundle_id}/evidence/{evidence_id}", response_model=EvidenceRead)
+async def get_evidence(
+    bundle_id: uuid.UUID,
+    evidence_id: uuid.UUID,
+    tenant_id: str = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db),
+) -> EvidenceRead:
+    # Verify bundle exists and belongs to the tenant
+    bundle_result = await db.execute(
+        select(Bundle).where(Bundle.id == bundle_id, Bundle.tenant_id == tenant_id)
+    )
+    bundle = bundle_result.scalar_one_or_none()
+    if bundle is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found"
+        )
+
+    # Fetch the specific evidence record
+    evidence_result = await db.execute(
+        select(Evidence).where(
+            Evidence.id == evidence_id, Evidence.bundle_id == bundle_id
+        )
+    )
+    evidence = evidence_result.scalar_one_or_none()
+    if evidence is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Evidence not found"
+        )
+
+    logger.info(
+        "evidence_fetched",
+        bundle_id=str(bundle_id),
+        evidence_id=str(evidence_id),
+        tenant_id=tenant_id,
+    )
+
+    return EvidenceRead.model_validate(evidence)

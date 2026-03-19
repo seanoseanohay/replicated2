@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { findingApi, type Finding, type FindingUpdate } from "../api/client";
+import { findingApi, evidenceApi, type Finding, type FindingUpdate, type EvidenceRead } from "../api/client";
 
 export type { Finding };
 
@@ -30,12 +30,26 @@ interface Props {
   onUpdate?: (updated: Finding) => void;
 }
 
+const KIND_BADGE_COLORS: Record<string, string> = {
+  Pod: "bg-blue-100 text-blue-800",
+  Node: "bg-purple-100 text-purple-800",
+  Event: "bg-yellow-100 text-yellow-800",
+  PersistentVolumeClaim: "bg-orange-100 text-orange-800",
+};
+
+function kindBadgeClass(kind: string): string {
+  return KIND_BADGE_COLORS[kind] ?? "bg-gray-100 text-gray-700";
+}
+
 export default function FindingCard({ finding: initialFinding, onUpdate }: Props) {
   const [finding, setFinding] = useState<Finding>(initialFinding);
   const [reviewerNotes, setReviewerNotes] = useState(finding.reviewer_notes ?? "");
   const [explaining, setExplaining] = useState(false);
   const [explainError, setExplainError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [evidenceItems, setEvidenceItems] = useState<Record<string, EvidenceRead>>({});
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
 
   const handleStatusChange = async (newStatus: "open" | "acknowledged" | "resolved") => {
     setUpdating(true);
@@ -63,6 +77,34 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
       console.error("Failed to save reviewer notes", e);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleEvidenceToggle = async () => {
+    const nextOpen = !evidenceOpen;
+    setEvidenceOpen(nextOpen);
+    if (!nextOpen) return;
+
+    // Only fetch IDs we haven't fetched yet
+    const missing = finding.evidence_ids.filter((eid) => !(eid in evidenceItems));
+    if (missing.length === 0) return;
+
+    setEvidenceLoading(true);
+    try {
+      const fetched = await Promise.all(
+        missing.map((eid) => evidenceApi.getEvidence(finding.bundle_id, eid))
+      );
+      setEvidenceItems((prev) => {
+        const next = { ...prev };
+        for (const item of fetched) {
+          next[item.id] = item;
+        }
+        return next;
+      });
+    } catch (e) {
+      console.error("Failed to fetch evidence", e);
+    } finally {
+      setEvidenceLoading(false);
     }
   };
 
@@ -176,22 +218,62 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
         </details>
       )}
 
-      {/* Evidence IDs */}
+      {/* Evidence */}
       {finding.evidence_ids.length > 0 && (
-        <details className="mt-3">
+        <details
+          className="mt-3"
+          open={evidenceOpen}
+          onToggle={(e) => {
+            const target = e.currentTarget as HTMLDetailsElement;
+            if (target.open !== evidenceOpen) {
+              handleEvidenceToggle();
+            }
+          }}
+        >
           <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
             Evidence ({finding.evidence_ids.length} items)
           </summary>
-          <ul className="mt-2 space-y-1">
-            {finding.evidence_ids.map((eid) => (
-              <li
-                key={eid}
-                className="text-xs font-mono bg-white rounded border border-gray-200 px-2 py-1 text-gray-700"
-              >
-                {eid}
-              </li>
-            ))}
-          </ul>
+          <div className="mt-2">
+            {evidenceLoading ? (
+              <p className="text-xs text-gray-400 italic">Loading evidence...</p>
+            ) : (
+              <ul className="space-y-2">
+                {finding.evidence_ids.map((eid) => {
+                  const item = evidenceItems[eid];
+                  if (!item) {
+                    return (
+                      <li key={eid} className="text-xs font-mono bg-white rounded border border-gray-200 px-2 py-1 text-gray-400">
+                        {eid}
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={eid} className="bg-white rounded border border-gray-200 p-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-medium ${kindBadgeClass(item.kind)}`}
+                        >
+                          {item.kind}
+                        </span>
+                        <span className="text-xs font-medium text-gray-800">
+                          {item.namespace ? `${item.namespace}/${item.name}` : item.name}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-400">{item.source_path}</p>
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
+                          Raw JSON
+                        </summary>
+                        <pre className="text-xs bg-gray-900 text-green-400 p-3 rounded overflow-auto max-h-64 mt-1">
+                          {JSON.stringify(item.raw_data, null, 2)}
+                        </pre>
+                      </details>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </details>
       )}
 
