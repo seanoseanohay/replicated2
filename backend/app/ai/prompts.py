@@ -18,9 +18,12 @@ Summary: {finding.summary}
 Supporting Evidence:
 {evidence_text}
 
-Please provide:
-1. A clear explanation of what this finding means and why it matters
-2. The most likely root causes
-3. Specific remediation steps
+Please provide your response in exactly this format:
+
+A clear explanation of what this finding means, why it matters, and the most likely root causes.
+
+## Remediation Steps
+
+Numbered, specific steps a support engineer can follow to resolve the issue.
 
 Keep your response focused and actionable."""

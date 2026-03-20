@@ -27,7 +27,7 @@ def explain_finding(finding, evidence_list: list, session) -> tuple[str, str]:
 
     response = client.messages.create(
         model=settings.AI_MODEL,
-        max_tokens=1024,
+        max_tokens=2048,
         system=EXPLAIN_FINDING_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
     )
