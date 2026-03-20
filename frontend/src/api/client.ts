@@ -376,6 +376,37 @@ export const commentApi = {
   },
 };
 
+// ---- AI Chat ----
+export interface ChatMessage {
+  id: string;
+  finding_id: string;
+  role: "user" | "assistant";
+  content: string;
+  actor: string;
+  created_at: string;
+}
+
+export const chatApi = {
+  list(bundleId: string, findingId: string, tenantId = "default"): Promise<ChatMessage[]> {
+    return request<ChatMessage[]>(
+      `/api/v1/bundles/${bundleId}/findings/${findingId}/chat`,
+      {},
+      tenantId
+    );
+  },
+  send(bundleId: string, findingId: string, message: string, tenantId = "default"): Promise<ChatMessage> {
+    return request<ChatMessage>(
+      `/api/v1/bundles/${bundleId}/findings/${findingId}/chat`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      },
+      tenantId
+    );
+  },
+};
+
 // ---- Bundle Comparison ----
 export interface FindingSummary {
   rule_id: string;

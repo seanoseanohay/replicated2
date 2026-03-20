@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    LANGSMITH_API_KEY: str = ""
+    LANGSMITH_PROJECT: str = "bundle-analyzer"
     ALLOW_REGISTRATION: bool = True
     BOOTSTRAP_ADMIN_EMAIL: str = ""
     BOOTSTRAP_ADMIN_PASSWORD: str = ""

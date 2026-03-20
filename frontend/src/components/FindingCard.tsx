@@ -4,11 +4,13 @@ import {
   evidenceApi,
   eventsApi,
   commentApi,
+  chatApi,
   type Finding,
   type FindingUpdate,
   type EvidenceRead,
   type FindingEvent,
   type Comment,
+  type ChatMessage,
 } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -252,6 +254,12 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
   const [submittingComment, setSubmittingComment] = useState(false);
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
 
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[] | null>(null);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+
   const handleStatusChange = async (newStatus: "open" | "acknowledged" | "resolved") => {
     setUpdating(true);
     setUpdateError(null);
@@ -373,6 +381,53 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
       console.error("Failed to delete comment", e);
     } finally {
       setDeletingCommentId(null);
+    }
+  };
+
+  const handleChatToggle = async () => {
+    const nextOpen = !chatOpen;
+    setChatOpen(nextOpen);
+    if (!nextOpen || chatMessages !== null) return;
+    setChatLoading(true);
+    try {
+      const data = await chatApi.list(finding.bundle_id, finding.id);
+      setChatMessages(data);
+    } catch (e) {
+      console.error("Failed to load chat", e);
+      setChatMessages([]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleChatSend = async () => {
+    const msg = chatInput.trim();
+    if (!msg || chatSending) return;
+    setChatSending(true);
+    setChatInput("");
+    // Optimistically add user message
+    const tempUser: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      finding_id: finding.id,
+      role: "user",
+      content: msg,
+      actor: user?.email ?? "you",
+      created_at: new Date().toISOString(),
+    };
+    setChatMessages((prev) => [...(prev ?? []), tempUser]);
+    try {
+      const reply = await chatApi.send(finding.bundle_id, finding.id, msg);
+      setChatMessages((prev) =>
+        [...(prev ?? []).filter((m) => m.id !== tempUser.id), reply]
+      );
+      // Reload to get the persisted user message with real ID
+      const all = await chatApi.list(finding.bundle_id, finding.id);
+      setChatMessages(all);
+    } catch (e) {
+      setChatMessages((prev) => (prev ? prev.filter((m) => m.id !== tempUser.id) : prev));
+      console.error("Failed to send chat message", e);
+    } finally {
+      setChatSending(false);
     }
   };
 
@@ -507,6 +562,83 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* AI Chat */}
+      {finding.ai_explanation && (
+        <div className="mt-3">
+          <SectionToggle
+            open={chatOpen}
+            onClick={handleChatToggle}
+            label="Ask AI a follow-up question"
+          />
+          <ExpandSection open={chatOpen}>
+            <div className="mt-2 rounded border border-indigo-100 overflow-hidden">
+              {/* Message thread */}
+              <div className="bg-white max-h-80 overflow-y-auto p-3 space-y-3">
+                {chatLoading ? (
+                  <p className="text-xs text-gray-400 italic">Loading conversation...</p>
+                ) : chatMessages && chatMessages.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">
+                    Ask a follow-up question about this finding. The AI can only answer questions related to this specific issue.
+                  </p>
+                ) : (
+                  (chatMessages ?? []).map((m) => (
+                    <div
+                      key={m.id}
+                      className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-lg px-3 py-2 text-xs ${
+                          m.role === "user"
+                            ? "bg-indigo-600 text-white"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {m.role === "assistant"
+                          ? renderMarkdown(m.content)
+                          : <p>{m.content}</p>}
+                        <p className={`mt-1 text-[10px] ${m.role === "user" ? "text-indigo-200" : "text-gray-400"}`}>
+                          {m.actor} &middot; {timeAgo(m.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {chatSending && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-400 italic flex items-center gap-1.5">
+                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                      </svg>
+                      Thinking...
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Input */}
+              <div className="border-t border-indigo-100 bg-indigo-50 p-2 flex gap-2">
+                <input
+                  type="text"
+                  className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                  placeholder="Ask a follow-up question..."
+                  value={chatInput}
+                  disabled={chatSending}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) handleChatSend(); }}
+                />
+                <button
+                  onClick={handleChatSend}
+                  disabled={chatSending || !chatInput.trim()}
+                  className="px-3 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          </ExpandSection>
         </div>
       )}
 
