@@ -2,6 +2,7 @@ import uuid
 
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import decode_token
@@ -23,7 +24,8 @@ async def get_current_user(
         return None
     payload = decode_token(credentials.credentials)
     user_id = uuid.UUID(payload["sub"])
-    user = await db.get(User, user_id)
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
     return user
