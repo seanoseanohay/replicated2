@@ -88,6 +88,98 @@ function eventDescription(event: FindingEvent): string {
   }
 }
 
+/** Minimal markdown renderer for AI explanation output */
+function renderMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  function inlineFormat(line: string, key: string): React.ReactNode {
+    // Bold **text** and inline `code`
+    const parts = line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+    return (
+      <span key={key}>
+        {parts.map((part, j) => {
+          if (part.startsWith("**") && part.endsWith("**"))
+            return <strong key={j}>{part.slice(2, -2)}</strong>;
+          if (part.startsWith("`") && part.endsWith("`"))
+            return <code key={j} className="bg-gray-100 px-1 rounded text-xs font-mono">{part.slice(1, -1)}</code>;
+          return part;
+        })}
+      </span>
+    );
+  }
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Fenced code block
+    if (line.trim().startsWith("```")) {
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      nodes.push(
+        <pre key={i} className="bg-gray-900 text-green-300 text-xs rounded p-3 overflow-x-auto my-2 whitespace-pre">
+          {codeLines.join("\n")}
+        </pre>
+      );
+      i++;
+      continue;
+    }
+
+    // Headings
+    const h2 = line.match(/^##\s+(.*)/);
+    const h3 = line.match(/^###\s+(.*)/);
+    if (h2) {
+      nodes.push(<h2 key={i} className="text-sm font-bold text-gray-800 mt-3 mb-1">{h2[1]}</h2>);
+      i++; continue;
+    }
+    if (h3) {
+      nodes.push(<h3 key={i} className="text-xs font-semibold text-gray-700 mt-2 mb-0.5">{h3[1]}</h3>);
+      i++; continue;
+    }
+
+    // Numbered list item
+    const li = line.match(/^(\d+)\.\s+(.*)/);
+    if (li) {
+      nodes.push(
+        <div key={i} className="flex gap-2 text-sm text-gray-700 mt-1">
+          <span className="shrink-0 font-medium text-gray-500">{li[1]}.</span>
+          <span>{inlineFormat(li[2], `li-${i}`)}</span>
+        </div>
+      );
+      i++; continue;
+    }
+
+    // Bullet list item
+    const bullet = line.match(/^[-*]\s+(.*)/);
+    if (bullet) {
+      nodes.push(
+        <div key={i} className="flex gap-2 text-sm text-gray-700 mt-1 ml-2">
+          <span className="shrink-0 text-gray-400">&bull;</span>
+          <span>{inlineFormat(bullet[1], `bullet-${i}`)}</span>
+        </div>
+      );
+      i++; continue;
+    }
+
+    // Empty line
+    if (line.trim() === "") {
+      nodes.push(<div key={i} className="h-1" />);
+      i++; continue;
+    }
+
+    // Normal paragraph
+    nodes.push(<p key={i} className="text-sm text-gray-700 mt-1">{inlineFormat(line, `p-${i}`)}</p>);
+    i++;
+  }
+
+  return nodes;
+}
+
 /** Animated expand wrapper using CSS grid trick */
 function ExpandSection({ open, children }: { open: boolean; children: React.ReactNode }) {
   return (
@@ -406,12 +498,12 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
           <div className="bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700">
             AI Explanation
           </div>
-          <div className="bg-white p-3 text-sm text-gray-700 space-y-2">
-            <p>{finding.ai_explanation}</p>
+          <div className="bg-white p-3 space-y-1">
+            {renderMarkdown(finding.ai_explanation)}
             {finding.ai_remediation && (
               <>
-                <p className="font-medium text-gray-800">Remediation Steps</p>
-                <p className="whitespace-pre-wrap">{finding.ai_remediation}</p>
+                <div className="h-2" />
+                {renderMarkdown(finding.ai_remediation)}
               </>
             )}
           </div>
