@@ -91,7 +91,6 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
   const { user } = useAuth();
   const isManager = user?.role === "manager" || user?.role === "admin";
   const [finding, setFinding] = useState<Finding>(initialFinding);
-  const [reviewerNotes, setReviewerNotes] = useState(finding.reviewer_notes ?? "");
   const [explaining, setExplaining] = useState(false);
   const [explainError, setExplainError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -123,22 +122,6 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
       setEvents(null);
     } catch (e) {
       console.error("Failed to update finding status", e);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleNotesBlur = async () => {
-    if (reviewerNotes === (finding.reviewer_notes ?? "")) return;
-    setUpdating(true);
-    try {
-      const update: FindingUpdate = { reviewer_notes: reviewerNotes };
-      const updated = await findingApi.update(finding.bundle_id, finding.id, update);
-      setFinding(updated);
-      onUpdate?.(updated);
-      setEvents(null);
-    } catch (e) {
-      console.error("Failed to save reviewer notes", e);
     } finally {
       setUpdating(false);
     }
@@ -411,19 +394,6 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
           </div>
         </details>
       )}
-
-      {/* Reviewer Notes */}
-      <div className="mt-3">
-        <label className="block text-xs text-gray-500 mb-1">Reviewer Notes</label>
-        <textarea
-          rows={2}
-          className="w-full text-xs border border-gray-200 rounded px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300 resize-none"
-          placeholder="Add notes..."
-          value={reviewerNotes}
-          onChange={(e) => setReviewerNotes(e.target.value)}
-          onBlur={handleNotesBlur}
-        />
-      </div>
 
       {/* History (Events Timeline) */}
       <details

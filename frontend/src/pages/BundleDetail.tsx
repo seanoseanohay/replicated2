@@ -285,8 +285,7 @@ export default function BundleDetail() {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Report</h2>
           <p className="text-sm text-gray-500 mb-4">
-            Download a full analysis report including all findings, AI explanations, and
-            reviewer notes in Markdown format.
+            Download a full analysis report including all findings and AI explanations in Markdown format.
           </p>
           <button
             onClick={handleDownloadReport}
