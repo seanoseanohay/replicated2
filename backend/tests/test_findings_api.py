@@ -9,8 +9,11 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
+from app.core.auth import hash_password
 from app.models.bundle import Bundle
 from app.models.finding import Finding
+from app.models.user import User
+from tests.conftest import make_manager_headers
 
 
 @pytest_asyncio.fixture()
@@ -46,6 +49,24 @@ async def finding(db_session, bundle):
     await db_session.flush()
     await db_session.refresh(f)
     return f
+
+
+@pytest_asyncio.fixture()
+async def eng_user(db_session):
+    """Analyst user whose email is used to stamp reviewed_by."""
+    u = User(
+        id=uuid.uuid4(),
+        email="eng@example.com",
+        hashed_password=hash_password("password"),
+        full_name="Test Engineer",
+        role="analyst",
+        tenant_id="tenant-1",
+        is_active=True,
+    )
+    db_session.add(u)
+    await db_session.flush()
+    await db_session.refresh(u)
+    return u
 
 
 @pytest.mark.asyncio
@@ -94,11 +115,11 @@ async def test_list_findings_severity_filter(client, bundle, finding):
 
 
 @pytest.mark.asyncio
-async def test_patch_finding_status(client, bundle, finding):
+async def test_patch_finding_status(client, bundle, finding, eng_user):
     resp = await client.patch(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}",
-        headers={"X-Tenant-ID": "tenant-1"},
-        json={"status": "acknowledged", "reviewed_by": "eng@example.com"},
+        headers=make_manager_headers(eng_user, tenant_id="tenant-1"),
+        json={"status": "acknowledged"},
     )
     assert resp.status_code == 200
     data = resp.json()

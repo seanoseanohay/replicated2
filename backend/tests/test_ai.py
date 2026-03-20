@@ -79,11 +79,14 @@ async def test_explain_returns_200_with_mocked_client(client, bundle, finding):
 
     with patch("app.core.config.settings") as mock_settings, \
          patch("app.ai.explainer.get_client", return_value=mock_client), \
-         patch("app.api.routes.findings.settings") as route_settings:
+         patch("app.api.routes.findings.settings") as route_settings, \
+         patch("app.ai.explainer.settings") as explainer_settings:
         mock_settings.AI_ENABLED = True
         mock_settings.ANTHROPIC_API_KEY = "test-key"
         mock_settings.AI_MODEL = "claude-opus-4-6"
         route_settings.AI_ENABLED = True
+        explainer_settings.AI_ENABLED = True
+        explainer_settings.AI_MODEL = "claude-opus-4-6"
 
         resp = await client.post(
             f"/api/v1/bundles/{bundle.id}/findings/{finding.id}/explain",
