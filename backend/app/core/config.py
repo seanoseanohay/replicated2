@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-secret-key-change-in-prod"
     ANTHROPIC_API_KEY: str = ""
     AI_ENABLED: bool = False
-    AI_MODEL: str = "claude-opus-4-6"
+    AI_MODEL: str = "claude-haiku-4-5-20251001"
     CORS_ALLOWED_ORIGINS: str = "*"          # comma-separated or "*"
     DB_POOL_SIZE: int = 5
     DB_POOL_OVERFLOW: int = 10

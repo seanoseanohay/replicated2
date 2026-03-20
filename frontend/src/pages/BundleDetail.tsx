@@ -27,6 +27,16 @@ function groupFindingsBySeverity(findings: Finding[]): Record<string, Finding[]>
   return groups;
 }
 
+function groupByRuleId(findings: Finding[]): Map<string, Finding[]> {
+  const map = new Map<string, Finding[]>();
+  for (const f of findings) {
+    const key = f.rule_id ?? f.title;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(f);
+  }
+  return map;
+}
+
 export default function BundleDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -258,18 +268,30 @@ export default function BundleDetail() {
             {SEVERITY_ORDER.map((sev) => {
               const group = grouped[sev];
               if (!group || group.length === 0) return null;
+              const byRule = groupByRuleId(group);
               return (
                 <div key={sev}>
                   <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-widest border-b border-gray-200 pb-2 mb-3">
                     {sev} ({group.length})
                   </h3>
-                  <div className="space-y-3">
-                    {group.map((f) => (
-                      <FindingCard
-                        key={f.id}
-                        finding={f}
-                        onUpdate={handleFindingUpdate}
-                      />
+                  <div className="space-y-4">
+                    {Array.from(byRule.entries()).map(([ruleId, ruleFindings]) => (
+                      <div key={ruleId}>
+                        {ruleFindings.length > 1 && (
+                          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2 pl-1">
+                            {ruleFindings[0].title} &mdash; {ruleFindings.length} instances
+                          </p>
+                        )}
+                        <div className="space-y-3">
+                          {ruleFindings.map((f) => (
+                            <FindingCard
+                              key={f.id}
+                              finding={f}
+                              onUpdate={handleFindingUpdate}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
