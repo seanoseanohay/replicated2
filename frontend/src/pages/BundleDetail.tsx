@@ -161,7 +161,6 @@ export default function BundleDetail() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-gray-900">{bundle.original_filename}</h1>
-            <p className="text-sm text-gray-400 mt-0.5">ID: {bundle.id}</p>
           </div>
           <span
             className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium ${
@@ -261,7 +260,7 @@ export default function BundleDetail() {
               if (!group || group.length === 0) return null;
               return (
                 <div key={sev}>
-                  <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide mb-2">
+                  <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-widest border-b border-gray-200 pb-2 mb-3">
                     {sev} ({group.length})
                   </h3>
                   <div className="space-y-3">

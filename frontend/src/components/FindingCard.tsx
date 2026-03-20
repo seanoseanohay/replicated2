@@ -11,6 +11,7 @@ import {
   type Comment,
 } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 
 export type { Finding };
 
@@ -87,23 +88,71 @@ function eventDescription(event: FindingEvent): string {
   }
 }
 
+/** Animated expand wrapper using CSS grid trick */
+function ExpandSection({ open, children }: { open: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className={`grid transition-all duration-200 ease-out ${
+        open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+      }`}
+    >
+      <div className="overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
+/** Section toggle button replacing <summary> */
+function SectionToggle({
+  open,
+  onClick,
+  label,
+}: {
+  open: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-1 rounded"
+    >
+      <svg
+        className={`w-3 h-3 transition-transform duration-150 ${open ? "rotate-90" : ""}`}
+        fill="currentColor"
+        viewBox="0 0 20 20"
+        aria-hidden="true"
+      >
+        <path
+          fillRule="evenodd"
+          d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+          clipRule="evenodd"
+        />
+      </svg>
+      {label}
+    </button>
+  );
+}
+
 export default function FindingCard({ finding: initialFinding, onUpdate }: Props) {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const isManager = user?.role === "manager" || user?.role === "admin";
   const [finding, setFinding] = useState<Finding>(initialFinding);
   const [explaining, setExplaining] = useState(false);
   const [explainError, setExplainError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [evidenceItems, setEvidenceItems] = useState<Record<string, EvidenceRead>>({});
   const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const [evidenceFetched, setEvidenceFetched] = useState(false);
 
-  // History (events)
   const [historyOpen, setHistoryOpen] = useState(false);
   const [events, setEvents] = useState<FindingEvent[] | null>(null);
   const [eventsLoading, setEventsLoading] = useState(false);
 
-  // Comments
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -113,15 +162,22 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
 
   const handleStatusChange = async (newStatus: "open" | "acknowledged" | "resolved") => {
     setUpdating(true);
+    setUpdateError(null);
     try {
       const update: FindingUpdate = { status: newStatus };
       const updated = await findingApi.update(finding.bundle_id, finding.id, update);
       setFinding(updated);
       onUpdate?.(updated);
-      // Invalidate events cache so timeline refreshes
       setEvents(null);
+      const label =
+        newStatus === "resolved"
+          ? "Finding marked as resolved"
+          : newStatus === "acknowledged"
+          ? "Finding acknowledged"
+          : "Finding reopened";
+      showToast(label, newStatus === "open" ? "info" : "success");
     } catch (e) {
-      console.error("Failed to update finding status", e);
+      setUpdateError("Failed to update status. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -130,10 +186,10 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
   const handleEvidenceToggle = async () => {
     const nextOpen = !evidenceOpen;
     setEvidenceOpen(nextOpen);
-    if (!nextOpen) return;
+    if (!nextOpen || evidenceFetched) return;
 
     const missing = finding.evidence_ids.filter((eid) => !(eid in evidenceItems));
-    if (missing.length === 0) return;
+    if (missing.length === 0) { setEvidenceFetched(true); return; }
 
     setEvidenceLoading(true);
     try {
@@ -142,11 +198,10 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
       );
       setEvidenceItems((prev) => {
         const next = { ...prev };
-        for (const item of fetched) {
-          next[item.id] = item;
-        }
+        for (const item of fetched) next[item.id] = item;
         return next;
       });
+      setEvidenceFetched(true);
     } catch (e) {
       console.error("Failed to fetch evidence", e);
     } finally {
@@ -231,7 +286,7 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
 
   return (
     <div
-      className={`rounded-lg border-l-4 p-4 shadow-sm ${
+      className={`rounded-lg border-l-4 p-4 shadow-sm hover:shadow-md transition-shadow duration-200 ${
         SEVERITY_STYLES[finding.severity] ?? SEVERITY_STYLES.info
       }`}
     >
@@ -247,7 +302,7 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
             {finding.severity}
           </span>
           <span
-            className={`px-2 py-0.5 rounded text-xs font-medium ${
+            className={`px-2 py-0.5 rounded text-xs font-medium transition-colors duration-150 ${
               STATUS_BADGE[finding.status] ?? "bg-gray-50 text-gray-700 border border-gray-200"
             }`}
           >
@@ -258,9 +313,9 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
 
       {/* Reviewed by */}
       {finding.reviewed_by && finding.status !== "open" && (
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 text-xs text-gray-500">
           {finding.status === "resolved" ? "Resolved" : "Acknowledged"} by{" "}
-          <span className="font-medium text-gray-500">{finding.reviewed_by}</span>
+          <span className="font-medium text-gray-600">{finding.reviewed_by}</span>
           {finding.reviewed_at && (
             <> &middot; {new Date(finding.reviewed_at + (finding.reviewed_at.endsWith("Z") ? "" : "Z")).toLocaleString()}</>
           )}
@@ -270,13 +325,20 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
       {/* Summary */}
       <p className="mt-2 text-sm text-gray-600">{finding.summary}</p>
 
+      {/* Status update error */}
+      {updateError && (
+        <div className="mt-2 rounded bg-red-50 border border-red-200 px-3 py-1.5 text-xs text-red-700">
+          {updateError}
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="mt-3 flex flex-wrap gap-2">
         {finding.status !== "acknowledged" && (
           <button
             disabled={updating}
             onClick={() => handleStatusChange("acknowledged")}
-            className="px-3 py-1 text-xs rounded border border-yellow-300 text-yellow-700 hover:bg-yellow-100 disabled:opacity-50"
+            className="px-3 py-1 text-xs rounded border border-yellow-300 text-yellow-700 hover:bg-yellow-100 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:ring-offset-1 transition-colors duration-150"
           >
             Acknowledge
           </button>
@@ -285,8 +347,24 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
           <button
             disabled={updating}
             onClick={() => handleStatusChange("resolved")}
-            className="px-3 py-1 text-xs rounded border border-green-300 text-green-700 hover:bg-green-100 disabled:opacity-50"
+            className="px-3 py-1 text-xs rounded border border-green-300 text-green-700 hover:bg-green-100 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 focus-visible:ring-offset-1 transition-colors duration-150"
           >
+            Resolve
+          </button>
+        )}
+        {!isManager && finding.status !== "resolved" && (
+          <button
+            disabled
+            title="Manager role required to resolve findings"
+            className="px-3 py-1 text-xs rounded border border-gray-200 text-gray-400 cursor-not-allowed flex items-center gap-1"
+          >
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <path
+                fillRule="evenodd"
+                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                clipRule="evenodd"
+              />
+            </svg>
             Resolve
           </button>
         )}
@@ -294,7 +372,7 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
           <button
             disabled={updating}
             onClick={() => handleStatusChange("open")}
-            className="px-3 py-1 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            className="px-3 py-1 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-1 transition-colors duration-150"
           >
             Reopen
           </button>
@@ -302,13 +380,17 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
         {!finding.ai_explanation && !explaining && (
           <button
             onClick={handleExplain}
-            className="px-3 py-1 text-xs rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+            className="px-3 py-1 text-xs rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-1 transition-colors duration-150"
           >
             Get AI Explanation
           </button>
         )}
         {explaining && (
-          <span className="px-3 py-1 text-xs text-indigo-500 italic">
+          <span className="px-3 py-1 text-xs text-indigo-500 italic flex items-center gap-1.5">
+            <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
             Getting AI explanation...
           </span>
         )}
@@ -320,11 +402,11 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
 
       {/* AI Explanation */}
       {finding.ai_explanation && (
-        <details className="mt-3" open>
-          <summary className="cursor-pointer text-xs font-medium text-indigo-700 hover:text-indigo-900">
+        <div className="mt-3 rounded border border-indigo-100 overflow-hidden">
+          <div className="bg-indigo-50 px-3 py-2 text-xs font-medium text-indigo-700">
             AI Explanation
-          </summary>
-          <div className="mt-2 text-sm text-gray-700 bg-white rounded border border-indigo-100 p-3 space-y-2">
+          </div>
+          <div className="bg-white p-3 text-sm text-gray-700 space-y-2">
             <p>{finding.ai_explanation}</p>
             {finding.ai_remediation && (
               <>
@@ -333,179 +415,161 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
               </>
             )}
           </div>
-        </details>
+        </div>
       )}
 
       {/* Evidence */}
       {finding.evidence_ids.length > 0 && (
-        <details
-          className="mt-3"
-          open={evidenceOpen}
-          onToggle={(e) => {
-            const target = e.currentTarget as HTMLDetailsElement;
-            if (target.open !== evidenceOpen) {
-              handleEvidenceToggle();
-            }
-          }}
-        >
-          <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
-            Evidence ({finding.evidence_ids.length} items)
-          </summary>
-          <div className="mt-2">
-            {evidenceLoading ? (
-              <p className="text-xs text-gray-400 italic">Loading evidence...</p>
-            ) : (
-              <ul className="space-y-2">
-                {finding.evidence_ids.map((eid) => {
-                  const item = evidenceItems[eid];
-                  if (!item) {
-                    return (
-                      <li key={eid} className="text-xs font-mono bg-white rounded border border-gray-200 px-2 py-1 text-gray-400">
-                        {eid}
-                      </li>
-                    );
-                  }
-                  return (
-                    <li key={eid} className="bg-white rounded border border-gray-200 p-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`px-2 py-0.5 rounded text-xs font-medium ${kindBadgeClass(item.kind)}`}
-                        >
-                          {item.kind}
-                        </span>
-                        <span className="text-xs font-medium text-gray-800">
-                          {item.namespace ? `${item.namespace}/${item.name}` : item.name}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-gray-400">{item.source_path}</p>
-                      <details className="mt-1">
-                        <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
-                          Raw JSON
-                        </summary>
-                        <pre className="text-xs bg-gray-900 text-green-400 p-3 rounded overflow-auto max-h-64 mt-1">
-                          {JSON.stringify(item.raw_data, null, 2)}
-                        </pre>
-                      </details>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </details>
-      )}
-
-      {/* History (Events Timeline) */}
-      <details
-        className="mt-3"
-        open={historyOpen}
-        onToggle={(e) => {
-          const target = e.currentTarget as HTMLDetailsElement;
-          if (target.open !== historyOpen) {
-            handleHistoryToggle();
-          }
-        }}
-      >
-        <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
-          History
-        </summary>
-        <div className="mt-2">
-          {eventsLoading ? (
-            <p className="text-xs text-gray-400 italic">Loading history...</p>
-          ) : events && events.length === 0 ? (
-            <p className="text-xs text-gray-400 italic">No events yet.</p>
-          ) : (
-            <ul className="space-y-2 pl-1">
-              {(events ?? []).map((ev) => (
-                <li key={ev.id} className="flex items-start gap-2">
-                  <span
-                    className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
-                      EVENT_DOT[ev.event_type] ?? "bg-gray-300"
-                    }`}
-                  />
-                  <div className="text-xs text-gray-700">
-                    <span className="font-semibold">{ev.actor}</span>{" "}
-                    {eventDescription(ev)}{" "}
-                    <span className="text-gray-400">{timeAgo(ev.created_at)}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </details>
-
-      {/* Comments */}
-      <details
-        className="mt-3"
-        open={commentsOpen}
-        onToggle={(e) => {
-          const target = e.currentTarget as HTMLDetailsElement;
-          if (target.open !== commentsOpen) {
-            handleCommentsToggle();
-          }
-        }}
-      >
-        <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
-          Comments {comments !== null ? `(${comments.length})` : ""}
-        </summary>
-        <div className="mt-2 space-y-2">
-          {commentsLoading ? (
-            <p className="text-xs text-gray-400 italic">Loading comments...</p>
-          ) : (
-            <>
-              {(comments ?? []).length === 0 ? (
-                <p className="text-xs text-gray-400 italic">No comments yet.</p>
+        <div className="mt-3">
+          <SectionToggle
+            open={evidenceOpen}
+            onClick={handleEvidenceToggle}
+            label={`Evidence (${finding.evidence_ids.length} items)`}
+          />
+          <ExpandSection open={evidenceOpen}>
+            <div className="mt-2">
+              {evidenceLoading ? (
+                <p className="text-xs text-gray-400 italic">Loading evidence...</p>
               ) : (
                 <ul className="space-y-2">
-                  {(comments ?? []).map((c) => {
-                    const isOwn = user?.email === c.actor;
-                    const isManager = user?.role === "manager" || user?.role === "admin";
-                    const canDelete = isOwn || isManager;
+                  {finding.evidence_ids.map((eid) => {
+                    const item = evidenceItems[eid];
+                    if (!item) {
+                      return (
+                        <li key={eid} className="text-xs font-mono bg-white rounded border border-gray-200 px-2 py-1 text-gray-400">
+                          {eid}
+                        </li>
+                      );
+                    }
                     return (
-                      <li key={c.id} className="bg-white rounded border border-gray-200 p-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold text-gray-700">{c.actor}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400">{timeAgo(c.created_at)}</span>
-                            {canDelete && (
-                              <button
-                                onClick={() => handleDeleteComment(c.id)}
-                                disabled={deletingCommentId === c.id}
-                                className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50"
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </div>
+                      <li key={eid} className="bg-white rounded border border-gray-200 p-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${kindBadgeClass(item.kind)}`}>
+                            {item.kind}
+                          </span>
+                          <span className="text-xs font-medium text-gray-800">
+                            {item.namespace ? `${item.namespace}/${item.name}` : item.name}
+                          </span>
                         </div>
-                        <p className="mt-1 text-xs text-gray-600 whitespace-pre-wrap">{c.body}</p>
+                        <p className="mt-1 text-xs text-gray-400">{item.source_path}</p>
+                        <div className="mt-1">
+                          <SectionToggle open={false} onClick={() => {}} label="Raw JSON" />
+                          <pre className="text-xs bg-gray-900 text-green-400 p-3 rounded overflow-auto max-h-64 mt-1">
+                            {JSON.stringify(item.raw_data, null, 2)}
+                          </pre>
+                        </div>
                       </li>
                     );
                   })}
                 </ul>
               )}
-              {/* New comment input */}
-              <div className="mt-2">
-                <textarea
-                  rows={2}
-                  className="w-full text-xs border border-gray-200 rounded px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-300 resize-none"
-                  placeholder="Add a comment..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                />
-                <button
-                  onClick={handleSubmitComment}
-                  disabled={submittingComment || !newComment.trim()}
-                  className="mt-1 px-3 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {submittingComment ? "Posting..." : "Add Comment"}
-                </button>
-              </div>
-            </>
-          )}
+            </div>
+          </ExpandSection>
         </div>
-      </details>
+      )}
+
+      {/* History */}
+      <div className="mt-3">
+        <SectionToggle
+          open={historyOpen}
+          onClick={handleHistoryToggle}
+          label="History"
+        />
+        <ExpandSection open={historyOpen}>
+          <div className="mt-2">
+            {eventsLoading ? (
+              <p className="text-xs text-gray-400 italic">Loading history...</p>
+            ) : events && events.length === 0 ? (
+              <p className="text-xs text-gray-400 italic">No events yet.</p>
+            ) : (
+              <ul className="space-y-2 pl-1">
+                {(events ?? []).map((ev) => (
+                  <li key={ev.id} className="flex items-start gap-2">
+                    <span
+                      className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
+                        EVENT_DOT[ev.event_type] ?? "bg-gray-300"
+                      }`}
+                    />
+                    <div className="text-xs text-gray-700">
+                      <span className="font-semibold">{ev.actor}</span>{" "}
+                      {eventDescription(ev)}{" "}
+                      <span className="text-gray-400">{timeAgo(ev.created_at)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </ExpandSection>
+      </div>
+
+      {/* Comments */}
+      <div className="mt-3">
+        <SectionToggle
+          open={commentsOpen}
+          onClick={handleCommentsToggle}
+          label={`Comments${comments !== null ? ` (${comments.length})` : ""}`}
+        />
+        <ExpandSection open={commentsOpen}>
+          <div className="mt-2 space-y-2">
+            {commentsLoading ? (
+              <p className="text-xs text-gray-400 italic">Loading comments...</p>
+            ) : (
+              <>
+                {(comments ?? []).length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">No comments yet. Be the first to comment.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {(comments ?? []).map((c) => {
+                      const isOwn = user?.email === c.actor;
+                      const canDelete = isOwn || isManager;
+                      return (
+                        <li key={c.id} className="bg-white rounded border border-gray-200 p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-gray-700">{c.actor}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400">{timeAgo(c.created_at)}</span>
+                              {canDelete && (
+                                <button
+                                  onClick={() => handleDeleteComment(c.id)}
+                                  disabled={deletingCommentId === c.id}
+                                  className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-400 rounded"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-600 whitespace-pre-wrap">{c.body}</p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <div className="mt-2">
+                  <textarea
+                    rows={2}
+                    className="w-full text-xs border border-gray-200 rounded px-2 py-1 text-gray-700 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-1 resize-none transition-shadow duration-150"
+                    placeholder="Add a comment..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmitComment();
+                    }}
+                  />
+                  <button
+                    onClick={handleSubmitComment}
+                    disabled={submittingComment || !newComment.trim()}
+                    className="mt-1 px-3 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-1 transition-colors duration-150"
+                  >
+                    {submittingComment ? "Posting..." : "Add Comment"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </ExpandSection>
+      </div>
     </div>
   );
 }
