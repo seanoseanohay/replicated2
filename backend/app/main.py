@@ -103,9 +103,11 @@ from app.api.routes.findings import router as findings_router  # noqa: E402
 from app.api.routes.notifications import router as notifications_router  # noqa: E402
 from app.api.routes.reports import router as reports_router  # noqa: E402
 from app.api.routes.chat import router as chat_router  # noqa: E402
+from app.api.routes.admin import router as admin_router  # noqa: E402
 
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(bundles_router)
 app.include_router(chat_router)
 app.include_router(comments_router)

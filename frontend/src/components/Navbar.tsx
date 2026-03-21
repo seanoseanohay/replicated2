@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 
+
 const ROLE_BADGE: Record<string, string> = {
   analyst: "bg-blue-900/50 text-blue-300 border border-blue-700",
   manager: "bg-purple-900/50 text-purple-300 border border-purple-700",
@@ -15,7 +16,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default function Navbar() {
-  const { user, logout, isManager } = useAuth();
+  const { user, logout, isManager, isAdmin } = useAuth();
 
   if (!user) return null;
 
@@ -53,6 +54,14 @@ export default function Navbar() {
               className="text-sm text-gray-300 hover:text-white transition-colors"
             >
               Settings
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="text-sm text-red-400 hover:text-red-300 transition-colors font-medium"
+            >
+              Admin
             </Link>
           )}
         </div>

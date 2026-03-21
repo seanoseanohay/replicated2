@@ -8,6 +8,7 @@ import BundleUpload from "./pages/BundleUpload";
 import BundleDetail from "./pages/BundleDetail";
 import BundleCompare from "./pages/BundleCompare";
 import NotificationSettings from "./pages/NotificationSettings";
+import AdminPanel from "./pages/AdminPanel";
 import LoginPage from "./pages/LoginPage";
 
 function ProtectedLayout() {
@@ -37,6 +38,7 @@ function ProtectedLayout() {
           <Route path="/upload" element={<BundleUpload />} />
           <Route path="/bundles/:id" element={<BundleDetail />} />
           <Route path="/settings/notifications" element={<NotificationSettings />} />
+          <Route path="/admin" element={<AdminPanel />} />
         </Routes>
       </main>
       <footer className="border-t border-gray-200 text-center text-xs text-gray-400 py-4">

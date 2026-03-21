@@ -22,6 +22,7 @@ interface AuthContextType {
   register(email: string, password: string, fullName?: string): Promise<void>;
   logout(): void;
   isManager: boolean;
+  isAdmin: boolean;
   isLoading: boolean;
 }
 
@@ -105,10 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isManager =
     user?.role === "manager" || user?.role === "admin" || false;
+  const isAdmin = user?.role === "admin" || false;
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, register, logout, isManager, isLoading }}
+      value={{ user, token, login, register, logout, isManager, isAdmin, isLoading }}
     >
       {children}
     </AuthContext.Provider>

@@ -465,3 +465,44 @@ export const authApi = {
     return request<UserRead>("/api/v1/auth/me");
   },
 };
+
+// ---- Admin ----
+export interface AdminUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  tenant_id: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminStats {
+  total_users: number;
+  total_bundles: number;
+  total_findings: number;
+  users_by_role: Record<string, number>;
+}
+
+export const adminApi = {
+  listUsers(): Promise<AdminUser[]> {
+    return request<AdminUser[]>("/api/v1/admin/users");
+  },
+  updateRole(userId: string, role: string): Promise<AdminUser> {
+    return request<AdminUser>(`/api/v1/admin/users/${userId}/role`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+  },
+  updateStatus(userId: string, is_active: boolean): Promise<AdminUser> {
+    return request<AdminUser>(`/api/v1/admin/users/${userId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_active }),
+    });
+  },
+  getStats(): Promise<AdminStats> {
+    return request<AdminStats>("/api/v1/admin/stats");
+  },
+};
