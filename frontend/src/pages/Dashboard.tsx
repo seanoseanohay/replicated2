@@ -62,10 +62,12 @@ export default function Dashboard() {
     try {
       await bundleApi.delete(confirmTarget.bundle_id);
       setConfirmTarget(null);
+      setError(null);
       setLoading(true);
-      loadStats();
+      await dashboardApi.getStats().then(setStats).finally(() => setLoading(false));
     } catch (e) {
-      console.error("Failed to delete bundle", e);
+      setConfirmTarget(null);
+      setError(String(e));
     } finally {
       setDeleting(false);
     }
