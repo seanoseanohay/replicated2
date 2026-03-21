@@ -35,17 +35,12 @@ async def _bootstrap_admin() -> None:
         )
         existing = result.scalar_one_or_none()
         if existing is not None:
-            changed = False
-            if existing.role != "admin":
-                existing.role = "admin"
-                changed = True
-            # Always sync the password from env so it can be reset via redeploy
+            existing.role = "admin"
             existing.hashed_password = hash_password(settings.BOOTSTRAP_ADMIN_PASSWORD)
             existing.is_active = True
-            changed = True
-            if changed:
-                await db.flush()
-                logger.info("bootstrap_admin_updated", email=settings.BOOTSTRAP_ADMIN_EMAIL)
+            await db.flush()
+            await db.commit()
+            logger.info("bootstrap_admin_updated", email=settings.BOOTSTRAP_ADMIN_EMAIL)
             return
         user = User(
             id=_uuid.uuid4(),
@@ -58,6 +53,7 @@ async def _bootstrap_admin() -> None:
         )
         db.add(user)
         await db.flush()
+        await db.commit()
         logger.info("bootstrap_admin_created", email=settings.BOOTSTRAP_ADMIN_EMAIL)
 
 
