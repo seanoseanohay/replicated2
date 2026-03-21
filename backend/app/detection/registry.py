@@ -16,23 +16,42 @@ from app.detection.rules.deployment_unavailable import DeploymentUnavailableRule
 from app.detection.rules.statefulset_unavailable import StatefulSetUnavailableRule
 from app.detection.rules.hpa_maxed import HPAMaxedRule
 from app.detection.rules.warning_event_reasons import WarningEventReasonsRule
+from app.detection.rules.pod_terminating import PodTerminatingRule
+from app.detection.rules.init_container_failed import InitContainerFailedRule
+from app.detection.rules.high_restart_count import HighRestartCountRule
+from app.detection.rules.failed_jobs import FailedJobsRule
+from app.detection.rules.daemonset_unavailable import DaemonSetUnavailableRule
+from app.detection.rules.missing_resource_limits import MissingResourceLimitsRule
 from app.models.finding import Finding
 
 logger = logging.getLogger(__name__)
 
 ALL_RULES = [
+    # Critical node / cluster health
     NodeNotReadyRule(),
+    NodePressureRule(),
+    # Pod lifecycle problems
     PodCrashLoopRule(),
     OOMKilledRule(),
     ImagePullErrorRule(),
     PodPendingRule(),
+    PodTerminatingRule(),
+    InitContainerFailedRule(),
+    HighRestartCountRule(),
+    # Storage
     PVCPendingRule(),
-    WarningEventsRule(),
-    ResourceQuotaRule(),
-    NodePressureRule(),
+    # Workload capacity
     DeploymentUnavailableRule(),
     StatefulSetUnavailableRule(),
+    DaemonSetUnavailableRule(),
     HPAMaxedRule(),
+    # Jobs
+    FailedJobsRule(),
+    # Resource hygiene
+    ResourceQuotaRule(),
+    MissingResourceLimitsRule(),
+    # Warning events (broad + specific)
+    WarningEventsRule(),
     WarningEventReasonsRule(),
 ]
 

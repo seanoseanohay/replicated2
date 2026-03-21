@@ -15,9 +15,46 @@ DANGEROUS_REASONS = [
     "BackOff",
     "FailedCreate",
     "FailedAttachVolume",
+    # probe failures
+    "Unhealthy",
+    # OOM at the node/container level
+    "OOMKilling",
+    # storage provisioning
+    "FailedBinding",
+    "ProvisioningFailed",
+    # eviction / lifecycle
+    "TaintManagerEviction",
+    "ExceededGracePeriod",
+    "Killing",
+    # networking
+    "NetworkNotReady",
+    # jobs
+    "DeadlineExceeded",
+    "BackoffLimitExceeded",
 ]
-HIGH_SEVERITY_REASONS = {"FailedScheduling", "Evicted"}
-REASON_THRESHOLD = 3
+
+# Surface on the very first occurrence — no need to wait for 3
+CRITICAL_THRESHOLD_ONE = {
+    "Evicted",
+    "OOMKilling",
+    "TaintManagerEviction",
+    "DeadlineExceeded",
+    "BackoffLimitExceeded",
+    "NetworkNotReady",
+}
+
+HIGH_SEVERITY_REASONS = {
+    "FailedScheduling",
+    "Evicted",
+    "OOMKilling",
+    "TaintManagerEviction",
+    "DeadlineExceeded",
+    "BackoffLimitExceeded",
+    "NetworkNotReady",
+    "Unhealthy",
+}
+
+REASON_THRESHOLD = 3  # default; critical reasons use threshold of 1
 
 
 class WarningEventReasonsRule(BaseRule):
@@ -55,13 +92,14 @@ class WarningEventReasonsRule(BaseRule):
                 continue
 
         for reason, entries in reason_data.items():
-            if len(entries) < REASON_THRESHOLD:
+            threshold = 1 if reason in CRITICAL_THRESHOLD_ONE else REASON_THRESHOLD
+            if len(entries) < threshold:
                 continue
             count = len(entries)
             unique_objects = list(dict.fromkeys(obj for _, obj in entries))[:5]
             objects_str = ", ".join(unique_objects)
             summary = (
-                f"{count} {reason} warning events detected. "
+                f"{count} {reason} warning event(s) detected. "
                 f"Affected objects: {objects_str}"
             )
             evidence_ids = [eid for eid, _ in entries]
@@ -69,7 +107,7 @@ class WarningEventReasonsRule(BaseRule):
             finding = Finding(
                 bundle_id=bundle_id,
                 rule_id=self.rule_id,
-                title=f"Repeated {reason} Events",
+                title=f"{reason} Events Detected",
                 severity=severity,
                 summary=summary,
                 evidence_ids=[str(e) for e in evidence_ids],
