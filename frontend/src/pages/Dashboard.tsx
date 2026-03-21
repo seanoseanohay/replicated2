@@ -62,12 +62,11 @@ export default function Dashboard() {
     try {
       await bundleApi.delete(confirmTarget.bundle_id);
       setConfirmTarget(null);
-      setError(null);
-      setLoading(true);
-      await dashboardApi.getStats().then(setStats).finally(() => setLoading(false));
+      // Refresh stats quietly — don't trigger the full-page loading screen
+      dashboardApi.getStats().then(setStats).catch(() => {});
     } catch (e) {
       setConfirmTarget(null);
-      setError(String(e));
+      setError(`Delete failed: ${String(e)}`);
     } finally {
       setDeleting(false);
     }
