@@ -287,9 +287,20 @@ export interface DashboardStats {
   bundles: BundleHealthSummary[];
 }
 
+export interface RecurringFinding {
+  rule_id: string;
+  title: string;
+  severity: string;
+  bundle_count: number;
+  total_occurrences: number;
+}
+
 export const dashboardApi = {
   getStats(): Promise<DashboardStats> {
     return request<DashboardStats>("/api/v1/dashboard");
+  },
+  getRecurring(): Promise<RecurringFinding[]> {
+    return request<RecurringFinding[]>("/api/v1/dashboard/recurring");
   },
 };
 

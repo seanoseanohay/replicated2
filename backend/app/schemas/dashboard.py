@@ -1,6 +1,14 @@
 from pydantic import BaseModel
 
 
+class RecurringFinding(BaseModel):
+    rule_id: str
+    title: str
+    severity: str
+    bundle_count: int       # how many distinct bundles this has appeared in
+    total_occurrences: int  # total finding count across all bundles
+
+
 class BundleHealthSummary(BaseModel):
     bundle_id: str
     filename: str

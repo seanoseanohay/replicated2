@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_tenant_id
 from app.models.bundle import Bundle
 from app.models.finding import Finding
-from app.schemas.dashboard import BundleHealthSummary, DashboardStats
+from app.schemas.dashboard import BundleHealthSummary, DashboardStats, RecurringFinding
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 
@@ -140,3 +140,46 @@ async def get_dashboard(
         most_recent_critical=most_recent_critical,
         bundles=bundle_summaries,
     )
+
+
+@router.get("/recurring", response_model=list[RecurringFinding])
+async def get_recurring_findings(
+    tenant_id: str = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db),
+) -> list[RecurringFinding]:
+    """Return findings that recur across multiple bundles, ranked by frequency."""
+    # Get all bundle IDs for this tenant
+    bundle_result = await db.execute(
+        select(Bundle.id).where(Bundle.tenant_id == tenant_id)
+    )
+    bundle_ids = [row[0] for row in bundle_result.all()]
+
+    if not bundle_ids:
+        return []
+
+    # Count distinct bundles each rule_id appears in
+    rows = await db.execute(
+        select(
+            Finding.rule_id,
+            Finding.title,
+            Finding.severity,
+            func.count(Finding.bundle_id.distinct()).label("bundle_count"),
+            func.count(Finding.id).label("total_occurrences"),
+        )
+        .where(Finding.bundle_id.in_(bundle_ids))
+        .group_by(Finding.rule_id, Finding.title, Finding.severity)
+        .having(func.count(Finding.bundle_id.distinct()) > 1)
+        .order_by(func.count(Finding.bundle_id.distinct()).desc())
+        .limit(10)
+    )
+
+    return [
+        RecurringFinding(
+            rule_id=row.rule_id,
+            title=row.title,
+            severity=row.severity,
+            bundle_count=row.bundle_count,
+            total_occurrences=row.total_occurrences,
+        )
+        for row in rows
+    ]

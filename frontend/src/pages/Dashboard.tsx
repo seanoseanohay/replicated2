@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { bundleApi, dashboardApi, type BundleHealthSummary, type DashboardStats } from "../api/client";
+import { bundleApi, dashboardApi, type BundleHealthSummary, type DashboardStats, type RecurringFinding } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import HealthBar from "../components/HealthBar";
 
@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<BundleHealthSummary | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [recurring, setRecurring] = useState<RecurringFinding[]>([]);
 
   function loadStats() {
     dashboardApi
@@ -54,6 +55,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadStats();
+    dashboardApi.getRecurring().then(setRecurring).catch(() => {});
   }, []);
 
   async function handleDelete() {
@@ -261,6 +263,50 @@ export default function Dashboard() {
                 {deleting ? "Deleting..." : "Yes, delete it"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recurring Findings across bundles */}
+      {recurring.length > 0 && (
+        <div className="bg-white rounded-lg border border-orange-200 shadow-sm">
+          <div className="px-5 py-4 border-b border-orange-100 bg-orange-50 rounded-t-lg flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-orange-800">Recurring Issues Across Bundles</h2>
+              <p className="text-xs text-orange-600 mt-0.5">These findings have appeared in multiple bundles — likely systemic problems</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-500 uppercase border-b border-gray-100">
+                  <th className="px-5 py-3 font-medium">Finding</th>
+                  <th className="px-5 py-3 font-medium">Severity</th>
+                  <th className="px-5 py-3 font-medium text-center">Bundles Affected</th>
+                  <th className="px-5 py-3 font-medium text-center">Total Occurrences</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recurring.map((r) => (
+                  <tr key={r.rule_id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3">
+                      <span className="font-medium text-gray-800">{r.title}</span>
+                      <span className="ml-2 font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{r.rule_id}</span>
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={`text-xs font-semibold uppercase px-2 py-0.5 rounded-full ${
+                        r.severity === "critical" ? "bg-red-100 text-red-700" :
+                        r.severity === "high" ? "bg-orange-100 text-orange-700" :
+                        r.severity === "medium" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-gray-100 text-gray-600"
+                      }`}>{r.severity}</span>
+                    </td>
+                    <td className="px-5 py-3 text-center font-bold text-orange-600">{r.bundle_count}</td>
+                    <td className="px-5 py-3 text-center text-gray-600">{r.total_occurrences}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
