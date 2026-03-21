@@ -43,6 +43,14 @@ CRITICAL_THRESHOLD_ONE = {
     "NetworkNotReady",
 }
 
+# Surface after just 2 occurrences — active probe failures, backoff
+THRESHOLD_TWO = {
+    "Unhealthy",
+    "BackOff",
+    "Killing",
+    "ExceededGracePeriod",
+}
+
 HIGH_SEVERITY_REASONS = {
     "FailedScheduling",
     "Evicted",
@@ -92,7 +100,12 @@ class WarningEventReasonsRule(BaseRule):
                 continue
 
         for reason, entries in reason_data.items():
-            threshold = 1 if reason in CRITICAL_THRESHOLD_ONE else REASON_THRESHOLD
+            if reason in CRITICAL_THRESHOLD_ONE:
+                threshold = 1
+            elif reason in THRESHOLD_TWO:
+                threshold = 2
+            else:
+                threshold = REASON_THRESHOLD
             if len(entries) < threshold:
                 continue
             count = len(entries)

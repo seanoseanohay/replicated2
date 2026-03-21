@@ -8,7 +8,7 @@ from app.models.evidence import Evidence
 from app.models.finding import Finding
 
 # Flag containers that have restarted this many times even if not in CrashLoopBackOff
-HIGH_RESTART_THRESHOLD = 10
+HIGH_RESTART_THRESHOLD = 3
 
 
 class HighRestartCountRule(BaseRule):
@@ -50,10 +50,11 @@ class HighRestartCountRule(BaseRule):
                     if waiting_reason == "CrashLoopBackOff":
                         continue
 
-                    if restart_count >= HIGH_RESTART_THRESHOLD:
+                    is_not_ready = not cs.get("ready", True)
+                    if restart_count >= HIGH_RESTART_THRESHOLD or (restart_count > 0 and is_not_ready):
                         flagged.append(
                             f"{namespace}/{name}/{container_name} "
-                            f"(restarts={restart_count})"
+                            f"(restarts={restart_count}, ready={cs.get('ready', False)})"
                         )
                         evidence_ids.append(pod.id)
                         break  # one finding per pod

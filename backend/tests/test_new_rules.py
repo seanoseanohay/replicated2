@@ -146,20 +146,36 @@ class TestHighRestartCountRule:
             "status": {
                 "containerStatuses": [{
                     "name": "app",
-                    "restartCount": 15,
+                    "restartCount": 5,
+                    "ready": True,
                     "state": {"running": {}},
                 }]
             },
         })
         findings = self.rule.evaluate(BUNDLE, _mock_session([pod]))
         assert len(findings) == 1
-        assert "15" in findings[0].summary
+        assert "5" in findings[0].summary
 
-    def test_ignores_low_restart(self):
+    def test_detects_not_ready_with_any_restarts(self):
+        pod = _evidence("Pod", {
+            "metadata": {"name": "not-ready", "namespace": "default"},
+            "status": {
+                "containerStatuses": [{
+                    "name": "app",
+                    "restartCount": 1,
+                    "ready": False,
+                    "state": {"running": {}},
+                }]
+            },
+        })
+        findings = self.rule.evaluate(BUNDLE, _mock_session([pod]))
+        assert len(findings) == 1
+
+    def test_ignores_low_restart_and_ready(self):
         pod = _evidence("Pod", {
             "metadata": {"name": "stable", "namespace": "default"},
             "status": {
-                "containerStatuses": [{"name": "app", "restartCount": 3, "state": {"running": {}}}]
+                "containerStatuses": [{"name": "app", "restartCount": 2, "ready": True, "state": {"running": {}}}]
             },
         })
         findings = self.rule.evaluate(BUNDLE, _mock_session([pod]))
@@ -326,13 +342,13 @@ class TestWarningEventReasonsExpanded:
             findings = self.rule.evaluate(BUNDLE, _mock_session(events))
             assert len(findings) == 1, f"Expected finding for {reason} with 1 event"
 
-    def test_unhealthy_fires_after_threshold(self):
-        events = self._make_events("Unhealthy", 3)
+    def test_unhealthy_fires_at_two(self):
+        events = self._make_events("Unhealthy", 2)
         findings = self.rule.evaluate(BUNDLE, _mock_session(events))
         assert len(findings) == 1
 
-    def test_unhealthy_does_not_fire_below_threshold(self):
-        events = self._make_events("Unhealthy", 2)
+    def test_unhealthy_does_not_fire_on_one(self):
+        events = self._make_events("Unhealthy", 1)
         findings = self.rule.evaluate(BUNDLE, _mock_session(events))
         assert findings == []
 
