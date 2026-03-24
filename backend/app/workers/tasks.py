@@ -1,6 +1,5 @@
 import logging
 import uuid
-from pathlib import Path
 
 from celery import Celery
 from celery.exceptions import SoftTimeLimitExceeded
@@ -52,7 +51,6 @@ def process_bundle(self, bundle_id: str) -> dict:
     Download, extract, and parse a support bundle, persisting Evidence records.
     """
     from app.models.bundle import Bundle
-    from app.models.evidence import Evidence
     from app.parsing.extractor import BundleExtractor
     from app.parsing.registry import run_all_parsers
     from app.services.storage import storage_service

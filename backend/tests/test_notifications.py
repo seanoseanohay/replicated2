@@ -6,9 +6,6 @@ import pytest
 import pytest_asyncio
 
 from app.core.auth import create_access_token, hash_password
-from app.models.bundle import Bundle
-from app.models.finding import Finding
-from app.models.notification_config import NotificationConfig
 from app.models.user import User
 
 

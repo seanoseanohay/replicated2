@@ -4,7 +4,6 @@ Tests for the new detection rules added in the warnings expansion.
 import uuid
 from unittest.mock import MagicMock
 
-import pytest
 
 from app.detection.rules.daemonset_unavailable import DaemonSetUnavailableRule
 from app.detection.rules.failed_jobs import FailedJobsRule

@@ -16,7 +16,7 @@ import pytest
 
 from app.ai.explainer import explain_finding
 
-from .helpers import assert_has_sections, assert_keywords, assert_no_text, make_evidence, make_finding
+from .helpers import assert_keywords, assert_no_text, make_evidence, make_finding
 
 pytestmark = [
     pytest.mark.eval,

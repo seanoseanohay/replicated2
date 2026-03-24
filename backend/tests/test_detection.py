@@ -3,11 +3,10 @@ Unit tests for detection rules.
 Uses an in-memory SQLite database (no Celery or Postgres needed).
 """
 import uuid
-from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from app.core.database import Base
 from app.models.evidence import Evidence
@@ -16,9 +15,7 @@ from app.detection.rules.oom_killed import OOMKilledRule
 from app.detection.rules.pod_pending import PodPendingRule
 from app.detection.rules.node_not_ready import NodeNotReadyRule
 from app.detection.rules.image_pull_error import ImagePullErrorRule
-from app.detection.rules.pvc_pending import PVCPendingRule
 from app.detection.rules.warning_events import WarningEventsRule
-from app.detection.rules.resource_quota import ResourceQuotaRule
 from app.detection.rules.node_pressure import NodePressureRule
 from app.detection.rules.deployment_unavailable import DeploymentUnavailableRule
 from app.detection.rules.statefulset_unavailable import StatefulSetUnavailableRule

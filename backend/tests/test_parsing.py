@@ -1,9 +1,7 @@
 """Tests for Phase 2 parsing package."""
 import json
 import uuid
-from pathlib import Path
 
-import pytest
 
 from app.parsing.parsers.cluster_resources import ClusterResourcesParser
 from app.parsing.parsers.logs import LogsParser

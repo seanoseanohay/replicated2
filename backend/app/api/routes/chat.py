@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -12,7 +11,6 @@ from app.core.limiter import limiter
 from app.core.logging import get_logger
 from app.models.bundle import Bundle
 from app.models.chat_message import ChatMessage
-from app.models.evidence import Evidence
 from app.models.finding import Finding
 from app.models.user import User
 from app.schemas.chat import ChatMessageRead, ChatRequest

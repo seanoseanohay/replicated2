@@ -2,7 +2,6 @@
 import uuid
 
 import pytest
-import pytest_asyncio
 
 from app.core.auth import create_access_token, hash_password
 from app.models.user import User

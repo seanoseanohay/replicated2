@@ -1,6 +1,5 @@
 """Tests for GET /api/v1/bundles/{bundle_id}/evidence endpoint."""
 import uuid
-from unittest.mock import MagicMock, patch
 
 import pytest
 
