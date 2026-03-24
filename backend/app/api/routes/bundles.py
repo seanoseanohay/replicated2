@@ -1,6 +1,14 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -146,14 +154,18 @@ async def compare_bundles(
     )
     b_a = result_a.scalar_one_or_none()
     if b_a is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle A not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bundle A not found"
+        )
 
     result_b = await db.execute(
         select(Bundle).where(Bundle.id == bundle_b, Bundle.tenant_id == tenant_id)
     )
     b_b = result_b.scalar_one_or_none()
     if b_b is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle B not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bundle B not found"
+        )
 
     # Load findings for each bundle
     findings_a_result = await db.execute(
@@ -228,7 +240,9 @@ async def get_bundle(
     )
     bundle = result.scalar_one_or_none()
     if bundle is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found"
+        )
     return BundleRead.model_validate(bundle)
 
 
@@ -243,7 +257,9 @@ async def reanalyze_bundle_endpoint(
     )
     bundle = result.scalar_one_or_none()
     if bundle is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found"
+        )
 
     if bundle.status == "processing":
         raise HTTPException(
@@ -272,7 +288,9 @@ async def delete_bundle(
     )
     bundle = result.scalar_one_or_none()
     if bundle is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found"
+        )
 
     # Delete from S3 (best-effort)
     if bundle.s3_key:

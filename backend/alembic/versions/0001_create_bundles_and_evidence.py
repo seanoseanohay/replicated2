@@ -24,7 +24,9 @@ def upgrade() -> None:
         sa.Column("original_filename", sa.String(512), nullable=False),
         sa.Column("size_bytes", sa.Integer(), nullable=False),
         sa.Column("status", sa.String(32), nullable=False, server_default="uploaded"),
-        sa.Column("tenant_id", sa.String(256), nullable=False, server_default="default"),
+        sa.Column(
+            "tenant_id", sa.String(256), nullable=False, server_default="default"
+        ),
         sa.Column("s3_key", sa.String(1024), nullable=True),
         sa.Column("error_message", sa.String(2048), nullable=True),
         sa.Column(

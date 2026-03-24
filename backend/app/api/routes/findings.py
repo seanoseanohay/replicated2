@@ -31,7 +31,9 @@ async def _get_bundle_for_tenant(
     )
     bundle = result.scalar_one_or_none()
     if bundle is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found"
+        )
     return bundle
 
 
@@ -48,8 +50,8 @@ async def list_findings(
     await _get_bundle_for_tenant(bundle_id, tenant_id, db)
 
     base_query = select(Finding).where(Finding.bundle_id == bundle_id)
-    count_query = select(func.count()).select_from(Finding).where(
-        Finding.bundle_id == bundle_id
+    count_query = (
+        select(func.count()).select_from(Finding).where(Finding.bundle_id == bundle_id)
     )
 
     if severity is not None:
@@ -93,13 +95,13 @@ async def update_finding(
     await _get_bundle_for_tenant(bundle_id, tenant_id, db)
 
     result = await db.execute(
-        select(Finding).where(
-            Finding.id == finding_id, Finding.bundle_id == bundle_id
-        )
+        select(Finding).where(Finding.id == finding_id, Finding.bundle_id == bundle_id)
     )
     finding = result.scalar_one_or_none()
     if finding is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found"
+        )
 
     if update.status == "resolved":
         if current_user is None or current_user.role not in ("manager", "admin"):
@@ -122,7 +124,10 @@ async def update_finding(
         )
         db.add(event)
 
-    if update.reviewer_notes is not None and update.reviewer_notes != finding.reviewer_notes:
+    if (
+        update.reviewer_notes is not None
+        and update.reviewer_notes != finding.reviewer_notes
+    ):
         event = FindingEvent(
             finding_id=finding.id,
             user_id=current_user.id if current_user else None,
@@ -176,13 +181,13 @@ async def explain_finding(
     await _get_bundle_for_tenant(bundle_id, tenant_id, db)
 
     result = await db.execute(
-        select(Finding).where(
-            Finding.id == finding_id, Finding.bundle_id == bundle_id
-        )
+        select(Finding).where(Finding.id == finding_id, Finding.bundle_id == bundle_id)
     )
     finding = result.scalar_one_or_none()
     if finding is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found"
+        )
 
     # Fetch up to 5 evidence items by evidence_ids
     evidence_list = []
@@ -194,6 +199,7 @@ async def explain_finding(
         evidence_list = list(ev_result.scalars().all())
 
     from app.ai.explainer import explain_finding as _explain
+
     try:
         explanation, remediation = _explain(finding, evidence_list, db)
     except ValueError as exc:
@@ -249,13 +255,13 @@ async def list_finding_events(
 
     # Verify finding belongs to bundle
     result = await db.execute(
-        select(Finding).where(
-            Finding.id == finding_id, Finding.bundle_id == bundle_id
-        )
+        select(Finding).where(Finding.id == finding_id, Finding.bundle_id == bundle_id)
     )
     finding = result.scalar_one_or_none()
     if finding is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found"
+        )
 
     events_result = await db.execute(
         select(FindingEvent)

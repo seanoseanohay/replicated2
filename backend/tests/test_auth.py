@@ -1,4 +1,5 @@
 """Tests for Phase 7 — Authentication & Roles."""
+
 import uuid
 
 import pytest
@@ -11,7 +12,10 @@ from app.models.user import User
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def _create_user(db_session, email="analyst@example.com", role="analyst", tenant_id="default"):
+
+async def _create_user(
+    db_session, email="analyst@example.com", role="analyst", tenant_id="default"
+):
     user = User(
         id=uuid.uuid4(),
         email=email,
@@ -28,7 +32,12 @@ async def _create_user(db_session, email="analyst@example.com", role="analyst", 
 
 def _auth_headers(user: User) -> dict:
     token = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role, "tenant_id": user.tenant_id}
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -36,6 +45,7 @@ def _auth_headers(user: User) -> dict:
 # ---------------------------------------------------------------------------
 # Register
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_register_returns_tokens(client):
@@ -55,15 +65,20 @@ async def test_register_returns_tokens(client):
 @pytest.mark.asyncio
 async def test_register_duplicate_email_returns_409(client):
     payload = {"email": "dup@example.com", "password": "securepassword"}
-    resp1 = await client.post("/api/v1/auth/register", json=payload, headers={"X-Tenant-ID": "default"})
+    resp1 = await client.post(
+        "/api/v1/auth/register", json=payload, headers={"X-Tenant-ID": "default"}
+    )
     assert resp1.status_code == 201
-    resp2 = await client.post("/api/v1/auth/register", json=payload, headers={"X-Tenant-ID": "default"})
+    resp2 = await client.post(
+        "/api/v1/auth/register", json=payload, headers={"X-Tenant-ID": "default"}
+    )
     assert resp2.status_code == 409
 
 
 # ---------------------------------------------------------------------------
 # Login
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_login_correct_credentials(client, db_session):
@@ -94,6 +109,7 @@ async def test_login_wrong_password_returns_401(client, db_session):
 # /auth/me
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_me_with_valid_token(client, db_session):
     user = await _create_user(db_session, email="me@example.com")
@@ -113,6 +129,7 @@ async def test_me_without_token_returns_401(client):
 # ---------------------------------------------------------------------------
 # Role guards on findings
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_analyst_cannot_resolve_finding(client, db_session):
@@ -145,7 +162,9 @@ async def test_analyst_cannot_resolve_finding(client, db_session):
     db_session.add(finding)
     await db_session.flush()
 
-    analyst = await _create_user(db_session, email="analyst_role@example.com", role="analyst")
+    analyst = await _create_user(
+        db_session, email="analyst_role@example.com", role="analyst"
+    )
 
     resp = await client.patch(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}",
@@ -185,7 +204,9 @@ async def test_manager_can_resolve_finding(client, db_session):
     db_session.add(finding)
     await db_session.flush()
 
-    manager = await _create_user(db_session, email="manager_role@example.com", role="manager")
+    manager = await _create_user(
+        db_session, email="manager_role@example.com", role="manager"
+    )
 
     resp = await client.patch(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}",
@@ -199,6 +220,7 @@ async def test_manager_can_resolve_finding(client, db_session):
 # ---------------------------------------------------------------------------
 # Backward compatibility
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_backward_compat_x_tenant_id_header(client):

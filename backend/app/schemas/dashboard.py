@@ -5,7 +5,7 @@ class RecurringFinding(BaseModel):
     rule_id: str
     title: str
     severity: str
-    bundle_count: int       # how many distinct bundles this has appeared in
+    bundle_count: int  # how many distinct bundles this has appeared in
     total_occurrences: int  # total finding count across all bundles
 
 
@@ -14,9 +14,11 @@ class BundleHealthSummary(BaseModel):
     filename: str
     status: str
     uploaded_at: str
-    health_score: int           # 0-100
-    health_color: str           # "green" | "yellow" | "orange" | "red"
-    findings_by_severity: dict  # {"critical": 0, "high": 2, "medium": 3, "low": 1, "info": 0}
+    health_score: int  # 0-100
+    health_color: str  # "green" | "yellow" | "orange" | "red"
+    findings_by_severity: (
+        dict  # {"critical": 0, "high": 2, "medium": 3, "low": 1, "info": 0}
+    )
     open_findings: int
     total_findings: int
 
@@ -28,5 +30,7 @@ class DashboardStats(BaseModel):
     bundles_error: int
     total_open_findings: int
     findings_by_severity: dict  # aggregate across all bundles
-    most_recent_critical: list[dict]  # up to 5: {bundle_id, filename, finding_title, rule_id, created_at}
+    most_recent_critical: list[
+        dict
+    ]  # up to 5: {bundle_id, filename, finding_title, rule_id, created_at}
     bundles: list[BundleHealthSummary]  # all bundles with health scores

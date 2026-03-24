@@ -53,7 +53,9 @@ class FailedJobsRule(BaseRule):
                     failed.append(f"{namespace}/{name} (failed={failed_count})")
                     evidence_ids.append(job.id)
                 elif is_stuck:
-                    failed.append(f"{namespace}/{name} (stuck: 0 active, {succeeded}/{completions} succeeded)")
+                    failed.append(
+                        f"{namespace}/{name} (stuck: 0 active, {succeeded}/{completions} succeeded)"
+                    )
                     evidence_ids.append(job.id)
             except Exception:
                 continue

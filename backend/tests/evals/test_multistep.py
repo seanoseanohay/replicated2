@@ -7,6 +7,7 @@ steps. LLM-as-judge assesses whether the chain was traced correctly.
 
 Run with:  pytest -m eval tests/evals/test_multistep.py
 """
+
 import os
 
 import pytest
@@ -52,27 +53,31 @@ def test_multistep_service_503_trace_to_probe():
             raw_data={
                 "status": {
                     "phase": "Running",
-                    "containerStatuses": [{
-                        "name": "api",
-                        "ready": False,
-                        "state": {"running": {"startedAt": "2026-03-19T09:00:00Z"}},
-                        "restartCount": 0,
-                    }],
+                    "containerStatuses": [
+                        {
+                            "name": "api",
+                            "ready": False,
+                            "state": {"running": {"startedAt": "2026-03-19T09:00:00Z"}},
+                            "restartCount": 0,
+                        }
+                    ],
                     "conditions": [
                         {"type": "Ready", "status": "False"},
                         {"type": "ContainersReady", "status": "False"},
                     ],
                 },
                 "spec": {
-                    "containers": [{
-                        "name": "api",
-                        "readinessProbe": {
-                            "httpGet": {"path": "/health/ready", "port": 8080},
-                            "initialDelaySeconds": 5,
-                            "periodSeconds": 10,
-                            "failureThreshold": 3,
-                        },
-                    }]
+                    "containers": [
+                        {
+                            "name": "api",
+                            "readinessProbe": {
+                                "httpGet": {"path": "/health/ready", "port": 8080},
+                                "initialDelaySeconds": 5,
+                                "periodSeconds": 10,
+                                "failureThreshold": 3,
+                            },
+                        }
+                    ]
                 },
             },
         ),
@@ -142,25 +147,33 @@ def test_multistep_deployment_rollout_bad_configmap():
             namespace="production",
             raw_data={
                 "spec": {
-                    "containers": [{
-                        "name": "payment",
-                        "image": "payment-service:v2.0.0",
-                        "volumeMounts": [{"name": "config", "mountPath": "/etc/payment"}],
-                    }],
-                    "volumes": [{"name": "config", "configMap": {"name": "payment-config-v2"}}],
+                    "containers": [
+                        {
+                            "name": "payment",
+                            "image": "payment-service:v2.0.0",
+                            "volumeMounts": [
+                                {"name": "config", "mountPath": "/etc/payment"}
+                            ],
+                        }
+                    ],
+                    "volumes": [
+                        {"name": "config", "configMap": {"name": "payment-config-v2"}}
+                    ],
                 },
                 "status": {
-                    "containerStatuses": [{
-                        "name": "payment",
-                        "restartCount": 4,
-                        "state": {"waiting": {"reason": "CrashLoopBackOff"}},
-                        "lastState": {
-                            "terminated": {
-                                "exitCode": 1,
-                                "message": "Error: config file not found at /etc/payment/config.yaml",
-                            }
-                        },
-                    }]
+                    "containerStatuses": [
+                        {
+                            "name": "payment",
+                            "restartCount": 4,
+                            "state": {"waiting": {"reason": "CrashLoopBackOff"}},
+                            "lastState": {
+                                "terminated": {
+                                    "exitCode": 1,
+                                    "message": "Error: config file not found at /etc/payment/config.yaml",
+                                }
+                            },
+                        }
+                    ]
                 },
             },
         ),
@@ -207,24 +220,31 @@ def test_multistep_hpa_inactive_metrics_server_down():
                 "spec": {
                     "minReplicas": 2,
                     "maxReplicas": 10,
-                    "metrics": [{
-                        "type": "Resource",
-                        "resource": {"name": "cpu", "target": {"averageUtilization": 70}},
-                    }],
+                    "metrics": [
+                        {
+                            "type": "Resource",
+                            "resource": {
+                                "name": "cpu",
+                                "target": {"averageUtilization": 70},
+                            },
+                        }
+                    ],
                 },
                 "status": {
                     "currentReplicas": 2,
                     "desiredReplicas": 2,
-                    "conditions": [{
-                        "type": "ScalingActive",
-                        "status": "False",
-                        "reason": "FailedGetScale",
-                        "message": (
-                            "the HPA was unable to compute the replica count: "
-                            "failed to get cpu utilization: unable to get metrics "
-                            "for resource cpu: unable to fetch metrics from resource metrics API"
-                        ),
-                    }],
+                    "conditions": [
+                        {
+                            "type": "ScalingActive",
+                            "status": "False",
+                            "reason": "FailedGetScale",
+                            "message": (
+                                "the HPA was unable to compute the replica count: "
+                                "failed to get cpu utilization: unable to get metrics "
+                                "for resource cpu: unable to fetch metrics from resource metrics API"
+                            ),
+                        }
+                    ],
                 },
             },
         ),
@@ -235,11 +255,13 @@ def test_multistep_hpa_inactive_metrics_server_down():
             raw_data={
                 "status": {
                     "phase": "Running",
-                    "containerStatuses": [{
-                        "name": "metrics-server",
-                        "ready": False,
-                        "state": {"running": {"startedAt": "2026-03-19T09:00:00Z"}},
-                    }],
+                    "containerStatuses": [
+                        {
+                            "name": "metrics-server",
+                            "ready": False,
+                            "state": {"running": {"startedAt": "2026-03-19T09:00:00Z"}},
+                        }
+                    ],
                 }
             },
         ),
@@ -274,24 +296,33 @@ def test_multistep_cronjob_failing_missing_secret():
             namespace="ops",
             raw_data={
                 "spec": {
-                    "containers": [{
-                        "name": "backup",
-                        "image": "backup-tool:v1.2.0",
-                        "env": [{
-                            "name": "DB_PASSWORD",
-                            "valueFrom": {
-                                "secretKeyRef": {"name": "db-backup-creds", "key": "password"}
-                            },
-                        }],
-                    }]
+                    "containers": [
+                        {
+                            "name": "backup",
+                            "image": "backup-tool:v1.2.0",
+                            "env": [
+                                {
+                                    "name": "DB_PASSWORD",
+                                    "valueFrom": {
+                                        "secretKeyRef": {
+                                            "name": "db-backup-creds",
+                                            "key": "password",
+                                        }
+                                    },
+                                }
+                            ],
+                        }
+                    ]
                 },
                 "status": {
                     "phase": "Failed",
-                    "containerStatuses": [{
-                        "name": "backup",
-                        "state": {"terminated": {"exitCode": 1}},
-                        "restartCount": 0,
-                    }],
+                    "containerStatuses": [
+                        {
+                            "name": "backup",
+                            "state": {"terminated": {"exitCode": 1}},
+                            "restartCount": 0,
+                        }
+                    ],
                 },
             },
         ),
@@ -394,15 +425,24 @@ def test_multistep_ingress_404_label_mismatch():
             namespace="shop",
             raw_data={
                 "spec": {
-                    "rules": [{
-                        "host": "shop.example.com",
-                        "http": {
-                            "paths": [{
-                                "path": "/",
-                                "backend": {"service": {"name": "shop-svc", "port": {"number": 80}}},
-                            }]
-                        },
-                    }]
+                    "rules": [
+                        {
+                            "host": "shop.example.com",
+                            "http": {
+                                "paths": [
+                                    {
+                                        "path": "/",
+                                        "backend": {
+                                            "service": {
+                                                "name": "shop-svc",
+                                                "port": {"number": 80},
+                                            }
+                                        },
+                                    }
+                                ]
+                            },
+                        }
+                    ]
                 }
             },
         ),
@@ -507,22 +547,28 @@ def test_multistep_oomkilled_loop_increase_limits():
             namespace="ml",
             raw_data={
                 "status": {
-                    "containerStatuses": [{
-                        "name": "worker",
-                        "restartCount": 47,
-                        "state": {"waiting": {"reason": "CrashLoopBackOff"}},
-                        "lastState": {"terminated": {"exitCode": 137, "reason": "OOMKilled"}},
-                    }]
+                    "containerStatuses": [
+                        {
+                            "name": "worker",
+                            "restartCount": 47,
+                            "state": {"waiting": {"reason": "CrashLoopBackOff"}},
+                            "lastState": {
+                                "terminated": {"exitCode": 137, "reason": "OOMKilled"}
+                            },
+                        }
+                    ]
                 },
                 "spec": {
-                    "containers": [{
-                        "name": "worker",
-                        "image": "ml-worker:v2.1.0",
-                        "resources": {
-                            "requests": {"memory": "256Mi", "cpu": "1"},
-                            "limits": {"memory": "512Mi", "cpu": "2"},
-                        },
-                    }]
+                    "containers": [
+                        {
+                            "name": "worker",
+                            "image": "ml-worker:v2.1.0",
+                            "resources": {
+                                "requests": {"memory": "256Mi", "cpu": "1"},
+                                "limits": {"memory": "512Mi", "cpu": "2"},
+                            },
+                        }
+                    ]
                 },
             },
         ),
@@ -645,7 +691,9 @@ def test_multistep_rbac_denied_create_rolebinding():
                 },
                 "status": {
                     "phase": "Running",
-                    "containerStatuses": [{"name": "operator", "ready": True, "restartCount": 0}],
+                    "containerStatuses": [
+                        {"name": "operator", "ready": True, "restartCount": 0}
+                    ],
                 },
             },
         ),

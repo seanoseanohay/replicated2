@@ -56,9 +56,7 @@ def upgrade() -> None:
     op.create_index(
         "ix_findings_bundle_id_severity", "findings", ["bundle_id", "severity"]
     )
-    op.create_index(
-        "ix_findings_bundle_id_status", "findings", ["bundle_id", "status"]
-    )
+    op.create_index("ix_findings_bundle_id_status", "findings", ["bundle_id", "status"])
 
 
 def downgrade() -> None:

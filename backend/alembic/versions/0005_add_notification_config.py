@@ -21,9 +21,13 @@ def upgrade() -> None:
         "notification_configs",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, nullable=False),
         sa.Column("tenant_id", sa.String(128), nullable=False),
-        sa.Column("email_enabled", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "email_enabled", sa.Boolean(), nullable=False, server_default="false"
+        ),
         sa.Column("email_recipients", sa.String(2048), nullable=True),
-        sa.Column("slack_enabled", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "slack_enabled", sa.Boolean(), nullable=False, server_default="false"
+        ),
         sa.Column("slack_webhook_url", sa.String(512), nullable=True),
         sa.Column(
             "notify_on_severities",
@@ -45,13 +49,19 @@ def upgrade() -> None:
         ),
     )
 
-    op.create_index("ix_notification_configs_tenant_id", "notification_configs", ["tenant_id"])
+    op.create_index(
+        "ix_notification_configs_tenant_id", "notification_configs", ["tenant_id"]
+    )
     op.create_unique_constraint(
         "uq_notification_configs_tenant_id", "notification_configs", ["tenant_id"]
     )
 
 
 def downgrade() -> None:
-    op.drop_constraint("uq_notification_configs_tenant_id", "notification_configs", type_="unique")
-    op.drop_index("ix_notification_configs_tenant_id", table_name="notification_configs")
+    op.drop_constraint(
+        "uq_notification_configs_tenant_id", "notification_configs", type_="unique"
+    )
+    op.drop_index(
+        "ix_notification_configs_tenant_id", table_name="notification_configs"
+    )
     op.drop_table("notification_configs")

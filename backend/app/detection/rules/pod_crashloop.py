@@ -33,9 +33,7 @@ class PodCrashLoopRule(BaseRule):
                 for cs in container_statuses:
                     restart_count = cs.get("restartCount", 0) or 0
                     last_reason = (
-                        cs.get("lastState", {})
-                        .get("terminated", {})
-                        .get("reason", "")
+                        cs.get("lastState", {}).get("terminated", {}).get("reason", "")
                     )
                     if restart_count > 5 or last_reason == "CrashLoopBackOff":
                         affected_containers.append(
@@ -52,9 +50,7 @@ class PodCrashLoopRule(BaseRule):
                         f"{c['name']} (restarts={c['restartCount']}, reason={c['reason']})"
                         for c in affected_containers
                     )
-                    summary = (
-                        f"Pod {namespace}/{pod_name} has containers in crash loop: {details}"
-                    )
+                    summary = f"Pod {namespace}/{pod_name} has containers in crash loop: {details}"
                     findings.append(
                         self._make_finding(bundle_id, summary, evidence_ids=[pod.id])
                     )

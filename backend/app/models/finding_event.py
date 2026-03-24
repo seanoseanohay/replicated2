@@ -20,9 +20,7 @@ class FindingEvent(Base):
         nullable=False,
         index=True,
     )
-    user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
-    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     actor: Mapped[str] = mapped_column(String(256), nullable=False)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     old_value: Mapped[str | None] = mapped_column(String(512), nullable=True)

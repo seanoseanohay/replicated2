@@ -44,7 +44,9 @@ class DeploymentUnavailableRule(BaseRule):
                         f"{available_replicas}/{spec_replicas} replicas available"
                     )
                     findings.append(
-                        self._make_finding(bundle_id, summary, evidence_ids=[deployment.id])
+                        self._make_finding(
+                            bundle_id, summary, evidence_ids=[deployment.id]
+                        )
                     )
             except Exception:
                 continue

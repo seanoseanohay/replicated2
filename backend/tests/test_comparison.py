@@ -1,4 +1,5 @@
 """Tests for Phase 12 — Bundle Comparison."""
+
 import uuid
 
 import pytest
@@ -27,7 +28,9 @@ def _make_bundle(tenant_id: str = TENANT) -> Bundle:
     )
 
 
-def _make_finding(bundle_id: uuid.UUID, rule_id: str, severity: str = "high") -> Finding:
+def _make_finding(
+    bundle_id: uuid.UUID, rule_id: str, severity: str = "high"
+) -> Finding:
     return Finding(
         id=uuid.uuid4(),
         bundle_id=bundle_id,

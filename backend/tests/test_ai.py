@@ -1,6 +1,7 @@
 """
 Tests for AI explain endpoint.
 """
+
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -77,10 +78,12 @@ async def test_explain_returns_200_with_mocked_client(client, bundle, finding):
     mock_client = MagicMock()
     mock_client.messages.create.return_value = mock_response
 
-    with patch("app.core.config.settings") as mock_settings, \
-         patch("app.ai.explainer.get_client", return_value=mock_client), \
-         patch("app.api.routes.findings.settings") as route_settings, \
-         patch("app.ai.explainer.settings") as explainer_settings:
+    with (
+        patch("app.core.config.settings") as mock_settings,
+        patch("app.ai.explainer.get_client", return_value=mock_client),
+        patch("app.api.routes.findings.settings") as route_settings,
+        patch("app.ai.explainer.settings") as explainer_settings,
+    ):
         mock_settings.AI_ENABLED = True
         mock_settings.ANTHROPIC_API_KEY = "test-key"
         mock_settings.AI_MODEL = "claude-opus-4-6"

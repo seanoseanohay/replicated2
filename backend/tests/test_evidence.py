@@ -1,4 +1,5 @@
 """Tests for GET /api/v1/bundles/{bundle_id}/evidence endpoint."""
+
 import uuid
 
 import pytest
@@ -73,7 +74,11 @@ async def test_list_evidence_returns_records(client, db_session):
         namespace="default",
         name="app",
         source_path="pod-logs/default/my-pod/app.log",
-        raw_data={"lines": ["hello"], "total_lines": 1, "path": "pod-logs/default/my-pod/app.log"},
+        raw_data={
+            "lines": ["hello"],
+            "total_lines": 1,
+            "path": "pod-logs/default/my-pod/app.log",
+        },
     )
     db_session.add(ev1)
     db_session.add(ev2)
@@ -115,23 +120,27 @@ async def test_list_evidence_kind_filter(client, db_session):
     bundle_id = bundle.id
 
     for i in range(3):
-        db_session.add(Evidence(
-            bundle_id=bundle_id,
-            kind="Pod",
-            namespace="default",
-            name=f"pod-{i}",
-            source_path="cluster-resources/pods.json",
-            raw_data={},
-        ))
+        db_session.add(
+            Evidence(
+                bundle_id=bundle_id,
+                kind="Pod",
+                namespace="default",
+                name=f"pod-{i}",
+                source_path="cluster-resources/pods.json",
+                raw_data={},
+            )
+        )
     for i in range(2):
-        db_session.add(Evidence(
-            bundle_id=bundle_id,
-            kind="Node",
-            namespace=None,
-            name=f"node-{i}",
-            source_path="cluster-info/nodes.json",
-            raw_data={},
-        ))
+        db_session.add(
+            Evidence(
+                bundle_id=bundle_id,
+                kind="Node",
+                namespace=None,
+                name=f"node-{i}",
+                source_path="cluster-info/nodes.json",
+                raw_data={},
+            )
+        )
     await db_session.flush()
 
     # Filter by Pod

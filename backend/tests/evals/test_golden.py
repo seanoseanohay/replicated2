@@ -7,6 +7,7 @@ and keyword matching — no judge needed.
 
 Run with:  pytest -m eval tests/evals/test_golden.py
 """
+
 import os
 
 import pytest
@@ -42,28 +43,32 @@ def test_golden_crashloop_oomkilled():
             namespace="production",
             raw_data={
                 "status": {
-                    "containerStatuses": [{
-                        "name": "web",
-                        "restartCount": 18,
-                        "state": {"waiting": {"reason": "CrashLoopBackOff"}},
-                        "lastState": {
-                            "terminated": {
-                                "exitCode": 137,
-                                "reason": "OOMKilled",
-                                "finishedAt": "2026-03-19T09:45:00Z",
-                            }
-                        },
-                    }],
+                    "containerStatuses": [
+                        {
+                            "name": "web",
+                            "restartCount": 18,
+                            "state": {"waiting": {"reason": "CrashLoopBackOff"}},
+                            "lastState": {
+                                "terminated": {
+                                    "exitCode": 137,
+                                    "reason": "OOMKilled",
+                                    "finishedAt": "2026-03-19T09:45:00Z",
+                                }
+                            },
+                        }
+                    ],
                 },
                 "spec": {
-                    "containers": [{
-                        "name": "web",
-                        "image": "myapp:v2.3.1",
-                        "resources": {
-                            "limits": {"memory": "128Mi", "cpu": "500m"},
-                            "requests": {"memory": "64Mi", "cpu": "250m"},
-                        },
-                    }]
+                    "containers": [
+                        {
+                            "name": "web",
+                            "image": "myapp:v2.3.1",
+                            "resources": {
+                                "limits": {"memory": "128Mi", "cpu": "500m"},
+                                "requests": {"memory": "64Mi", "cpu": "250m"},
+                            },
+                        }
+                    ]
                 },
             },
         )
@@ -96,19 +101,23 @@ def test_golden_imagepullbackoff_bad_tag():
             raw_data={
                 "status": {
                     "phase": "Pending",
-                    "containerStatuses": [{
-                        "name": "api",
-                        "state": {
-                            "waiting": {
-                                "reason": "ImagePullBackOff",
-                                "message": 'Back-off pulling image "registry.example.com/api:v99.0.0"',
-                            }
-                        },
-                        "restartCount": 0,
-                    }],
+                    "containerStatuses": [
+                        {
+                            "name": "api",
+                            "state": {
+                                "waiting": {
+                                    "reason": "ImagePullBackOff",
+                                    "message": 'Back-off pulling image "registry.example.com/api:v99.0.0"',
+                                }
+                            },
+                            "restartCount": 0,
+                        }
+                    ],
                 },
                 "spec": {
-                    "containers": [{"name": "api", "image": "registry.example.com/api:v99.0.0"}]
+                    "containers": [
+                        {"name": "api", "image": "registry.example.com/api:v99.0.0"}
+                    ]
                 },
             },
         ),
@@ -155,7 +164,11 @@ def test_golden_node_notready_disk_pressure():
             raw_data={
                 "status": {
                     "conditions": [
-                        {"type": "DiskPressure", "status": "True", "message": "disk usage is above threshold"},
+                        {
+                            "type": "DiskPressure",
+                            "status": "True",
+                            "message": "disk usage is above threshold",
+                        },
                         {"type": "MemoryPressure", "status": "False"},
                         {"type": "PIDPressure", "status": "False"},
                         {
@@ -165,7 +178,11 @@ def test_golden_node_notready_disk_pressure():
                             "message": "PLEG is not healthy",
                         },
                     ],
-                    "allocatable": {"cpu": "4", "memory": "8Gi", "ephemeral-storage": "20Gi"},
+                    "allocatable": {
+                        "cpu": "4",
+                        "memory": "8Gi",
+                        "ephemeral-storage": "20Gi",
+                    },
                 }
             },
         )
@@ -247,12 +264,14 @@ def test_golden_deployment_unavailable():
                     "readyReplicas": 0,
                     "replicas": 3,
                     "unavailableReplicas": 3,
-                    "conditions": [{
-                        "type": "Available",
-                        "status": "False",
-                        "reason": "MinimumReplicasUnavailable",
-                        "message": "Deployment does not have minimum availability.",
-                    }],
+                    "conditions": [
+                        {
+                            "type": "Available",
+                            "status": "False",
+                            "reason": "MinimumReplicasUnavailable",
+                            "message": "Deployment does not have minimum availability.",
+                        }
+                    ],
                 },
             },
         )
@@ -291,8 +310,16 @@ def test_golden_resource_quota_exceeded():
                     }
                 },
                 "status": {
-                    "hard": {"pods": "20", "requests.cpu": "8", "requests.memory": "16Gi"},
-                    "used": {"pods": "20", "requests.cpu": "7900m", "requests.memory": "15900Mi"},
+                    "hard": {
+                        "pods": "20",
+                        "requests.cpu": "8",
+                        "requests.memory": "16Gi",
+                    },
+                    "used": {
+                        "pods": "20",
+                        "requests.cpu": "7900m",
+                        "requests.memory": "15900Mi",
+                    },
                 },
             },
         ),
@@ -392,20 +419,29 @@ def test_golden_hpa_maxed_out():
                     "scaleTargetRef": {"name": "web", "kind": "Deployment"},
                     "minReplicas": 3,
                     "maxReplicas": 20,
-                    "metrics": [{
-                        "type": "Resource",
-                        "resource": {"name": "cpu", "target": {"averageUtilization": 70}},
-                    }],
+                    "metrics": [
+                        {
+                            "type": "Resource",
+                            "resource": {
+                                "name": "cpu",
+                                "target": {"averageUtilization": 70},
+                            },
+                        }
+                    ],
                 },
                 "status": {
                     "currentReplicas": 20,
                     "desiredReplicas": 20,
-                    "currentMetrics": [{"resource": {"current": {"averageUtilization": 94}}}],
-                    "conditions": [{
-                        "type": "ScalingLimited",
-                        "status": "True",
-                        "reason": "TooManyReplicas",
-                    }],
+                    "currentMetrics": [
+                        {"resource": {"current": {"averageUtilization": 94}}}
+                    ],
+                    "conditions": [
+                        {
+                            "type": "ScalingLimited",
+                            "status": "True",
+                            "reason": "TooManyReplicas",
+                        }
+                    ],
                 },
             },
         )
@@ -442,13 +478,15 @@ def test_golden_pod_evicted_memory_pressure():
                     "message": "The node was low on resource: memory. Threshold quantity: 100Mi, available: 45Mi.",
                 },
                 "spec": {
-                    "containers": [{
-                        "name": "cache",
-                        "resources": {
-                            "requests": {"memory": "512Mi"},
-                            "limits": {"memory": "1Gi"},
-                        },
-                    }]
+                    "containers": [
+                        {
+                            "name": "cache",
+                            "resources": {
+                                "requests": {"memory": "512Mi"},
+                                "limits": {"memory": "1Gi"},
+                            },
+                        }
+                    ]
                 },
             },
         ),
@@ -504,11 +542,17 @@ def test_golden_missing_configmap_volume_mount():
                     "conditions": [{"type": "PodScheduled", "status": "True"}],
                 },
                 "spec": {
-                    "volumes": [{"name": "app-config", "configMap": {"name": "app-settings"}}],
-                    "containers": [{
-                        "name": "app",
-                        "volumeMounts": [{"name": "app-config", "mountPath": "/etc/config"}],
-                    }],
+                    "volumes": [
+                        {"name": "app-config", "configMap": {"name": "app-settings"}}
+                    ],
+                    "containers": [
+                        {
+                            "name": "app",
+                            "volumeMounts": [
+                                {"name": "app-config", "mountPath": "/etc/config"}
+                            ],
+                        }
+                    ],
                 },
             },
         ),

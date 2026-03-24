@@ -32,8 +32,10 @@ async def test_health_ready(client):
     mock_storage = MagicMock()
     mock_storage.ensure_bucket_exists = MagicMock()
 
-    with patch.dict("sys.modules", {"redis.asyncio": mock_redis_module}), \
-         patch("app.services.storage.storage_service", mock_storage):
+    with (
+        patch.dict("sys.modules", {"redis.asyncio": mock_redis_module}),
+        patch("app.services.storage.storage_service", mock_storage),
+    ):
         response = await client.get("/health/ready")
 
     # Should have a checks key regardless of status

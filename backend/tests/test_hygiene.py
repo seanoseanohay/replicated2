@@ -59,9 +59,7 @@ def test_detection_registry_imports_all_rules() -> None:
     rules_dir = APP_ROOT / "detection" / "rules"
     registry_path = APP_ROOT / "detection" / "registry.py"
 
-    rule_names = {
-        p.stem for p in rules_dir.glob("*.py") if p.name != "__init__.py"
-    }
+    rule_names = {p.stem for p in rules_dir.glob("*.py") if p.name != "__init__.py"}
     registry_text = registry_path.read_text()
 
     missing = [name for name in rule_names if name not in registry_text]

@@ -37,8 +37,10 @@ async def list_evidence(
 
     # Build base query
     base_query = select(Evidence).where(Evidence.bundle_id == bundle_id)
-    count_query = select(func.count()).select_from(Evidence).where(
-        Evidence.bundle_id == bundle_id
+    count_query = (
+        select(func.count())
+        .select_from(Evidence)
+        .where(Evidence.bundle_id == bundle_id)
     )
 
     if kind is not None:

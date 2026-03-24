@@ -8,6 +8,7 @@ def get_client() -> anthropic.Anthropic:
     if settings.LANGSMITH_API_KEY:
         try:
             from langsmith.wrappers import wrap_anthropic
+
             client = wrap_anthropic(client)
         except ImportError:
             pass

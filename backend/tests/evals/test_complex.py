@@ -7,6 +7,7 @@ the model recognises the complexity rather than oversimplifying.
 
 Run with:  pytest -m eval tests/evals/test_complex.py
 """
+
 import os
 
 import pytest
@@ -51,21 +52,32 @@ def test_complex_crashloop_ambiguous_oom_and_app_error():
             namespace="production",
             raw_data={
                 "status": {
-                    "containerStatuses": [{
-                        "name": "worker",
-                        "restartCount": 23,
-                        "state": {"waiting": {"reason": "CrashLoopBackOff"}},
-                        "lastState": {
-                            "terminated": {"exitCode": 1, "reason": "Error", "finishedAt": "2026-03-19T10:10:00Z"}
-                        },
-                    }],
+                    "containerStatuses": [
+                        {
+                            "name": "worker",
+                            "restartCount": 23,
+                            "state": {"waiting": {"reason": "CrashLoopBackOff"}},
+                            "lastState": {
+                                "terminated": {
+                                    "exitCode": 1,
+                                    "reason": "Error",
+                                    "finishedAt": "2026-03-19T10:10:00Z",
+                                }
+                            },
+                        }
+                    ],
                 },
                 "spec": {
-                    "containers": [{
-                        "name": "worker",
-                        "image": "worker:v3.1.0",
-                        "resources": {"limits": {"memory": "256Mi"}, "requests": {"memory": "128Mi"}},
-                    }]
+                    "containers": [
+                        {
+                            "name": "worker",
+                            "image": "worker:v3.1.0",
+                            "resources": {
+                                "limits": {"memory": "256Mi"},
+                                "requests": {"memory": "128Mi"},
+                            },
+                        }
+                    ]
                 },
             },
         ),
@@ -205,21 +217,40 @@ def test_complex_init_container_missing_secret():
             raw_data={
                 "status": {
                     "phase": "Pending",
-                    "initContainerStatuses": [{
-                        "name": "init-db-creds",
-                        "state": {"waiting": {"reason": "PodInitializing"}},
-                        "ready": False,
-                    }],
+                    "initContainerStatuses": [
+                        {
+                            "name": "init-db-creds",
+                            "state": {"waiting": {"reason": "PodInitializing"}},
+                            "ready": False,
+                        }
+                    ],
                     "containerStatuses": [],
                 },
                 "spec": {
-                    "initContainers": [{
-                        "name": "init-db-creds",
-                        "image": "busybox:1.35",
-                        "command": ["sh", "-c", "cp /secrets/db-password /config/db-password"],
-                        "volumeMounts": [{"name": "db-secret", "mountPath": "/secrets", "readOnly": True}],
-                    }],
-                    "volumes": [{"name": "db-secret", "secret": {"secretName": "postgres-credentials"}}],
+                    "initContainers": [
+                        {
+                            "name": "init-db-creds",
+                            "image": "busybox:1.35",
+                            "command": [
+                                "sh",
+                                "-c",
+                                "cp /secrets/db-password /config/db-password",
+                            ],
+                            "volumeMounts": [
+                                {
+                                    "name": "db-secret",
+                                    "mountPath": "/secrets",
+                                    "readOnly": True,
+                                }
+                            ],
+                        }
+                    ],
+                    "volumes": [
+                        {
+                            "name": "db-secret",
+                            "secret": {"secretName": "postgres-credentials"},
+                        }
+                    ],
                 },
             },
         ),
@@ -268,7 +299,10 @@ def test_complex_rolling_update_stuck_pdb():
             raw_data={
                 "spec": {
                     "replicas": 3,
-                    "strategy": {"type": "RollingUpdate", "rollingUpdate": {"maxUnavailable": 1}},
+                    "strategy": {
+                        "type": "RollingUpdate",
+                        "rollingUpdate": {"maxUnavailable": 1},
+                    },
                 },
                 "status": {
                     "replicas": 4,
@@ -328,13 +362,23 @@ def test_complex_networkpolicy_dns_blocked():
                 "spec": {
                     "podSelector": {},
                     "policyTypes": ["Ingress", "Egress"],
-                    "ingress": [{
-                        "from": [{"namespaceSelector": {"matchLabels": {"name": "ingress-nginx"}}}]
-                    }],
-                    "egress": [{
-                        "to": [{"ipBlock": {"cidr": "10.0.0.0/8"}}],
-                        "ports": [{"port": 443}],
-                    }],
+                    "ingress": [
+                        {
+                            "from": [
+                                {
+                                    "namespaceSelector": {
+                                        "matchLabels": {"name": "ingress-nginx"}
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    "egress": [
+                        {
+                            "to": [{"ipBlock": {"cidr": "10.0.0.0/8"}}],
+                            "ports": [{"port": 443}],
+                        }
+                    ],
                 }
             },
         ),
@@ -397,18 +441,20 @@ def test_complex_tls_cert_expired_webhook():
             name="app-validator",
             namespace="",
             raw_data={
-                "webhooks": [{
-                    "name": "validate.example.com",
-                    "clientConfig": {
-                        "service": {
-                            "name": "webhook-service",
-                            "namespace": "webhook-system",
-                            "port": 443,
-                        }
-                    },
-                    "failurePolicy": "Fail",
-                    "timeoutSeconds": 10,
-                }]
+                "webhooks": [
+                    {
+                        "name": "validate.example.com",
+                        "clientConfig": {
+                            "service": {
+                                "name": "webhook-service",
+                                "namespace": "webhook-system",
+                                "port": 443,
+                            }
+                        },
+                        "failurePolicy": "Fail",
+                        "timeoutSeconds": 10,
+                    }
+                ]
             },
         ),
     ]
@@ -443,17 +489,21 @@ def test_complex_etcd_latency_api_cascade():
             raw_data={
                 "status": {
                     "phase": "Running",
-                    "containerStatuses": [{"name": "etcd", "ready": True, "restartCount": 0}],
+                    "containerStatuses": [
+                        {"name": "etcd", "ready": True, "restartCount": 0}
+                    ],
                 },
                 "spec": {
-                    "containers": [{
-                        "name": "etcd",
-                        "command": [
-                            "etcd",
-                            "--data-dir=/var/lib/etcd",
-                            "--quota-backend-bytes=8589934592",
-                        ],
-                    }]
+                    "containers": [
+                        {
+                            "name": "etcd",
+                            "command": [
+                                "etcd",
+                                "--data-dir=/var/lib/etcd",
+                                "--quota-backend-bytes=8589934592",
+                            ],
+                        }
+                    ]
                 },
             },
         ),
@@ -508,11 +558,13 @@ def test_complex_pv_provisioner_down_multiclaim():
             raw_data={
                 "status": {
                     "phase": "Failed",
-                    "containerStatuses": [{
-                        "name": "ebs-plugin",
-                        "state": {"terminated": {"exitCode": 1, "reason": "Error"}},
-                        "restartCount": 5,
-                    }],
+                    "containerStatuses": [
+                        {
+                            "name": "ebs-plugin",
+                            "state": {"terminated": {"exitCode": 1, "reason": "Error"}},
+                            "restartCount": 5,
+                        }
+                    ],
                 }
             },
         ),
@@ -572,12 +624,14 @@ def test_complex_statefulset_mixed_pod_states():
                 "spec": {
                     "replicas": 3,
                     "serviceName": "kafka-headless",
-                    "volumeClaimTemplates": [{
-                        "spec": {
-                            "storageClassName": "fast-ssd",
-                            "resources": {"requests": {"storage": "100Gi"}},
+                    "volumeClaimTemplates": [
+                        {
+                            "spec": {
+                                "storageClassName": "fast-ssd",
+                                "resources": {"requests": {"storage": "100Gi"}},
+                            }
                         }
-                    }],
+                    ],
                 },
                 "status": {"readyReplicas": 2, "replicas": 3},
             },
@@ -589,15 +643,17 @@ def test_complex_statefulset_mixed_pod_states():
             raw_data={
                 "status": {
                     "phase": "Pending",
-                    "conditions": [{
-                        "type": "PodScheduled",
-                        "status": "False",
-                        "reason": "Unschedulable",
-                        "message": (
-                            "0/3 nodes are available: 1 Insufficient memory, "
-                            "2 node(s) had untolerated taint {dedicated: kafka}"
-                        ),
-                    }],
+                    "conditions": [
+                        {
+                            "type": "PodScheduled",
+                            "status": "False",
+                            "reason": "Unschedulable",
+                            "message": (
+                                "0/3 nodes are available: 1 Insufficient memory, "
+                                "2 node(s) had untolerated taint {dedicated: kafka}"
+                            ),
+                        }
+                    ],
                 }
             },
         ),
@@ -633,19 +689,28 @@ def test_complex_namespace_wide_cascading_failure():
             raw_data={
                 "status": {
                     "phase": "Running",
-                    "containerStatuses": [{
-                        "name": "api",
-                        "ready": False,
-                        "state": {"waiting": {"reason": "CrashLoopBackOff"}},
-                        "restartCount": 9,
-                    }],
+                    "containerStatuses": [
+                        {
+                            "name": "api",
+                            "ready": False,
+                            "state": {"waiting": {"reason": "CrashLoopBackOff"}},
+                            "restartCount": 9,
+                        }
+                    ],
                 },
                 "spec": {
-                    "containers": [{
-                        "name": "api",
-                        "image": "checkout:v1.5.0",
-                        "env": [{"name": "DB_HOST", "value": "postgres.checkout.svc.cluster.local"}],
-                    }]
+                    "containers": [
+                        {
+                            "name": "api",
+                            "image": "checkout:v1.5.0",
+                            "env": [
+                                {
+                                    "name": "DB_HOST",
+                                    "value": "postgres.checkout.svc.cluster.local",
+                                }
+                            ],
+                        }
+                    ]
                 },
             },
         ),

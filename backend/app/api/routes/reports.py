@@ -26,7 +26,9 @@ async def _get_bundle_for_tenant(
     )
     bundle = result.scalar_one_or_none()
     if bundle is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found"
+        )
     return bundle
 
 
@@ -37,7 +39,9 @@ async def _get_findings_and_counts(bundle_id: uuid.UUID, db: AsyncSession):
     findings = list(findings_result.scalars().all())
 
     count_result = await db.execute(
-        select(func.count()).select_from(Evidence).where(Evidence.bundle_id == bundle_id)
+        select(func.count())
+        .select_from(Evidence)
+        .where(Evidence.bundle_id == bundle_id)
     )
     evidence_count = count_result.scalar_one()
     return findings, {"total": evidence_count}
@@ -65,7 +69,9 @@ async def get_report_markdown(
     bundle = await _get_bundle_for_tenant(bundle_id, tenant_id, db)
     findings, evidence_counts = await _get_findings_and_counts(bundle_id, db)
     md = build_markdown_report(bundle, findings, evidence_counts)
-    logger.info("report_markdown_generated", bundle_id=str(bundle_id), tenant_id=tenant_id)
+    logger.info(
+        "report_markdown_generated", bundle_id=str(bundle_id), tenant_id=tenant_id
+    )
     return PlainTextResponse(
         content=md,
         headers={

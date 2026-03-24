@@ -14,7 +14,9 @@ class NotificationConfig(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    tenant_id: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(
+        String(128), unique=True, index=True, nullable=False
+    )
     email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     email_recipients: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     slack_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

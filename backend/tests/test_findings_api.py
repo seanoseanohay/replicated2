@@ -2,6 +2,7 @@
 Integration tests for the findings API endpoints.
 Uses the in-memory SQLite DB wired up in conftest.py.
 """
+
 import uuid
 
 import pytest

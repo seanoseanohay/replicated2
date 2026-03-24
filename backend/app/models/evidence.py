@@ -31,6 +31,4 @@ class Evidence(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    __table_args__ = (
-        Index("ix_evidence_bundle_id_kind", "bundle_id", "kind"),
-    )
+    __table_args__ = (Index("ix_evidence_bundle_id_kind", "bundle_id", "kind"),)

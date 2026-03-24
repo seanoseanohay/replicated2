@@ -61,7 +61,9 @@ async def get_dashboard(
 
     total_bundles = len(bundles)
     bundles_ready = sum(1 for b in bundles if b.status == "ready")
-    bundles_processing = sum(1 for b in bundles if b.status in ("uploaded", "processing"))
+    bundles_processing = sum(
+        1 for b in bundles if b.status in ("uploaded", "processing")
+    )
     bundles_error = sum(1 for b in bundles if b.status == "error")
 
     # Aggregate findings by severity across all bundles
@@ -102,13 +104,15 @@ async def get_dashboard(
 
             # Collect recent critical/high open findings
             if f.severity in ("critical", "high") and f.status != "resolved":
-                most_recent_critical.append({
-                    "bundle_id": str(bundle.id),
-                    "filename": bundle.original_filename,
-                    "finding_title": f.title,
-                    "rule_id": f.rule_id,
-                    "created_at": f.created_at.isoformat(),
-                })
+                most_recent_critical.append(
+                    {
+                        "bundle_id": str(bundle.id),
+                        "filename": bundle.original_filename,
+                        "finding_title": f.title,
+                        "rule_id": f.rule_id,
+                        "created_at": f.created_at.isoformat(),
+                    }
+                )
 
         health_score, health_color = compute_health_score(findings)
 

@@ -32,9 +32,7 @@ class OOMKilledRule(BaseRule):
                 oom_containers = []
                 for cs in container_statuses:
                     last_reason = (
-                        cs.get("lastState", {})
-                        .get("terminated", {})
-                        .get("reason", "")
+                        cs.get("lastState", {}).get("terminated", {}).get("reason", "")
                     )
                     if last_reason == "OOMKilled":
                         oom_containers.append(cs.get("name", "unknown"))
@@ -43,9 +41,7 @@ class OOMKilledRule(BaseRule):
                     namespace = pod.namespace or "default"
                     pod_name = pod.name
                     containers_str = ", ".join(oom_containers)
-                    summary = (
-                        f"Pod {namespace}/{pod_name} has OOMKilled containers: {containers_str}"
-                    )
+                    summary = f"Pod {namespace}/{pod_name} has OOMKilled containers: {containers_str}"
                     findings.append(
                         self._make_finding(bundle_id, summary, evidence_ids=[pod.id])
                     )

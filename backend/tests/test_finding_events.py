@@ -1,4 +1,5 @@
 """Tests for Phase 9 — Audit Trail & Finding Events."""
+
 import uuid
 
 import pytest
@@ -13,14 +14,24 @@ from app.models.user import User
 
 def _make_manager_token(user: User) -> dict:
     token = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role, "tenant_id": user.tenant_id}
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
     )
     return {"Authorization": f"Bearer {token}", "X-Tenant-ID": user.tenant_id}
 
 
 def _make_analyst_token(user: User) -> dict:
     token = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role, "tenant_id": user.tenant_id}
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
     )
     return {"Authorization": f"Bearer {token}", "X-Tenant-ID": user.tenant_id}
 
@@ -73,7 +84,9 @@ async def bundle_with_finding(db_session):
 
 
 @pytest.mark.asyncio
-async def test_patch_finding_creates_status_changed_event(client, db_session, manager, bundle_with_finding):
+async def test_patch_finding_creates_status_changed_event(
+    client, db_session, manager, bundle_with_finding
+):
     bundle, finding = bundle_with_finding
     headers = _make_manager_token(manager)
 
@@ -86,6 +99,7 @@ async def test_patch_finding_creates_status_changed_event(client, db_session, ma
 
     # Verify event was created
     from sqlalchemy import select
+
     result = await db_session.execute(
         select(FindingEvent).where(
             FindingEvent.finding_id == finding.id,
@@ -100,7 +114,9 @@ async def test_patch_finding_creates_status_changed_event(client, db_session, ma
 
 
 @pytest.mark.asyncio
-async def test_patch_finding_creates_note_added_event(client, db_session, manager, bundle_with_finding):
+async def test_patch_finding_creates_note_added_event(
+    client, db_session, manager, bundle_with_finding
+):
     bundle, finding = bundle_with_finding
     headers = _make_manager_token(manager)
 
@@ -112,6 +128,7 @@ async def test_patch_finding_creates_note_added_event(client, db_session, manage
     assert resp.status_code == 200
 
     from sqlalchemy import select
+
     result = await db_session.execute(
         select(FindingEvent).where(
             FindingEvent.finding_id == finding.id,
@@ -124,7 +141,9 @@ async def test_patch_finding_creates_note_added_event(client, db_session, manage
 
 
 @pytest.mark.asyncio
-async def test_get_events_returns_correct_history(client, db_session, manager, bundle_with_finding):
+async def test_get_events_returns_correct_history(
+    client, db_session, manager, bundle_with_finding
+):
     bundle, finding = bundle_with_finding
     headers = _make_manager_token(manager)
 

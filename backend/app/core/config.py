@@ -4,9 +4,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/bundleanalyzer"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/bundleanalyzer"
+    )
     REDIS_URL: str = "redis://localhost:6379/0"
     S3_ENDPOINT_URL: str = "http://localhost:9000"
     S3_ACCESS_KEY: str = "minioadmin"
@@ -18,11 +22,11 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     AI_ENABLED: bool = False
     AI_MODEL: str = "claude-haiku-4-5-20251001"
-    CORS_ALLOWED_ORIGINS: str = "*"          # comma-separated or "*"
+    CORS_ALLOWED_ORIGINS: str = "*"  # comma-separated or "*"
     DB_POOL_SIZE: int = 5
     DB_POOL_OVERFLOW: int = 10
-    RATE_LIMIT_UPLOAD: str = "10/minute"     # slowapi format
-    RATE_LIMIT_AI: str = "20/minute"         # slowapi format
+    RATE_LIMIT_UPLOAD: str = "10/minute"  # slowapi format
+    RATE_LIMIT_AI: str = "20/minute"  # slowapi format
     JWT_SECRET_KEY: str = "dev-jwt-secret-change-in-prod"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
@@ -41,8 +45,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def check_secret_key(self):
-        if self.APP_ENV not in ("development", "test") and self.SECRET_KEY == "dev-secret-key-change-in-prod":
-            warnings.warn("SECRET_KEY is set to the default dev value in a non-development environment!", stacklevel=2)
+        if (
+            self.APP_ENV not in ("development", "test")
+            and self.SECRET_KEY == "dev-secret-key-change-in-prod"
+        ):
+            warnings.warn(
+                "SECRET_KEY is set to the default dev value in a non-development environment!",
+                stacklevel=2,
+            )
         return self
 
     def get_cors_origins(self) -> list[str]:

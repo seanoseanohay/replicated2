@@ -31,6 +31,6 @@ class FindingListResponse(BaseModel):
 
 
 class FindingUpdate(BaseModel):
-    status: str | None = None        # open | acknowledged | resolved
+    status: str | None = None  # open | acknowledged | resolved
     reviewer_notes: str | None = None
     reviewed_by: str | None = None

@@ -43,13 +43,20 @@ async def test_upload_bundle(client):
 
     file_content = make_gzip_bytes(b"fake tar.gz content for testing")
 
-    with patch("app.api.routes.bundles.storage_service", mock_storage), patch(
-        "app.api.routes.bundles.process_bundle"
-    ) as mock_celery_task:
+    with (
+        patch("app.api.routes.bundles.storage_service", mock_storage),
+        patch("app.api.routes.bundles.process_bundle") as mock_celery_task,
+    ):
         mock_celery_task.delay = MagicMock()
         response = await client.post(
             "/api/v1/bundles",
-            files={"file": ("test-bundle.tar.gz", io.BytesIO(file_content), "application/gzip")},
+            files={
+                "file": (
+                    "test-bundle.tar.gz",
+                    io.BytesIO(file_content),
+                    "application/gzip",
+                )
+            },
             headers={"X-Tenant-ID": "test-tenant"},
         )
 
@@ -64,18 +71,23 @@ async def test_upload_bundle(client):
 @pytest.mark.asyncio
 async def test_upload_and_retrieve_bundle(client):
     mock_storage = MagicMock()
-    mock_storage.upload_bundle.return_value = "tenant-a/20240101000000-abcd1234-bundle.tar.gz"
+    mock_storage.upload_bundle.return_value = (
+        "tenant-a/20240101000000-abcd1234-bundle.tar.gz"
+    )
 
     file_content = make_gzip_bytes(b"support bundle data")
     bundle_id = None
 
-    with patch("app.api.routes.bundles.storage_service", mock_storage), patch(
-        "app.api.routes.bundles.process_bundle"
-    ) as mock_task:
+    with (
+        patch("app.api.routes.bundles.storage_service", mock_storage),
+        patch("app.api.routes.bundles.process_bundle") as mock_task,
+    ):
         mock_task.delay = MagicMock()
         upload_resp = await client.post(
             "/api/v1/bundles",
-            files={"file": ("bundle.tar.gz", io.BytesIO(file_content), "application/gzip")},
+            files={
+                "file": ("bundle.tar.gz", io.BytesIO(file_content), "application/gzip")
+            },
             headers={"X-Tenant-ID": "tenant-a"},
         )
         assert upload_resp.status_code == 201
@@ -96,13 +108,16 @@ async def test_tenant_isolation(client):
 
     file_content = make_gzip_bytes(b"tenant x data")
 
-    with patch("app.api.routes.bundles.storage_service", mock_storage), patch(
-        "app.api.routes.bundles.process_bundle"
-    ) as mock_task:
+    with (
+        patch("app.api.routes.bundles.storage_service", mock_storage),
+        patch("app.api.routes.bundles.process_bundle") as mock_task,
+    ):
         mock_task.delay = MagicMock()
         upload_resp = await client.post(
             "/api/v1/bundles",
-            files={"file": ("bundle.tar.gz", io.BytesIO(file_content), "application/gzip")},
+            files={
+                "file": ("bundle.tar.gz", io.BytesIO(file_content), "application/gzip")
+            },
             headers={"X-Tenant-ID": "tenant-x"},
         )
         bundle_id = upload_resp.json()["id"]
@@ -122,13 +137,16 @@ async def test_upload_invalid_magic_bytes(client):
 
     file_content = b"this is not an archive at all"
 
-    with patch("app.api.routes.bundles.storage_service", mock_storage), patch(
-        "app.api.routes.bundles.process_bundle"
-    ) as mock_task:
+    with (
+        patch("app.api.routes.bundles.storage_service", mock_storage),
+        patch("app.api.routes.bundles.process_bundle") as mock_task,
+    ):
         mock_task.delay = MagicMock()
         response = await client.post(
             "/api/v1/bundles",
-            files={"file": ("bundle.tar.gz", io.BytesIO(file_content), "application/gzip")},
+            files={
+                "file": ("bundle.tar.gz", io.BytesIO(file_content), "application/gzip")
+            },
             headers={"X-Tenant-ID": "tenant-z"},
         )
 
@@ -147,13 +165,16 @@ async def test_delete_bundle(client, manager_user):
     bundle_id = None
     mgr_headers = make_manager_headers(manager_user)
 
-    with patch("app.api.routes.bundles.storage_service", mock_storage), patch(
-        "app.api.routes.bundles.process_bundle"
-    ) as mock_task:
+    with (
+        patch("app.api.routes.bundles.storage_service", mock_storage),
+        patch("app.api.routes.bundles.process_bundle") as mock_task,
+    ):
         mock_task.delay = MagicMock()
         upload_resp = await client.post(
             "/api/v1/bundles",
-            files={"file": ("bundle.tar.gz", io.BytesIO(file_content), "application/gzip")},
+            files={
+                "file": ("bundle.tar.gz", io.BytesIO(file_content), "application/gzip")
+            },
             headers=mgr_headers,
         )
         assert upload_resp.status_code == 201
@@ -166,9 +187,7 @@ async def test_delete_bundle(client, manager_user):
     assert del_resp.status_code == 204
 
     # Bundle should be gone
-    get_resp = await client.get(
-        f"/api/v1/bundles/{bundle_id}", headers=mgr_headers
-    )
+    get_resp = await client.get(f"/api/v1/bundles/{bundle_id}", headers=mgr_headers)
     assert get_resp.status_code == 404
 
 
@@ -191,13 +210,16 @@ async def test_delete_bundle_tenant_isolation(client, manager_user):
     file_content = make_gzip_bytes(b"owned bundle")
     mgr_headers = make_manager_headers(manager_user)
 
-    with patch("app.api.routes.bundles.storage_service", mock_storage), patch(
-        "app.api.routes.bundles.process_bundle"
-    ) as mock_task:
+    with (
+        patch("app.api.routes.bundles.storage_service", mock_storage),
+        patch("app.api.routes.bundles.process_bundle") as mock_task,
+    ):
         mock_task.delay = MagicMock()
         upload_resp = await client.post(
             "/api/v1/bundles",
-            files={"file": ("bundle.tar.gz", io.BytesIO(file_content), "application/gzip")},
+            files={
+                "file": ("bundle.tar.gz", io.BytesIO(file_content), "application/gzip")
+            },
             headers=mgr_headers,
         )
         assert upload_resp.status_code == 201

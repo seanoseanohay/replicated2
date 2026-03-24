@@ -26,6 +26,7 @@ async def _bootstrap_admin() -> None:
     from app.core.database import AsyncSessionLocal
     from app.core.auth import hash_password
     from app.models.user import User
+
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             _select(User).where(

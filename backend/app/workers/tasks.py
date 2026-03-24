@@ -24,8 +24,8 @@ celery_app.conf.update(
     task_track_started=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
-    task_soft_time_limit=540,   # seconds — raises SoftTimeLimitExceeded
-    task_time_limit=600,        # hard kill
+    task_soft_time_limit=540,  # seconds — raises SoftTimeLimitExceeded
+    task_time_limit=600,  # hard kill
     task_reject_on_worker_lost=True,
     beat_schedule={
         "cleanup-stuck-bundles": {
@@ -40,7 +40,9 @@ log = logging.getLogger(__name__)
 
 def _make_sync_session() -> tuple[Engine, Session]:
     """Create a synchronous SQLAlchemy engine + session for use inside Celery tasks."""
-    sync_url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    sync_url = settings.DATABASE_URL.replace(
+        "postgresql+asyncpg://", "postgresql+psycopg2://"
+    )
     engine = create_engine(sync_url, pool_pre_ping=True)
     SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
     return engine, SessionLocal()
@@ -83,16 +85,21 @@ def process_bundle(self, bundle_id: str) -> dict:
 
             # 4. Run all parsers
             evidence_list = run_all_parsers(bundle_root, uuid.UUID(bundle_id))
-            log.info(f"Parsed {len(evidence_list)} evidence records for bundle {bundle_id}")
+            log.info(
+                f"Parsed {len(evidence_list)} evidence records for bundle {bundle_id}"
+            )
 
         # 5. Bulk insert evidence
         if evidence_list:
             session.bulk_save_objects(evidence_list)
             session.commit()
-            log.info(f"Inserted {len(evidence_list)} evidence records for bundle {bundle_id}")
+            log.info(
+                f"Inserted {len(evidence_list)} evidence records for bundle {bundle_id}"
+            )
 
         # 6. Run detection rules
         from app.detection.registry import run_all_rules
+
         findings = run_all_rules(uuid.UUID(bundle_id), session)
         if findings:
             # add_all + flush populates f.id (uuid.uuid4 default) back onto Python objects
@@ -104,6 +111,7 @@ def process_bundle(self, bundle_id: str) -> dict:
             # Record "created" events for all findings
             try:
                 from app.models.finding_event import FindingEvent
+
                 created_events = [
                     FindingEvent(
                         finding_id=f.id,
@@ -123,6 +131,7 @@ def process_bundle(self, bundle_id: str) -> dict:
         # 7. Auto-explain findings with AI (best-effort)
         try:
             from app.ai.explainer import auto_explain_bundle
+
             explained = auto_explain_bundle(bundle_id, session)
             if explained:
                 log.info(f"Auto-explained {explained} findings for bundle {bundle_id}")
@@ -132,9 +141,12 @@ def process_bundle(self, bundle_id: str) -> dict:
         # 8. Send notifications (best-effort)
         try:
             from app.services.notifications import notify_bundle_findings
+
             notify_bundle_findings(bundle_id, session)
         except Exception as notif_exc:
-            log.warning(f"Notification delivery failed for bundle {bundle_id}: {notif_exc}")
+            log.warning(
+                f"Notification delivery failed for bundle {bundle_id}: {notif_exc}"
+            )
 
         # 9. Mark as ready
         bundle.status = "ready"
@@ -173,7 +185,9 @@ def process_bundle(self, bundle_id: str) -> dict:
                 bundle.error_message = str(exc)[:2048]
                 session.commit()
         except Exception as inner_exc:
-            log.error(f"Failed to update error status for bundle {bundle_id}: {inner_exc}")
+            log.error(
+                f"Failed to update error status for bundle {bundle_id}: {inner_exc}"
+            )
         raise self.retry(exc=exc, countdown=5)
     finally:
         session.close()
@@ -202,20 +216,26 @@ def reanalyze_bundle(self, bundle_id: str) -> dict:
         session.commit()
 
         # Delete old findings (cascades to events/comments via DB)
-        session.query(Finding).filter(Finding.bundle_id == uuid.UUID(bundle_id)).delete()
+        session.query(Finding).filter(
+            Finding.bundle_id == uuid.UUID(bundle_id)
+        ).delete()
         session.commit()
 
         # Re-run detection rules on existing evidence
         from app.detection.registry import run_all_rules
+
         findings = run_all_rules(uuid.UUID(bundle_id), session)
         if findings:
             session.add_all(findings)
             session.flush()
             session.commit()
-            log.info(f"Reanalysis inserted {len(findings)} findings for bundle {bundle_id}")
+            log.info(
+                f"Reanalysis inserted {len(findings)} findings for bundle {bundle_id}"
+            )
 
             try:
                 from app.models.finding_event import FindingEvent
+
                 created_events = [
                     FindingEvent(
                         finding_id=f.id,
@@ -235,6 +255,7 @@ def reanalyze_bundle(self, bundle_id: str) -> dict:
         # Auto-explain findings with AI (best-effort)
         try:
             from app.ai.explainer import auto_explain_bundle
+
             explained = auto_explain_bundle(bundle_id, session)
             if explained:
                 log.info(f"Auto-explained {explained} findings for bundle {bundle_id}")
@@ -275,7 +296,9 @@ def reanalyze_bundle(self, bundle_id: str) -> dict:
                 bundle.error_message = str(exc)[:2048]
                 session.commit()
         except Exception as inner_exc:
-            log.error(f"Failed to update error status for bundle {bundle_id}: {inner_exc}")
+            log.error(
+                f"Failed to update error status for bundle {bundle_id}: {inner_exc}"
+            )
         raise self.retry(exc=exc, countdown=5)
     finally:
         session.close()
@@ -293,12 +316,17 @@ def cleanup_stuck_bundles() -> dict:
         cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
         # Find bundles stuck in processing
         from sqlalchemy import and_
-        stuck = session.query(Bundle).filter(
-            and_(
-                Bundle.status == "processing",
-                Bundle.updated_at < cutoff,
+
+        stuck = (
+            session.query(Bundle)
+            .filter(
+                and_(
+                    Bundle.status == "processing",
+                    Bundle.updated_at < cutoff,
+                )
             )
-        ).all()
+            .all()
+        )
         count = len(stuck)
         for bundle in stuck:
             bundle.status = "error"

@@ -2,6 +2,7 @@
 Unit tests for detection rules.
 Uses an in-memory SQLite database (no Celery or Postgres needed).
 """
+
 import uuid
 
 import pytest
@@ -100,6 +101,7 @@ def make_pvc_evidence(bundle_id, name, namespace="default", raw_data=None):
 
 # ── PodCrashLoopRule ──────────────────────────────────────────────────────────
 
+
 class TestPodCrashLoopRule:
     def test_fires_for_high_restart_count(self, session):
         bundle_id = make_bundle_id()
@@ -154,9 +156,7 @@ class TestPodCrashLoopRule:
                         {
                             "name": "app",
                             "restartCount": 1,
-                            "lastState": {
-                                "terminated": {"reason": "CrashLoopBackOff"}
-                            },
+                            "lastState": {"terminated": {"reason": "CrashLoopBackOff"}},
                         }
                     ]
                 }
@@ -172,6 +172,7 @@ class TestPodCrashLoopRule:
 
 # ── OOMKilledRule ─────────────────────────────────────────────────────────────
 
+
 class TestOOMKilledRule:
     def test_fires_for_oomkilled_container(self, session):
         bundle_id = make_bundle_id()
@@ -184,9 +185,7 @@ class TestOOMKilledRule:
                         {
                             "name": "app",
                             "restartCount": 3,
-                            "lastState": {
-                                "terminated": {"reason": "OOMKilled"}
-                            },
+                            "lastState": {"terminated": {"reason": "OOMKilled"}},
                         }
                     ]
                 }
@@ -223,19 +222,14 @@ class TestOOMKilledRule:
 
 # ── NodeNotReadyRule ──────────────────────────────────────────────────────────
 
+
 class TestNodeNotReadyRule:
     def test_fires_for_not_ready_node(self, session):
         bundle_id = make_bundle_id()
         node = make_node_evidence(
             bundle_id,
             "node-1",
-            raw_data={
-                "status": {
-                    "conditions": [
-                        {"type": "Ready", "status": "False"}
-                    ]
-                }
-            },
+            raw_data={"status": {"conditions": [{"type": "Ready", "status": "False"}]}},
         )
         session.add(node)
         session.commit()
@@ -251,13 +245,7 @@ class TestNodeNotReadyRule:
         node = make_node_evidence(
             bundle_id,
             "node-ready",
-            raw_data={
-                "status": {
-                    "conditions": [
-                        {"type": "Ready", "status": "True"}
-                    ]
-                }
-            },
+            raw_data={"status": {"conditions": [{"type": "Ready", "status": "True"}]}},
         )
         session.add(node)
         session.commit()
@@ -268,6 +256,7 @@ class TestNodeNotReadyRule:
 
 
 # ── ImagePullErrorRule ────────────────────────────────────────────────────────
+
 
 class TestImagePullErrorRule:
     def test_fires_for_imagepullbackoff(self, session):
@@ -282,9 +271,7 @@ class TestImagePullErrorRule:
                             "name": "app",
                             "image": "bad-image:latest",
                             "restartCount": 0,
-                            "state": {
-                                "waiting": {"reason": "ImagePullBackOff"}
-                            },
+                            "state": {"waiting": {"reason": "ImagePullBackOff"}},
                             "lastState": {},
                         }
                     ]
@@ -311,9 +298,7 @@ class TestImagePullErrorRule:
                             "name": "app",
                             "image": "missing:tag",
                             "restartCount": 0,
-                            "state": {
-                                "waiting": {"reason": "ErrImagePull"}
-                            },
+                            "state": {"waiting": {"reason": "ErrImagePull"}},
                             "lastState": {},
                         }
                     ]
@@ -330,6 +315,7 @@ class TestImagePullErrorRule:
 
 # ── WarningEventsRule ─────────────────────────────────────────────────────────
 
+
 class TestWarningEventsRule:
     def test_fires_when_more_than_10_warning_events(self, session):
         bundle_id = make_bundle_id()
@@ -337,7 +323,11 @@ class TestWarningEventsRule:
             event = make_event_evidence(
                 bundle_id,
                 f"event-{i}",
-                raw_data={"type": "Warning", "reason": "BackOff", "message": "back-off"},
+                raw_data={
+                    "type": "Warning",
+                    "reason": "BackOff",
+                    "message": "back-off",
+                },
             )
             session.add(event)
         session.commit()
@@ -364,6 +354,7 @@ class TestWarningEventsRule:
 
 
 # ── PodPendingRule ────────────────────────────────────────────────────────────
+
 
 class TestPodPendingRule:
     def test_fires_for_pending_pod(self, session):
@@ -397,6 +388,7 @@ class TestPodPendingRule:
 
 
 # ── NodePressureRule ──────────────────────────────────────────────────────────
+
 
 def make_deployment_evidence(bundle_id, name, namespace="default", raw_data=None):
     e = Evidence(
@@ -490,6 +482,7 @@ class TestNodePressureRule:
 
 # ── DeploymentUnavailableRule ─────────────────────────────────────────────────
 
+
 class TestDeploymentUnavailableRule:
     def test_fires_when_available_replicas_less_than_desired(self, session):
         bundle_id = make_bundle_id()
@@ -531,6 +524,7 @@ class TestDeploymentUnavailableRule:
 
 
 # ── StatefulSetUnavailableRule ────────────────────────────────────────────────
+
 
 class TestStatefulSetUnavailableRule:
     def test_fires_when_ready_replicas_less_than_desired(self, session):
@@ -574,6 +568,7 @@ class TestStatefulSetUnavailableRule:
 
 # ── HPAMaxedRule ──────────────────────────────────────────────────────────────
 
+
 class TestHPAMaxedRule:
     def test_fires_when_current_replicas_equals_max_replicas(self, session):
         bundle_id = make_bundle_id()
@@ -616,6 +611,7 @@ class TestHPAMaxedRule:
 
 
 # ── WarningEventReasonsRule ───────────────────────────────────────────────────
+
 
 class TestWarningEventReasonsRule:
     def test_fires_for_failed_scheduling_with_count_at_threshold(self, session):

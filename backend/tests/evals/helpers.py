@@ -1,6 +1,7 @@
 """
 Shared utilities for LLM eval tests.
 """
+
 import json
 import types
 
@@ -11,6 +12,7 @@ from app.core.config import settings
 # ---------------------------------------------------------------------------
 # Lightweight stand-ins for ORM objects
 # ---------------------------------------------------------------------------
+
 
 def make_finding(title: str, severity: str, summary: str, rule_id: str = "eval_rule"):
     """Create a minimal Finding-like namespace for eval testing."""
@@ -36,7 +38,10 @@ def make_evidence(kind: str, name: str, namespace: str, raw_data: dict):
 # Structural / keyword assertions
 # ---------------------------------------------------------------------------
 
-def assert_has_sections(explanation: str, remediation: str, min_words: int = 15) -> None:
+
+def assert_has_sections(
+    explanation: str, remediation: str, min_words: int = 15
+) -> None:
     """Both explanation and remediation must be non-empty and substantive."""
     assert explanation and len(explanation.split()) >= min_words, (
         f"Explanation too short or empty ({len(explanation.split()) if explanation else 0} words, "
@@ -64,6 +69,7 @@ def assert_no_text(text: str, forbidden: list[str]) -> None:
 # ---------------------------------------------------------------------------
 # LLM-as-judge
 # ---------------------------------------------------------------------------
+
 
 def judge_response(
     finding_context: str,

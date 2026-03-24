@@ -1,4 +1,5 @@
 """Tests for admin routes — user management and stats (Phase 7+)."""
+
 import uuid
 
 import pytest
@@ -10,6 +11,7 @@ from app.models.user import User
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 async def _create_user(db_session, email, role="analyst", tenant_id="default") -> User:
     user = User(
@@ -28,7 +30,12 @@ async def _create_user(db_session, email, role="analyst", tenant_id="default") -
 
 def _headers(user: User) -> dict:
     token = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role, "tenant_id": user.tenant_id}
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
     )
     return {"Authorization": f"Bearer {token}"}
 
@@ -36,6 +43,7 @@ def _headers(user: User) -> dict:
 # ---------------------------------------------------------------------------
 # Admin guard
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_list_users_requires_admin(client, db_session) -> None:
@@ -48,7 +56,9 @@ async def test_list_users_requires_admin(client, db_session) -> None:
 @pytest.mark.asyncio
 async def test_manager_cannot_access_admin(client, db_session) -> None:
     """A manager (not admin) cannot access admin routes."""
-    manager = await _create_user(db_session, "manager-noadmin@example.com", role="manager")
+    manager = await _create_user(
+        db_session, "manager-noadmin@example.com", role="manager"
+    )
     resp = await client.get("/api/v1/admin/users", headers=_headers(manager))
     assert resp.status_code == 403
 
@@ -65,6 +75,7 @@ async def test_admin_can_list_users(client, db_session) -> None:
 # ---------------------------------------------------------------------------
 # Role update
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_admin_can_update_user_role(client, db_session) -> None:
@@ -99,6 +110,7 @@ async def test_admin_role_update_invalid_role(client, db_session) -> None:
 # Status update
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_admin_can_deactivate_user(client, db_session) -> None:
     """Admin can deactivate another user account."""
@@ -131,6 +143,7 @@ async def test_admin_cannot_deactivate_self(client, db_session) -> None:
 # Stats
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_admin_stats_returns_counts(client, db_session) -> None:
     """Admin stats endpoint returns total_users, total_bundles, total_findings."""
@@ -149,6 +162,7 @@ async def test_admin_stats_returns_counts(client, db_session) -> None:
 # Refresh token
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_refresh_token_returns_new_access_token(client, db_session) -> None:
     """POST /auth/refresh with a valid refresh token returns new tokens."""
@@ -156,7 +170,12 @@ async def test_refresh_token_returns_new_access_token(client, db_session) -> Non
 
     user = await _create_user(db_session, "refresh@example.com", role="analyst")
     refresh_token = create_refresh_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role, "tenant_id": user.tenant_id}
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
     )
 
     resp = await client.post(
@@ -174,7 +193,12 @@ async def test_refresh_token_rejects_access_token(client, db_session) -> None:
     """Using an access token as a refresh token should return 401."""
     user = await _create_user(db_session, "refreshwrong@example.com", role="analyst")
     access_token = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role, "tenant_id": user.tenant_id}
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
     )
 
     resp = await client.post(

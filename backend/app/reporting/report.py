@@ -37,9 +37,11 @@ def build_report(bundle, findings, evidence_counts: dict) -> dict:
             }
             for f in sorted(
                 findings,
-                key=lambda f: SEVERITY_ORDER.index(f.severity)
-                if f.severity in SEVERITY_ORDER
-                else len(SEVERITY_ORDER),
+                key=lambda f: (
+                    SEVERITY_ORDER.index(f.severity)
+                    if f.severity in SEVERITY_ORDER
+                    else len(SEVERITY_ORDER)
+                ),
             )
         ],
     }

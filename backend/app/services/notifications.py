@@ -1,4 +1,5 @@
 """Notification service — email and Slack alerts for critical/high findings."""
+
 import logging
 import smtplib
 import urllib.request
@@ -54,7 +55,9 @@ def send_email_notification(config, findings, bundle) -> None:
                 server.starttls()
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.sendmail(settings.SMTP_FROM, recipients, msg.as_string())
-        log.info(f"Email notification sent for bundle {bundle.id} to {len(recipients)} recipients")
+        log.info(
+            f"Email notification sent for bundle {bundle.id} to {len(recipients)} recipients"
+        )
     except Exception as exc:
         log.error(f"Failed to send email notification: {exc}")
 
@@ -117,6 +120,7 @@ def notify_bundle_findings(bundle_id: str, session) -> None:
     from app.models.notification_config import NotificationConfig
 
     import uuid as _uuid
+
     try:
         bundle = session.get(Bundle, _uuid.UUID(str(bundle_id)))
     except Exception:
@@ -139,7 +143,9 @@ def notify_bundle_findings(bundle_id: str, session) -> None:
     if not config.email_enabled and not config.slack_enabled:
         return
 
-    severities = [s.strip() for s in config.notify_on_severities.split(",") if s.strip()]
+    severities = [
+        s.strip() for s in config.notify_on_severities.split(",") if s.strip()
+    ]
     if not severities:
         return
 
@@ -154,7 +160,9 @@ def notify_bundle_findings(bundle_id: str, session) -> None:
     )
 
     if not findings:
-        log.debug(f"No findings matching severities {severities} for bundle {bundle_id}")
+        log.debug(
+            f"No findings matching severities {severities} for bundle {bundle_id}"
+        )
         return
 
     if config.email_enabled:

@@ -1,4 +1,5 @@
 """Tests for Phase 10 — Notifications."""
+
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -11,7 +12,12 @@ from app.models.user import User
 
 def _token(user: User) -> dict:
     tok = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role, "tenant_id": user.tenant_id}
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
     )
     return {"Authorization": f"Bearer {tok}", "X-Tenant-ID": user.tenant_id}
 
@@ -86,12 +92,17 @@ async def test_post_config_updates_for_manager(client, db_session, manager_notif
 
 
 @pytest.mark.asyncio
-async def test_get_config_returns_existing_for_manager(client, db_session, manager_notif):
+async def test_get_config_returns_existing_for_manager(
+    client, db_session, manager_notif
+):
     headers = _token(manager_notif)
     # Create config
     await client.post(
         "/api/v1/notifications/config",
-        json={"slack_enabled": True, "slack_webhook_url": "https://hooks.slack.com/test"},
+        json={
+            "slack_enabled": True,
+            "slack_webhook_url": "https://hooks.slack.com/test",
+        },
         headers=headers,
     )
     resp = await client.get("/api/v1/notifications/config", headers=headers)
@@ -127,10 +138,14 @@ async def test_notify_bundle_findings_calls_send_functions():
     mock_session = MagicMock()
     mock_session.get.return_value = mock_bundle
     mock_session.query.return_value.filter.return_value.first.return_value = mock_config
-    mock_session.query.return_value.filter.return_value.all.return_value = [mock_finding]
+    mock_session.query.return_value.filter.return_value.all.return_value = [
+        mock_finding
+    ]
 
-    with patch("app.services.notifications.send_email_notification") as mock_email, \
-         patch("app.services.notifications.send_slack_notification") as mock_slack:
+    with (
+        patch("app.services.notifications.send_email_notification") as mock_email,
+        patch("app.services.notifications.send_slack_notification") as mock_slack,
+    ):
         notify_bundle_findings(str(mock_bundle.id), mock_session)
         mock_email.assert_called_once()
         mock_slack.assert_called_once()

@@ -78,4 +78,8 @@ class MissingResourceLimitsRule(BaseRule):
             f"{len(missing)} container(s) have no resource limits set: "
             f"{objects_str}{extra}. This can lead to node starvation and OOM kills."
         )
-        return [self._make_finding(bundle_id, summary, evidence_ids=list(dict.fromkeys(evidence_ids)))]
+        return [
+            self._make_finding(
+                bundle_id, summary, evidence_ids=list(dict.fromkeys(evidence_ids))
+            )
+        ]

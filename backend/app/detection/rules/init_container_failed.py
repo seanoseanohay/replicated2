@@ -34,17 +34,18 @@ class InitContainerFailedRule(BaseRule):
                 name = metadata.get("name", "unknown")
                 namespace = metadata.get("namespace", "default")
 
-                init_statuses = (
-                    raw.get("status", {}) or {}
-                ).get("initContainerStatuses", []) or []
+                init_statuses = (raw.get("status", {}) or {}).get(
+                    "initContainerStatuses", []
+                ) or []
 
                 for cs in init_statuses:
                     waiting_reason = (
                         cs.get("state", {}).get("waiting", {}).get("reason", "") or ""
                     )
                     terminated_reason = (
-                        cs.get("lastState", {}).get("terminated", {}).get("reason", "") or
-                        cs.get("state", {}).get("terminated", {}).get("reason", "") or ""
+                        cs.get("lastState", {}).get("terminated", {}).get("reason", "")
+                        or cs.get("state", {}).get("terminated", {}).get("reason", "")
+                        or ""
                     )
                     restart_count = cs.get("restartCount", 0) or 0
                     container_name = cs.get("name", "unknown")
@@ -70,7 +71,5 @@ class InitContainerFailedRule(BaseRule):
             return []
 
         objects_str = ", ".join(failed[:10])
-        summary = (
-            f"{len(failed)} pod(s) have failing init containers: {objects_str}"
-        )
+        summary = f"{len(failed)} pod(s) have failing init containers: {objects_str}"
         return [self._make_finding(bundle_id, summary, evidence_ids=evidence_ids)]

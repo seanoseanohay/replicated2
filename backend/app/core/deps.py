@@ -27,21 +27,28 @@ async def get_current_user(
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+        )
     return user
 
 
 async def require_auth(user: User | None = Depends(get_current_user)) -> User:
     """Raises 401 if not authenticated."""
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
+        )
     return user
 
 
 async def require_manager(user: User = Depends(require_auth)) -> User:
     """Raises 403 if not manager or admin."""
     if user.role not in ("manager", "admin"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Manager role required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Manager role required"
+        )
     return user
 
 

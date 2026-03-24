@@ -19,27 +19,35 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/bundles", tags=["chat"])
 
-_MAX_HISTORY = 20   # messages to send as context (keeps tokens bounded)
+_MAX_HISTORY = 20  # messages to send as context (keeps tokens bounded)
 _MAX_MESSAGE_LEN = 2000
 
 
-async def _get_bundle_for_tenant(bundle_id: uuid.UUID, tenant_id: str, db: AsyncSession) -> Bundle:
+async def _get_bundle_for_tenant(
+    bundle_id: uuid.UUID, tenant_id: str, db: AsyncSession
+) -> Bundle:
     result = await db.execute(
         select(Bundle).where(Bundle.id == bundle_id, Bundle.tenant_id == tenant_id)
     )
     bundle = result.scalar_one_or_none()
     if bundle is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found"
+        )
     return bundle
 
 
-async def _get_finding_for_bundle(finding_id: uuid.UUID, bundle_id: uuid.UUID, db: AsyncSession) -> Finding:
+async def _get_finding_for_bundle(
+    finding_id: uuid.UUID, bundle_id: uuid.UUID, db: AsyncSession
+) -> Finding:
     result = await db.execute(
         select(Finding).where(Finding.id == finding_id, Finding.bundle_id == bundle_id)
     )
     finding = result.scalar_one_or_none()
     if finding is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found"
+        )
     return finding
 
 
@@ -91,7 +99,9 @@ async def send_chat_message(
 
     message = body.message.strip()
     if not message:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty"
+        )
     if len(message) > _MAX_MESSAGE_LEN:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -122,17 +132,18 @@ async def send_chat_message(
     history = list(reversed(history_result.scalars().all()))
 
     # Build message list for API (exclude the message we just saved — it's already last)
-    api_messages = [
-        {"role": m.role, "content": m.content}
-        for m in history
-    ]
+    api_messages = [{"role": m.role, "content": m.content} for m in history]
 
     # Build guardrailed system prompt
     from app.ai.prompts import build_chat_system_prompt
-    system_prompt = build_chat_system_prompt(finding, finding.ai_explanation, finding.ai_remediation)
+
+    system_prompt = build_chat_system_prompt(
+        finding, finding.ai_explanation, finding.ai_remediation
+    )
 
     # Call AI
     from app.ai.client import get_client
+
     try:
         client = get_client()
         response = client.messages.create(
@@ -161,5 +172,7 @@ async def send_chat_message(
     await db.flush()
     await db.refresh(assistant_msg)
 
-    logger.info("chat_message_sent", finding_id=str(finding_id), bundle_id=str(bundle_id))
+    logger.info(
+        "chat_message_sent", finding_id=str(finding_id), bundle_id=str(bundle_id)
+    )
     return ChatMessageRead.model_validate(assistant_msg)

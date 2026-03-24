@@ -24,7 +24,9 @@ async def engine():
 
 @pytest_asyncio.fixture()
 async def db_session(engine):
-    session_factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        bind=engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_factory() as session:
         yield session
 
@@ -63,6 +65,11 @@ async def manager_user(db_session):
 def make_manager_headers(user: User, tenant_id: str = "default") -> dict:
     """Build Authorization + X-Tenant-ID headers for a manager user."""
     token = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role, "tenant_id": user.tenant_id}
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
     )
     return {"Authorization": f"Bearer {token}", "X-Tenant-ID": tenant_id}

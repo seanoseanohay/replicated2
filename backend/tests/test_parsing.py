@@ -1,4 +1,5 @@
 """Tests for Phase 2 parsing package."""
+
 import json
 import uuid
 
@@ -162,7 +163,9 @@ def test_logs_parser_skips_large_file(tmp_path):
 def test_cluster_info_parser_kubectl_output(tmp_path):
     info_dir = tmp_path / "cluster-info"
     info_dir.mkdir()
-    (info_dir / "kubectl-cluster-info").write_text("Kubernetes control plane is running")
+    (info_dir / "kubectl-cluster-info").write_text(
+        "Kubernetes control plane is running"
+    )
 
     parser = ClusterInfoParser()
     evidence_list = list(parser.parse(tmp_path, BUNDLE_ID))
@@ -192,8 +195,16 @@ def test_cluster_info_parser_nodes_json(tmp_path):
     node_list = {
         "kind": "NodeList",
         "items": [
-            {"kind": "Node", "metadata": {"name": "node-1"}, "status": {"conditions": []}},
-            {"kind": "Node", "metadata": {"name": "node-2"}, "status": {"conditions": []}},
+            {
+                "kind": "Node",
+                "metadata": {"name": "node-1"},
+                "status": {"conditions": []},
+            },
+            {
+                "kind": "Node",
+                "metadata": {"name": "node-2"},
+                "status": {"conditions": []},
+            },
         ],
     }
     (info_dir / "nodes.json").write_text(json.dumps(node_list))

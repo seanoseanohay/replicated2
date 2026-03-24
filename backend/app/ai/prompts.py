@@ -6,11 +6,13 @@ Be concise, technical, and specific. Focus on what a support engineer needs to k
 
 
 def build_explain_prompt(finding, evidence_samples: list[dict]) -> str:
-    evidence_text = "\n\n".join([
-        f"Evidence [{e.get('kind', 'unknown')}] {e.get('namespace', '')}/{e.get('name', '')}:\n"
-        f"{json.dumps(e.get('raw_data', {}), indent=2)[:2000]}"
-        for e in evidence_samples[:3]
-    ])
+    evidence_text = "\n\n".join(
+        [
+            f"Evidence [{e.get('kind', 'unknown')}] {e.get('namespace', '')}/{e.get('name', '')}:\n"
+            f"{json.dumps(e.get('raw_data', {}), indent=2)[:2000]}"
+            for e in evidence_samples[:3]
+        ]
+    )
     return f"""Finding: {finding.title}
 Severity: {finding.severity}
 Summary: {finding.summary}
@@ -29,7 +31,9 @@ Numbered, specific steps a support engineer can follow to resolve the issue.
 Keep your response focused and actionable."""
 
 
-def build_chat_system_prompt(finding, ai_explanation: str | None, ai_remediation: str | None) -> str:
+def build_chat_system_prompt(
+    finding, ai_explanation: str | None, ai_remediation: str | None
+) -> str:
     """
     Strictly scoped system prompt for the per-finding AI chat.
     The model may ONLY answer questions about this specific finding.

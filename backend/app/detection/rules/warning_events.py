@@ -46,7 +46,6 @@ class WarningEventsRule(BaseRule):
         top_reasons = reason_counter.most_common(5)
         reasons_str = ", ".join(f"{r} ({c})" for r, c in top_reasons)
         summary = (
-            f"{len(warning_events)} warning events found. "
-            f"Top reasons: {reasons_str}"
+            f"{len(warning_events)} warning events found. Top reasons: {reasons_str}"
         )
         return [self._make_finding(bundle_id, summary, evidence_ids=warning_ids)]

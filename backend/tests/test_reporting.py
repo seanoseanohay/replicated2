@@ -1,6 +1,7 @@
 """
 Tests for report generation (unit) and report API endpoints (integration).
 """
+
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
@@ -14,6 +15,7 @@ from app.reporting.report import build_markdown_report, build_report
 
 
 # ── Unit tests for build_report / build_markdown_report ──────────────────────
+
 
 def _make_mock_bundle():
     b = MagicMock()
@@ -96,6 +98,7 @@ def test_build_markdown_report_reviewer_notes():
 
 
 # ── Integration tests for report API endpoints ────────────────────────────────
+
 
 @pytest_asyncio.fixture()
 async def bundle_with_finding(db_session):

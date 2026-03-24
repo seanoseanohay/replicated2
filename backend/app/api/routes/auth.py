@@ -41,7 +41,9 @@ def _build_token_response(user: User) -> TokenResponse:
     )
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED
+)
 async def register(
     body: RegisterRequest,
     x_tenant_id: str = Header(default="default"),

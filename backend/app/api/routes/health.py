@@ -5,14 +5,17 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 router = APIRouter(tags=["health"])
 
+
 @router.get("/health")
 async def health_check() -> dict:
     return {"status": "ok", "version": "0.1.0"}
+
 
 @router.get("/health/live")
 async def liveness() -> dict:
     """Liveness probe — always returns 200 if process is running."""
     return {"status": "ok"}
+
 
 @router.get("/health/ready")
 async def readiness() -> JSONResponse:
@@ -24,6 +27,7 @@ async def readiness() -> JSONResponse:
     try:
         from app.core.database import engine
         from sqlalchemy import text
+
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         checks["database"] = "ok"
@@ -35,6 +39,7 @@ async def readiness() -> JSONResponse:
     try:
         import redis.asyncio as aioredis
         from app.core.config import settings
+
         r = aioredis.from_url(settings.REDIS_URL, socket_connect_timeout=2)
         await r.ping()
         await r.aclose()
@@ -46,6 +51,7 @@ async def readiness() -> JSONResponse:
     # S3 check
     try:
         from app.services.storage import storage_service
+
         storage_service.ensure_bucket_exists()
         checks["storage"] = "ok"
     except Exception as exc:

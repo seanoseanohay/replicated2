@@ -29,7 +29,10 @@ class NodeNotReadyRule(BaseRule):
                 conditions = raw.get("status", {}).get("conditions", []) or []
                 is_not_ready = False
                 for condition in conditions:
-                    if condition.get("type") == "Ready" and condition.get("status") != "True":
+                    if (
+                        condition.get("type") == "Ready"
+                        and condition.get("status") != "True"
+                    ):
                         is_not_ready = True
                         break
                 if is_not_ready:

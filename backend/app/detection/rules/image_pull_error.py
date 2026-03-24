@@ -45,9 +45,7 @@ class ImagePullErrorRule(BaseRule):
                 if error_containers:
                     namespace = pod.namespace or "default"
                     containers_str = ", ".join(error_containers)
-                    summary = (
-                        f"Pod {namespace}/{pod.name} cannot pull container images: {containers_str}"
-                    )
+                    summary = f"Pod {namespace}/{pod.name} cannot pull container images: {containers_str}"
                     findings.append(
                         self._make_finding(bundle_id, summary, evidence_ids=[pod.id])
                     )

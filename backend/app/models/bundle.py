@@ -20,7 +20,9 @@ class Bundle(Base):
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="uploaded"
     )  # uploaded | processing | ready | error
-    tenant_id: Mapped[str] = mapped_column(String(256), nullable=False, default="default")
+    tenant_id: Mapped[str] = mapped_column(
+        String(256), nullable=False, default="default"
+    )
     s3_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     error_message: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

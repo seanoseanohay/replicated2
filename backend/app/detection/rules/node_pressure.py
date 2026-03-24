@@ -37,9 +37,7 @@ class NodePressureRule(BaseRule):
                         active_pressures.append(ctype)
                 if active_pressures:
                     pressures_str = ", ".join(active_pressures)
-                    summary = (
-                        f"Node {node.name} has active conditions: {pressures_str}"
-                    )
+                    summary = f"Node {node.name} has active conditions: {pressures_str}"
                     findings.append(
                         self._make_finding(bundle_id, summary, evidence_ids=[node.id])
                     )

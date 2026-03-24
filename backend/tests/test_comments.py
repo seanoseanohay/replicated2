@@ -1,4 +1,5 @@
 """Tests for Phase 11 — Comments & Discussion."""
+
 import uuid
 
 import pytest
@@ -12,7 +13,12 @@ from app.models.user import User
 
 def _token(user: User) -> dict:
     tok = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role, "tenant_id": user.tenant_id}
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
     )
     return {"Authorization": f"Bearer {tok}", "X-Tenant-ID": user.tenant_id}
 

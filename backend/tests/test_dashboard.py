@@ -1,6 +1,7 @@
 """
 Tests for GET /api/v1/dashboard endpoint.
 """
+
 import uuid
 
 import pytest
@@ -14,7 +15,12 @@ from app.models.user import User
 
 def _make_headers(user: User) -> dict:
     token = create_access_token(
-        {"sub": str(user.id), "email": user.email, "role": user.role, "tenant_id": user.tenant_id}
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
     )
     return {"Authorization": f"Bearer {token}", "X-Tenant-ID": user.tenant_id}
 
@@ -151,7 +157,9 @@ async def test_health_score_decreases_with_critical_findings(
 
 
 @pytest.mark.asyncio
-async def test_most_recent_critical_populated(client, db_session, tenant_user, ready_bundle):
+async def test_most_recent_critical_populated(
+    client, db_session, tenant_user, ready_bundle
+):
     """most_recent_critical should include critical open findings."""
     f = Finding(
         id=uuid.uuid4(),
@@ -180,7 +188,9 @@ async def test_most_recent_critical_populated(client, db_session, tenant_user, r
 
 
 @pytest.mark.asyncio
-async def test_most_recent_critical_capped_at_5(client, db_session, tenant_user, ready_bundle):
+async def test_most_recent_critical_capped_at_5(
+    client, db_session, tenant_user, ready_bundle
+):
     """most_recent_critical should never return more than 5 entries."""
     for i in range(8):
         f = Finding(
@@ -203,7 +213,9 @@ async def test_most_recent_critical_capped_at_5(client, db_session, tenant_user,
 
 
 @pytest.mark.asyncio
-async def test_resolved_findings_excluded_from_score(client, db_session, tenant_user, ready_bundle):
+async def test_resolved_findings_excluded_from_score(
+    client, db_session, tenant_user, ready_bundle
+):
     """Resolved findings should not affect the health score."""
     f = Finding(
         id=uuid.uuid4(),
@@ -231,7 +243,12 @@ async def test_resolved_findings_excluded_from_score(client, db_session, tenant_
 
 @pytest.mark.asyncio
 async def test_tenant_isolation(
-    client, db_session, tenant_user, other_tenant_user, ready_bundle, other_tenant_bundle
+    client,
+    db_session,
+    tenant_user,
+    other_tenant_user,
+    ready_bundle,
+    other_tenant_bundle,
 ):
     """Each tenant should only see their own bundles."""
     # Tenant A sees their bundle
@@ -243,7 +260,9 @@ async def test_tenant_isolation(
     assert str(other_tenant_bundle.id) not in bundle_ids_a
 
     # Tenant B sees their bundle
-    resp_b = await client.get("/api/v1/dashboard", headers=_make_headers(other_tenant_user))
+    resp_b = await client.get(
+        "/api/v1/dashboard", headers=_make_headers(other_tenant_user)
+    )
     assert resp_b.status_code == 200
     data_b = resp_b.json()
     bundle_ids_b = {b["bundle_id"] for b in data_b["bundles"]}

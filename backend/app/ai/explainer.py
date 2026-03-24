@@ -25,8 +25,14 @@ def _cache_key(finding, ev_dicts: list) -> str:
     """Stable hash over rule_id + severity + sorted evidence fingerprints."""
     ev_fingerprint = json.dumps(
         sorted(
-            [{"kind": e.get("kind"), "namespace": e.get("namespace"), "name": e.get("name")}
-             for e in ev_dicts],
+            [
+                {
+                    "kind": e.get("kind"),
+                    "namespace": e.get("namespace"),
+                    "name": e.get("name"),
+                }
+                for e in ev_dicts
+            ],
             key=lambda e: (e.get("kind", ""), e.get("name", "")),
         ),
         sort_keys=True,
@@ -45,7 +51,12 @@ def explain_finding(finding, evidence_list: list, session) -> tuple[str, str]:
         raise ValueError("AI is not enabled")
 
     ev_dicts = [
-        {"kind": e.kind, "namespace": e.namespace, "name": e.name, "raw_data": e.raw_data}
+        {
+            "kind": e.kind,
+            "namespace": e.namespace,
+            "name": e.name,
+            "raw_data": e.raw_data,
+        }
         for e in evidence_list
     ]
 
@@ -85,7 +96,11 @@ def explain_finding(finding, evidence_list: list, session) -> tuple[str, str]:
     try:
         r = _get_redis()
         key = _cache_key(finding, ev_dicts)
-        r.setex(key, _CACHE_TTL, json.dumps({"explanation": explanation, "remediation": remediation}))
+        r.setex(
+            key,
+            _CACHE_TTL,
+            json.dumps({"explanation": explanation, "remediation": remediation}),
+        )
     except Exception as exc:
         log.warning(f"ai_explain_cache_store_failed: {exc}")
 
@@ -118,9 +133,13 @@ def auto_explain_bundle(bundle_id: str, session) -> int:
         try:
             evidence_list = []
             if finding.evidence_ids:
-                evidence_uuids = [uuid.UUID(str(eid)) for eid in finding.evidence_ids[:5]]
+                evidence_uuids = [
+                    uuid.UUID(str(eid)) for eid in finding.evidence_ids[:5]
+                ]
                 evidence_list = (
-                    session.query(Evidence).filter(Evidence.id.in_(evidence_uuids)).all()
+                    session.query(Evidence)
+                    .filter(Evidence.id.in_(evidence_uuids))
+                    .all()
                 )
 
             explanation, remediation = explain_finding(finding, evidence_list, session)
@@ -129,7 +148,9 @@ def auto_explain_bundle(bundle_id: str, session) -> int:
             finding.ai_explained_at = datetime.now(timezone.utc)
             finding.updated_at = datetime.now(timezone.utc)
 
-            event = FindingEvent(finding_id=finding.id, actor="system", event_type="ai_explained")
+            event = FindingEvent(
+                finding_id=finding.id, actor="system", event_type="ai_explained"
+            )
             session.add(event)
             explained += 1
         except Exception as exc:

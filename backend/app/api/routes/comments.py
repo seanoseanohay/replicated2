@@ -26,7 +26,9 @@ async def _get_bundle_for_tenant(
     )
     bundle = result.scalar_one_or_none()
     if bundle is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Bundle not found"
+        )
     return bundle
 
 
@@ -34,13 +36,13 @@ async def _get_finding_for_bundle(
     finding_id: uuid.UUID, bundle_id: uuid.UUID, db: AsyncSession
 ) -> Finding:
     result = await db.execute(
-        select(Finding).where(
-            Finding.id == finding_id, Finding.bundle_id == bundle_id
-        )
+        select(Finding).where(Finding.id == finding_id, Finding.bundle_id == bundle_id)
     )
     finding = result.scalar_one_or_none()
     if finding is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found"
+        )
     return finding
 
 
@@ -125,7 +127,9 @@ async def delete_comment(
     )
     comment = result.scalar_one_or_none()
     if comment is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found"
+        )
 
     # Authorization: own comment OR manager/admin
     is_manager = current_user is not None and current_user.role in ("manager", "admin")

@@ -45,6 +45,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_finding_events_finding_id_created_at", table_name="finding_events")
+    op.drop_index(
+        "ix_finding_events_finding_id_created_at", table_name="finding_events"
+    )
     op.drop_index("ix_finding_events_finding_id", table_name="finding_events")
     op.drop_table("finding_events")

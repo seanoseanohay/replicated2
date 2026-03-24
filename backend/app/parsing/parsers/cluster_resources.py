@@ -13,9 +13,18 @@ logger = get_logger(__name__)
 
 # Kinds for which we want full spec preserved; truncate spec for others if large
 TARGET_KINDS = {
-    "Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet",
-    "Service", "ConfigMap", "Event", "Namespace", "PersistentVolumeClaim",
-    "PersistentVolume", "Node",
+    "Pod",
+    "Deployment",
+    "ReplicaSet",
+    "StatefulSet",
+    "DaemonSet",
+    "Service",
+    "ConfigMap",
+    "Event",
+    "Namespace",
+    "PersistentVolumeClaim",
+    "PersistentVolume",
+    "Node",
 }
 
 MAX_SPEC_BYTES = 32 * 1024  # 32 KB — truncate spec beyond this
@@ -64,7 +73,12 @@ class ClusterResourcesParser(BaseParser):
             return
 
         # Handle list types
-        if kind.endswith("List") or (isinstance(data.get("items"), list) and "metadata" not in data.get("items", [{}])[0] if data.get("items") else False):
+        if kind.endswith("List") or (
+            isinstance(data.get("items"), list)
+            and "metadata" not in data.get("items", [{}])[0]
+            if data.get("items")
+            else False
+        ):
             items = data.get("items") or []
             item_kind = kind[:-4] if kind.endswith("List") else kind
             for item in items:

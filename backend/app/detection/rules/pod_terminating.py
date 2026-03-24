@@ -51,7 +51,5 @@ class PodTerminatingRule(BaseRule):
             return []
 
         objects_str = ", ".join(stuck[:10])
-        summary = (
-            f"{len(stuck)} pod(s) stuck in Terminating state: {objects_str}"
-        )
+        summary = f"{len(stuck)} pod(s) stuck in Terminating state: {objects_str}"
         return [self._make_finding(bundle_id, summary, evidence_ids=evidence_ids)]

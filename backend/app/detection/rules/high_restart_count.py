@@ -35,9 +35,9 @@ class HighRestartCountRule(BaseRule):
                 name = metadata.get("name", "unknown")
                 namespace = metadata.get("namespace", "default")
 
-                container_statuses = (
-                    raw.get("status", {}) or {}
-                ).get("containerStatuses", []) or []
+                container_statuses = (raw.get("status", {}) or {}).get(
+                    "containerStatuses", []
+                ) or []
 
                 for cs in container_statuses:
                     restart_count = cs.get("restartCount", 0) or 0
@@ -51,7 +51,9 @@ class HighRestartCountRule(BaseRule):
                         continue
 
                     is_not_ready = not cs.get("ready", True)
-                    if restart_count >= HIGH_RESTART_THRESHOLD or (restart_count > 0 and is_not_ready):
+                    if restart_count >= HIGH_RESTART_THRESHOLD or (
+                        restart_count > 0 and is_not_ready
+                    ):
                         flagged.append(
                             f"{namespace}/{name}/{container_name} "
                             f"(restarts={restart_count}, ready={cs.get('ready', False)})"

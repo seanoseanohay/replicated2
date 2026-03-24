@@ -18,13 +18,13 @@ def _parse_quantity(value: str) -> float:
     # Handle common suffixes
     multipliers = {
         "Ki": 1024,
-        "Mi": 1024 ** 2,
-        "Gi": 1024 ** 3,
-        "Ti": 1024 ** 4,
+        "Mi": 1024**2,
+        "Gi": 1024**3,
+        "Ti": 1024**4,
         "k": 1000,
         "m": 0.001,
-        "M": 1000 ** 2,
-        "G": 1000 ** 3,
+        "M": 1000**2,
+        "G": 1000**3,
     }
     for suffix, mult in multipliers.items():
         if value.endswith(suffix):
@@ -74,9 +74,7 @@ class ResourceQuotaRule(BaseRule):
                 if near_limit_resources:
                     namespace = quota.namespace or "default"
                     resources_str = ", ".join(near_limit_resources)
-                    summary = (
-                        f"ResourceQuota {namespace}/{quota.name} is near its limit for: {resources_str}"
-                    )
+                    summary = f"ResourceQuota {namespace}/{quota.name} is near its limit for: {resources_str}"
                     findings.append(
                         self._make_finding(bundle_id, summary, evidence_ids=[quota.id])
                     )

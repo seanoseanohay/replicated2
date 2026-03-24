@@ -23,7 +23,9 @@ class BundleExtractor:
         try:
             logger.info("bundle_download_start", s3_key=s3_key)
             bundle_bytes = self.storage.download_bundle(s3_key)
-            logger.info("bundle_download_complete", s3_key=s3_key, size=len(bundle_bytes))
+            logger.info(
+                "bundle_download_complete", s3_key=s3_key, size=len(bundle_bytes)
+            )
 
             # Write to a temp file for tarfile to open
             suffix = ".tar.gz" if s3_key.endswith((".tar.gz", ".tgz")) else ".tar"

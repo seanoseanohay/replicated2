@@ -10,8 +10,7 @@ class BaseParser(ABC):
     """Yields Evidence instances from an extracted bundle directory."""
 
     @abstractmethod
-    def parse(self, bundle_root: Path, bundle_id: uuid.UUID) -> Iterator[Evidence]:
-        ...
+    def parse(self, bundle_root: Path, bundle_id: uuid.UUID) -> Iterator[Evidence]: ...
 
     def _make_evidence(
         self,

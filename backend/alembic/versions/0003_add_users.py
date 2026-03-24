@@ -24,7 +24,9 @@ def upgrade() -> None:
         sa.Column("hashed_password", sa.String(256), nullable=False),
         sa.Column("full_name", sa.String(256), nullable=True),
         sa.Column("role", sa.String(32), nullable=False, server_default="analyst"),
-        sa.Column("tenant_id", sa.String(128), nullable=False, server_default="default"),
+        sa.Column(
+            "tenant_id", sa.String(128), nullable=False, server_default="default"
+        ),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),
         sa.Column(
             "created_at",
@@ -42,7 +44,9 @@ def upgrade() -> None:
 
     op.create_index("ix_users_email", "users", ["email"])
     op.create_index("ix_users_tenant_id", "users", ["tenant_id"])
-    op.create_unique_constraint("uq_users_email_tenant_id", "users", ["email", "tenant_id"])
+    op.create_unique_constraint(
+        "uq_users_email_tenant_id", "users", ["email", "tenant_id"]
+    )
 
 
 def downgrade() -> None:
