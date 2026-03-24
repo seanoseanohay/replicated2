@@ -54,6 +54,8 @@ pip install -r requirements.txt
 pytest
 ```
 
+The test suite has 159 passing tests covering ingestion, parsing, detection, auth, dashboard, audit trail, comments, comparison, notifications, and admin routes.
+
 ### Run DB migrations
 
 ```bash
@@ -90,6 +92,7 @@ alembic upgrade head
 - `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me`
 - `POST /api/v1/bundles` — upload bundle
 - `GET /api/v1/bundles`, `GET /api/v1/bundles/{id}` — list / detail
+- `POST /api/v1/bundles/{id}/reanalyze` — re-run detection rules on existing evidence
 - `DELETE /api/v1/bundles/{id}` — delete (manager only)
 - `GET /api/v1/bundles/{id}/evidence`
 - `GET /api/v1/bundles/{id}/findings`, `PATCH /api/v1/bundles/{id}/findings/{id}`
@@ -101,6 +104,10 @@ alembic upgrade head
 - `GET /api/v1/dashboard`
 - `GET/POST /api/v1/notifications/config`
 - `GET /health/live`, `GET /health/ready`
+- `GET /api/v1/admin/users` — list all users (admin only)
+- `PATCH /api/v1/admin/users/{id}/role` — change user role (admin only)
+- `PATCH /api/v1/admin/users/{id}/status` — activate/deactivate user (admin only)
+- `GET /api/v1/admin/stats` — system-wide counts (admin only)
 
 ## Project docs
 
