@@ -109,11 +109,19 @@ def send_slack_notification(config, findings, bundle) -> None:
 
 
 def notify_bundle_findings(bundle_id: str, session) -> None:
-    """
-    Main entry point called after run_all_rules.
-    1. Load NotificationConfig for tenant
-    2. Filter findings by notify_on_severities
-    3. Send email and/or Slack if enabled
+    """Send email/Slack alerts for open findings that match the tenant notification config.
+
+    Called from the Celery ``process_bundle`` task after detection rules run.
+
+    Args:
+        bundle_id: String representation of the bundle UUID.
+        session:   A synchronous SQLAlchemy ``Session`` (Celery tasks use sync sessions).
+
+    Steps:
+        1. Resolve ``bundle_id`` to a ``Bundle`` ORM object (coerces str → UUID).
+        2. Load ``NotificationConfig`` for the bundle's tenant.
+        3. Filter open findings by ``notify_on_severities``.
+        4. Dispatch email and/or Slack notifications if enabled.
     """
     from app.models.bundle import Bundle
     from app.models.finding import Finding

@@ -113,6 +113,12 @@ async def refresh(
     body: RefreshRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
+    """Exchange a refresh token for a new access + refresh token pair.
+
+    The ``sub`` claim is a string UUID; it must be coerced to ``uuid.UUID``
+    before passing to ``db.get`` because the User primary key is typed as
+    ``UUID(as_uuid=True)`` in SQLAlchemy.
+    """
     payload = decode_token(body.refresh_token)
 
     if payload.get("type") != "refresh":
