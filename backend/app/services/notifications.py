@@ -116,14 +116,12 @@ def notify_bundle_findings(bundle_id: str, session) -> None:
     from app.models.finding import Finding
     from app.models.notification_config import NotificationConfig
 
-    bundle = session.get(Bundle, bundle_id) if hasattr(bundle_id, '__class__') else None
-    if bundle is None:
-        import uuid as _uuid
-        try:
-            bundle = session.get(Bundle, _uuid.UUID(str(bundle_id)))
-        except Exception:
-            log.warning(f"notify_bundle_findings: bundle {bundle_id} not found")
-            return
+    import uuid as _uuid
+    try:
+        bundle = session.get(Bundle, _uuid.UUID(str(bundle_id)))
+    except Exception:
+        log.warning(f"notify_bundle_findings: bundle {bundle_id} not found")
+        return
 
     if bundle is None:
         log.warning(f"notify_bundle_findings: bundle {bundle_id} not found")

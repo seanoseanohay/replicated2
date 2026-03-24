@@ -119,7 +119,7 @@ async def refresh(
             detail="Invalid token type",
         )
 
-    user = await db.get(User, payload["sub"])
+    user = await db.get(User, uuid.UUID(payload["sub"]))
     if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

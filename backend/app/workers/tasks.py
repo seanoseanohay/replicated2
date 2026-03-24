@@ -4,6 +4,7 @@ import uuid
 from celery import Celery
 from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
@@ -37,7 +38,7 @@ celery_app.conf.update(
 log = logging.getLogger(__name__)
 
 
-def _make_sync_session() -> tuple[any, Session]:
+def _make_sync_session() -> tuple[Engine, Session]:
     """Create a synchronous SQLAlchemy engine + session for use inside Celery tasks."""
     sync_url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
     engine = create_engine(sync_url, pool_pre_ping=True)
