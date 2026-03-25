@@ -17,7 +17,11 @@ class BaseRule(ABC):
         ...
 
     def _make_finding(
-        self, bundle_id: uuid.UUID, summary: str, evidence_ids=None
+        self,
+        bundle_id: uuid.UUID,
+        summary: str,
+        evidence_ids=None,
+        remediation: dict | None = None,
     ) -> Finding:
         return Finding(
             bundle_id=bundle_id,
@@ -27,4 +31,5 @@ class BaseRule(ABC):
             summary=summary,
             evidence_ids=[str(e) for e in (evidence_ids or [])],
             status="open",
+            remediation=remediation,
         )

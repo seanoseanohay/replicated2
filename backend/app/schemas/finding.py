@@ -21,6 +21,7 @@ class FindingRead(BaseModel):
     ai_explanation: str | None
     ai_remediation: str | None
     ai_explained_at: datetime | None
+    remediation: dict | None = None
     created_at: datetime
     updated_at: datetime
 

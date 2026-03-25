@@ -35,6 +35,7 @@ class Finding(Base):
     )
     ai_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_remediation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    remediation: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     ai_explained_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
