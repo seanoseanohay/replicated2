@@ -52,8 +52,19 @@ export interface Finding {
   ai_explanation: string | null;
   ai_remediation: string | null;
   ai_explained_at: string | null;
+  remediation: RemediationData | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface RemediationData {
+  what_happened?: string;
+  why_it_matters?: string;
+  how_to_fix?: string;
+  patch_yaml?: string;
+  patch_filename?: string;
+  cli_commands?: string[];
+  shell_script?: string;
 }
 
 export interface FindingListResponse {

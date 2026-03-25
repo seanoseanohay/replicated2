@@ -15,6 +15,8 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
+
 export type { Finding };
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -259,6 +261,23 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
   const [chatLoading, setChatLoading] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatSending, setChatSending] = useState(false);
+
+  const [fixOpen, setFixOpen] = useState(false);
+  const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
+
+  const downloadRemediation = (format: string) => {
+    window.open(
+      `${API_BASE}/api/v1/bundles/${finding.bundle_id}/findings/${finding.id}/remediation/download?format=${format}`,
+      "_blank"
+    );
+  };
+
+  const copyCommand = (cmd: string) => {
+    navigator.clipboard.writeText(cmd).then(() => {
+      setCopiedCmd(cmd);
+      setTimeout(() => setCopiedCmd(null), 1500);
+    });
+  };
 
   const handleStatusChange = async (newStatus: "open" | "acknowledged" | "resolved") => {
     setUpdating(true);
@@ -687,6 +706,99 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
                   })}
                 </ul>
               )}
+            </div>
+          </ExpandSection>
+        </div>
+      )}
+
+      {/* Fix / Remediation */}
+      {finding.remediation && (
+        <div className="mt-3">
+          <SectionToggle
+            open={fixOpen}
+            onClick={() => setFixOpen(!fixOpen)}
+            label="Fix"
+          />
+          <ExpandSection open={fixOpen}>
+            <div className="mt-2 rounded border-l-4 border-green-400 bg-green-50 p-3 space-y-3">
+              {/* Text blocks */}
+              {finding.remediation.what_happened && (
+                <div>
+                  <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-0.5">What Happened</p>
+                  <p className="text-sm text-gray-700">{finding.remediation.what_happened}</p>
+                </div>
+              )}
+              {finding.remediation.why_it_matters && (
+                <div>
+                  <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-0.5">Why It Matters</p>
+                  <p className="text-sm text-gray-700">{finding.remediation.why_it_matters}</p>
+                </div>
+              )}
+              {finding.remediation.how_to_fix && (
+                <div>
+                  <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-0.5">How to Fix</p>
+                  <p className="text-sm text-gray-700">{finding.remediation.how_to_fix}</p>
+                </div>
+              )}
+
+              {/* CLI Commands */}
+              {finding.remediation.cli_commands && finding.remediation.cli_commands.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">CLI Commands</p>
+                  <ul className="space-y-1.5">
+                    {finding.remediation.cli_commands.map((cmd, i) => (
+                      <li key={i} className="flex items-center gap-2">
+                        <code className="flex-1 text-xs bg-gray-900 text-green-300 px-2 py-1 rounded font-mono whitespace-pre-wrap break-all">
+                          {cmd}
+                        </code>
+                        <button
+                          onClick={() => copyCommand(cmd)}
+                          title="Copy to clipboard"
+                          className="shrink-0 px-2 py-1 text-xs rounded border border-green-300 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
+                        >
+                          {copiedCmd === cmd ? "Copied!" : "Copy"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Patch YAML */}
+              {finding.remediation.patch_yaml && (
+                <div>
+                  <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">Patch YAML</p>
+                  <pre className="text-xs bg-gray-900 text-green-300 rounded p-3 overflow-x-auto whitespace-pre font-mono">
+                    {finding.remediation.patch_yaml}
+                  </pre>
+                </div>
+              )}
+
+              {/* Download buttons */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {finding.remediation.patch_yaml && (
+                  <>
+                    <button
+                      onClick={() => downloadRemediation("yaml")}
+                      className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
+                    >
+                      Download .yaml
+                    </button>
+                    <button
+                      onClick={() => downloadRemediation("patch")}
+                      className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
+                    >
+                      Download .patch
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => downloadRemediation("shell")}
+                  className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
+                >
+                  Download .sh
+                </button>
+              </div>
             </div>
           </ExpandSection>
         </div>
