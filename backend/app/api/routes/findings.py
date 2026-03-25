@@ -300,18 +300,44 @@ async def download_remediation(
     rem = finding.remediation
     slug = finding.rule_id.replace("_", "-")
 
+    kots_key = rem.get("kots_key")
+    is_kots = kots_key is not None
+
     if format == "shell":
         commands = rem.get("cli_commands", [])
-        script = rem.get("shell_script") or "#!/bin/bash\n# Fix for: {title}\n\n{cmds}".format(
-            title=finding.title,
-            cmds="\n".join(commands),
-        )
+        if is_kots:
+            key_slug = kots_key.replace("_", "-")
+            script = (
+                "#!/bin/bash\n"
+                f"# Fix for: {finding.title}\n"
+                f"# Apply: bash fix-kots-{key_slug}.sh\n\n"
+                "# Set these to match your environment:\n"
+                'APP_SLUG="${APP_SLUG:-my-app}"\n'
+                'NAMESPACE="${NAMESPACE:-default}"\n\n'
+                + "\n".join(commands)
+                + "\n"
+            )
+        else:
+            script = rem.get("shell_script") or "#!/bin/bash\n# Fix for: {title}\n\n{cmds}".format(
+                title=finding.title,
+                cmds="\n".join(commands),
+            )
         return Response(
             content=script,
             media_type="text/x-sh",
             headers={"Content-Disposition": f'attachment; filename="fix-{slug}.sh"'},
         )
     elif format == "patch":
+        # For KOTS findings prefer kots_diff (real unified diff of configvalues.yaml)
+        kots_diff = rem.get("kots_diff", "")
+        if is_kots and kots_diff:
+            key_slug = kots_key.replace("_", "-")
+            filename = f"fix-kots-{key_slug}.patch"
+            return Response(
+                content=kots_diff,
+                media_type="text/plain",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
         patch = rem.get("patch_yaml", "")
         if not patch:
             raise HTTPException(status_code=404, detail="No patch available for this finding")
