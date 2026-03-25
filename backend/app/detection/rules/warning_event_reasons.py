@@ -80,7 +80,7 @@ class WarningEventReasonsRule(BaseRule):
         )
         events = result.scalars().all()
 
-        # reason -> list of (evidence_id, involved_object_name)
+        # reason -> list of (evidence_id, involved_object_name, namespace)
         reason_data: dict[str, list] = defaultdict(list)
 
         for event in events:
@@ -95,7 +95,8 @@ class WarningEventReasonsRule(BaseRule):
                 obj_kind = involved.get("kind", "object")
                 obj_name = involved.get("name", "unknown")
                 obj_ref = f"{obj_kind.lower()}/{obj_name}"
-                reason_data[reason].append((event.id, obj_ref))
+                ns = event.namespace or raw.get("metadata", {}).get("namespace", "default")
+                reason_data[reason].append((event.id, obj_ref, ns))
             except Exception:
                 continue
 
@@ -109,14 +110,32 @@ class WarningEventReasonsRule(BaseRule):
             if len(entries) < threshold:
                 continue
             count = len(entries)
-            unique_objects = list(dict.fromkeys(obj for _, obj in entries))[:5]
+            unique_objects = list(dict.fromkeys(obj for _, obj, _ in entries))[:5]
             objects_str = ", ".join(unique_objects)
             summary = (
                 f"{count} {reason} warning event(s) detected. "
                 f"Affected objects: {objects_str}"
             )
-            evidence_ids = [eid for eid, _ in entries]
+            evidence_ids = [eid for eid, _, _ in entries]
+            namespace = entries[0][2] if entries else "default"
             severity = "high" if reason in HIGH_SEVERITY_REASONS else "medium"
+            remediation = {
+                "what_happened": (
+                    f"{count} Kubernetes Warning events detected in namespace {namespace}. "
+                    f"Top reasons: {reason}."
+                ),
+                "why_it_matters": (
+                    "Warning events indicate cluster components are reporting problems that may "
+                    "lead to or already be causing outages."
+                ),
+                "how_to_fix": (
+                    "Review the warning events and address the underlying causes."
+                ),
+                "cli_commands": [
+                    f"kubectl get events -n {namespace} --field-selector type=Warning --sort-by=.lastTimestamp",
+                    "kubectl get events --all-namespaces --field-selector type=Warning",
+                ],
+            }
             finding = Finding(
                 bundle_id=bundle_id,
                 rule_id=self.rule_id,
@@ -125,6 +144,7 @@ class WarningEventReasonsRule(BaseRule):
                 summary=summary,
                 evidence_ids=[str(e) for e in evidence_ids],
                 status="open",
+                remediation=remediation,
             )
             findings.append(finding)
 

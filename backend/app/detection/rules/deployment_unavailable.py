@@ -39,13 +39,37 @@ class DeploymentUnavailableRule(BaseRule):
                 available_replicas = int(available_replicas)
                 if available_replicas < spec_replicas:
                     namespace = deployment.namespace or "default"
+                    dep_name = deployment.name
+                    unavailable = spec_replicas - available_replicas
                     summary = (
-                        f"Deployment {namespace}/{deployment.name} has "
+                        f"Deployment {namespace}/{dep_name} has "
                         f"{available_replicas}/{spec_replicas} replicas available"
                     )
+                    remediation = {
+                        "what_happened": (
+                            f"Deployment {namespace}/{dep_name} has {unavailable} unavailable "
+                            f"replica(s). Desired: {spec_replicas}, Ready: {available_replicas}."
+                        ),
+                        "why_it_matters": (
+                            "Insufficient replicas mean reduced capacity and potential service "
+                            "degradation or outage."
+                        ),
+                        "how_to_fix": (
+                            "Check the deployment's pod events and logs to find why replicas "
+                            "are not becoming ready."
+                        ),
+                        "cli_commands": [
+                            f"kubectl rollout status deployment/{dep_name} -n {namespace}",
+                            f"kubectl describe deployment {dep_name} -n {namespace}",
+                            f"kubectl get pods -n {namespace} -l app={dep_name}",
+                        ],
+                    }
                     findings.append(
                         self._make_finding(
-                            bundle_id, summary, evidence_ids=[deployment.id]
+                            bundle_id,
+                            summary,
+                            evidence_ids=[deployment.id],
+                            remediation=remediation,
                         )
                     )
             except Exception:

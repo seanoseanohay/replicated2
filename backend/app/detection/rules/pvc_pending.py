@@ -24,6 +24,7 @@ class PVCPendingRule(BaseRule):
 
         pending_pvcs = []
         pending_ids = []
+        pvc_details = []
         for pvc in pvcs:
             try:
                 raw = pvc.raw_data or {}
@@ -32,6 +33,7 @@ class PVCPendingRule(BaseRule):
                     namespace = pvc.namespace or "default"
                     pending_pvcs.append(f"{namespace}/{pvc.name}")
                     pending_ids.append(pvc.id)
+                    pvc_details.append({"namespace": namespace, "name": pvc.name})
             except Exception:
                 continue
 
@@ -43,4 +45,31 @@ class PVCPendingRule(BaseRule):
             f"{len(pending_pvcs)} PersistentVolumeClaim(s) stuck in Pending state: {pvcs_str}. "
             "Check that a StorageClass is available and has sufficient capacity."
         )
-        return [self._make_finding(bundle_id, summary, evidence_ids=pending_ids)]
+        first = pvc_details[0]
+        remediation = {
+            "what_happened": (
+                f"PersistentVolumeClaim {first['namespace']}/{first['name']} has been in "
+                f"Pending state. No PersistentVolume has been bound to it."
+            ),
+            "why_it_matters": (
+                "Any pod that mounts this PVC will also be stuck in Pending, "
+                "blocking application startup."
+            ),
+            "how_to_fix": (
+                "Check whether a StorageClass is defined and has a provisioner that can satisfy "
+                "the claim. Verify the requested storage size is available."
+            ),
+            "cli_commands": [
+                f"kubectl describe pvc {first['name']} -n {first['namespace']}",
+                "kubectl get storageclass",
+                "kubectl get pv",
+            ],
+        }
+        return [
+            self._make_finding(
+                bundle_id,
+                summary,
+                evidence_ids=pending_ids,
+                remediation=remediation,
+            )
+        ]

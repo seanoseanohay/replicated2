@@ -26,6 +26,7 @@ class InitContainerFailedRule(BaseRule):
 
         failed = []
         evidence_ids = []
+        failed_details = []
 
         for pod in pods:
             try:
@@ -63,6 +64,11 @@ class InitContainerFailedRule(BaseRule):
                             f"(reason={reason}, restarts={restart_count})"
                         )
                         evidence_ids.append(pod.id)
+                        failed_details.append({
+                            "namespace": namespace,
+                            "pod": name,
+                            "init_container": container_name,
+                        })
                         break  # one finding per pod
             except Exception:
                 continue
@@ -72,4 +78,29 @@ class InitContainerFailedRule(BaseRule):
 
         objects_str = ", ".join(failed[:10])
         summary = f"{len(failed)} pod(s) have failing init containers: {objects_str}"
-        return [self._make_finding(bundle_id, summary, evidence_ids=evidence_ids)]
+        first = failed_details[0]
+        remediation = {
+            "what_happened": (
+                f"Init container {first['init_container']} in pod "
+                f"{first['namespace']}/{first['pod']} has failed. The main containers will not "
+                f"start until all init containers succeed."
+            ),
+            "why_it_matters": (
+                "The entire pod is blocked. No application containers are running."
+            ),
+            "how_to_fix": (
+                "Check the init container logs to find the failure reason."
+            ),
+            "cli_commands": [
+                f"kubectl logs {first['pod']} -n {first['namespace']} -c {first['init_container']}",
+                f"kubectl describe pod {first['pod']} -n {first['namespace']}",
+            ],
+        }
+        return [
+            self._make_finding(
+                bundle_id,
+                summary,
+                evidence_ids=evidence_ids,
+                remediation=remediation,
+            )
+        ]

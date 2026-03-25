@@ -24,6 +24,7 @@ class FailedJobsRule(BaseRule):
 
         failed = []
         evidence_ids = []
+        failed_details = []
 
         for job in jobs:
             try:
@@ -52,11 +53,13 @@ class FailedJobsRule(BaseRule):
                 if is_failed:
                     failed.append(f"{namespace}/{name} (failed={failed_count})")
                     evidence_ids.append(job.id)
+                    failed_details.append({"namespace": namespace, "name": name})
                 elif is_stuck:
                     failed.append(
                         f"{namespace}/{name} (stuck: 0 active, {succeeded}/{completions} succeeded)"
                     )
                     evidence_ids.append(job.id)
+                    failed_details.append({"namespace": namespace, "name": name})
             except Exception:
                 continue
 
@@ -65,4 +68,31 @@ class FailedJobsRule(BaseRule):
 
         objects_str = ", ".join(failed[:10])
         summary = f"{len(failed)} job(s) failed or are stuck: {objects_str}"
-        return [self._make_finding(bundle_id, summary, evidence_ids=evidence_ids)]
+        first = failed_details[0] if failed_details else {"namespace": "default", "name": "unknown"}
+        remediation = {
+            "what_happened": (
+                f"Job {first['namespace']}/{first['name']} has failed or is stuck. "
+                f"{len(failed)} job(s) total are affected."
+            ),
+            "why_it_matters": (
+                "Failed jobs may indicate data processing errors, migration failures, or "
+                "other batch workload issues that require manual intervention."
+            ),
+            "how_to_fix": (
+                "Check the job logs to understand the failure reason. "
+                "You may need to delete and recreate the job after fixing the underlying issue."
+            ),
+            "cli_commands": [
+                f"kubectl describe job {first['name']} -n {first['namespace']}",
+                f"kubectl logs -l job-name={first['name']} -n {first['namespace']}",
+                f"kubectl get pods -n {first['namespace']} --selector=job-name={first['name']}",
+            ],
+        }
+        return [
+            self._make_finding(
+                bundle_id,
+                summary,
+                evidence_ids=evidence_ids,
+                remediation=remediation,
+            )
+        ]

@@ -75,8 +75,31 @@ class ResourceQuotaRule(BaseRule):
                     namespace = quota.namespace or "default"
                     resources_str = ", ".join(near_limit_resources)
                     summary = f"ResourceQuota {namespace}/{quota.name} is near its limit for: {resources_str}"
+                    remediation = {
+                        "what_happened": (
+                            f"Namespace {namespace} is approaching or has exceeded its "
+                            f"ResourceQuota limits."
+                        ),
+                        "why_it_matters": (
+                            "New pods and deployments will be rejected until resource usage "
+                            "drops below the quota."
+                        ),
+                        "how_to_fix": (
+                            "Either increase the ResourceQuota or reduce resource consumption "
+                            "in the namespace."
+                        ),
+                        "cli_commands": [
+                            f"kubectl describe resourcequota -n {namespace}",
+                            f"kubectl top pods -n {namespace}",
+                        ],
+                    }
                     findings.append(
-                        self._make_finding(bundle_id, summary, evidence_ids=[quota.id])
+                        self._make_finding(
+                            bundle_id,
+                            summary,
+                            evidence_ids=[quota.id],
+                            remediation=remediation,
+                        )
                     )
             except Exception:
                 continue

@@ -28,6 +28,7 @@ class WarningEventsRule(BaseRule):
         warning_events = []
         warning_ids = []
         reason_counter: Counter = Counter()
+        namespaces: list[str] = []
 
         for event in events:
             try:
@@ -37,6 +38,8 @@ class WarningEventsRule(BaseRule):
                     warning_ids.append(event.id)
                     reason = raw.get("reason", "Unknown")
                     reason_counter[reason] += 1
+                    ns = event.namespace or raw.get("metadata", {}).get("namespace", "default")
+                    namespaces.append(ns)
             except Exception:
                 continue
 
@@ -48,4 +51,30 @@ class WarningEventsRule(BaseRule):
         summary = (
             f"{len(warning_events)} warning events found. Top reasons: {reasons_str}"
         )
-        return [self._make_finding(bundle_id, summary, evidence_ids=warning_ids)]
+        namespace = namespaces[0] if namespaces else "default"
+        top_reason_names = ", ".join(r for r, _ in top_reasons)
+        remediation = {
+            "what_happened": (
+                f"{len(warning_events)} Kubernetes Warning events detected in namespace "
+                f"{namespace}. Top reasons: {top_reason_names}."
+            ),
+            "why_it_matters": (
+                "Warning events indicate cluster components are reporting problems that may "
+                "lead to or already be causing outages."
+            ),
+            "how_to_fix": (
+                "Review the warning events and address the underlying causes."
+            ),
+            "cli_commands": [
+                f"kubectl get events -n {namespace} --field-selector type=Warning --sort-by=.lastTimestamp",
+                "kubectl get events --all-namespaces --field-selector type=Warning",
+            ],
+        }
+        return [
+            self._make_finding(
+                bundle_id,
+                summary,
+                evidence_ids=warning_ids,
+                remediation=remediation,
+            )
+        ]

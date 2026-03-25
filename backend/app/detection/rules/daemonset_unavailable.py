@@ -24,6 +24,7 @@ class DaemonSetUnavailableRule(BaseRule):
 
         unavailable = []
         evidence_ids = []
+        ds_details = []
 
         for ds in daemonsets:
             try:
@@ -48,6 +49,13 @@ class DaemonSetUnavailableRule(BaseRule):
                         f"unavailable={unavail}, misscheduled={misscheduled})"
                     )
                     evidence_ids.append(ds.id)
+                    ds_details.append({
+                        "name": name,
+                        "namespace": namespace,
+                        "desired": desired,
+                        "ready": ready,
+                        "unavailable": unavail,
+                    })
             except Exception:
                 continue
 
@@ -56,4 +64,31 @@ class DaemonSetUnavailableRule(BaseRule):
 
         objects_str = ", ".join(unavailable[:10])
         summary = f"{len(unavailable)} DaemonSet(s) not fully scheduled: {objects_str}"
-        return [self._make_finding(bundle_id, summary, evidence_ids=evidence_ids)]
+        first = ds_details[0]
+        remediation = {
+            "what_happened": (
+                f"DaemonSet {first['namespace']}/{first['name']} has {first['unavailable']} "
+                f"unavailable pod(s). Desired: {first['desired']}, Ready: {first['ready']}."
+            ),
+            "why_it_matters": (
+                "Insufficient replicas mean reduced capacity and potential service "
+                "degradation or outage."
+            ),
+            "how_to_fix": (
+                "Check the DaemonSet's pod events and logs to find why pods "
+                "are not becoming ready."
+            ),
+            "cli_commands": [
+                f"kubectl rollout status daemonset/{first['name']} -n {first['namespace']}",
+                f"kubectl describe daemonset {first['name']} -n {first['namespace']}",
+                f"kubectl get pods -n {first['namespace']} -l app={first['name']}",
+            ],
+        }
+        return [
+            self._make_finding(
+                bundle_id,
+                summary,
+                evidence_ids=evidence_ids,
+                remediation=remediation,
+            )
+        ]

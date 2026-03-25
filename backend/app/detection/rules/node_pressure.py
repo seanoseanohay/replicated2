@@ -38,8 +38,32 @@ class NodePressureRule(BaseRule):
                 if active_pressures:
                     pressures_str = ", ".join(active_pressures)
                     summary = f"Node {node.name} has active conditions: {pressures_str}"
+                    condition_label = active_pressures[0]
+                    remediation = {
+                        "what_happened": (
+                            f"Node {node.name} is reporting {condition_label} pressure. "
+                            f"The kubelet is under resource stress."
+                        ),
+                        "why_it_matters": (
+                            "Under pressure conditions the kubelet will evict pods to reclaim "
+                            "resources, causing unexpected pod termination."
+                        ),
+                        "how_to_fix": (
+                            "Check which pods are consuming the most resources on this node "
+                            "and consider redistributing workloads."
+                        ),
+                        "cli_commands": [
+                            f"kubectl describe node {node.name}",
+                            "kubectl top pods --all-namespaces --sort-by=memory | head -20",
+                        ],
+                    }
                     findings.append(
-                        self._make_finding(bundle_id, summary, evidence_ids=[node.id])
+                        self._make_finding(
+                            bundle_id,
+                            summary,
+                            evidence_ids=[node.id],
+                            remediation=remediation,
+                        )
                     )
             except Exception:
                 continue

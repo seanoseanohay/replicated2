@@ -39,12 +39,38 @@ class StatefulSetUnavailableRule(BaseRule):
                 ready_replicas = int(ready_replicas)
                 if ready_replicas < spec_replicas:
                     namespace = sts.namespace or "default"
+                    sts_name = sts.name
+                    unavailable = spec_replicas - ready_replicas
                     summary = (
-                        f"StatefulSet {namespace}/{sts.name} has "
+                        f"StatefulSet {namespace}/{sts_name} has "
                         f"{ready_replicas}/{spec_replicas} replicas ready"
                     )
+                    remediation = {
+                        "what_happened": (
+                            f"StatefulSet {namespace}/{sts_name} has {unavailable} unavailable "
+                            f"replica(s). Desired: {spec_replicas}, Ready: {ready_replicas}."
+                        ),
+                        "why_it_matters": (
+                            "Insufficient replicas mean reduced capacity and potential service "
+                            "degradation or outage."
+                        ),
+                        "how_to_fix": (
+                            "Check the StatefulSet's pod events and logs to find why replicas "
+                            "are not becoming ready."
+                        ),
+                        "cli_commands": [
+                            f"kubectl rollout status statefulset/{sts_name} -n {namespace}",
+                            f"kubectl describe statefulset {sts_name} -n {namespace}",
+                            f"kubectl get pods -n {namespace} -l app={sts_name}",
+                        ],
+                    }
                     findings.append(
-                        self._make_finding(bundle_id, summary, evidence_ids=[sts.id])
+                        self._make_finding(
+                            bundle_id,
+                            summary,
+                            evidence_ids=[sts.id],
+                            remediation=remediation,
+                        )
                     )
             except Exception:
                 continue

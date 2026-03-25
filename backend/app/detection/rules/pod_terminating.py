@@ -27,6 +27,7 @@ class PodTerminatingRule(BaseRule):
 
         stuck = []
         evidence_ids = []
+        stuck_details = []
 
         for pod in pods:
             try:
@@ -44,6 +45,7 @@ class PodTerminatingRule(BaseRule):
                 # Flag it — if it's in the bundle snapshot it's already stuck
                 stuck.append(f"{namespace}/{name} (gracePeriod={grace}s)")
                 evidence_ids.append(pod.id)
+                stuck_details.append({"namespace": namespace, "pod": name})
             except Exception:
                 continue
 
@@ -52,4 +54,27 @@ class PodTerminatingRule(BaseRule):
 
         objects_str = ", ".join(stuck[:10])
         summary = f"{len(stuck)} pod(s) stuck in Terminating state: {objects_str}"
-        return [self._make_finding(bundle_id, summary, evidence_ids=evidence_ids)]
+        first = stuck_details[0]
+        remediation = {
+            "what_happened": (
+                f"Pod {first['namespace']}/{first['pod']} has been stuck in Terminating state."
+            ),
+            "why_it_matters": (
+                "Stuck terminating pods block namespace deletion, deployment rollouts, and can "
+                "tie up node resources."
+            ),
+            "how_to_fix": (
+                "Force delete the pod if it has been stuck for more than a few minutes."
+            ),
+            "cli_commands": [
+                f"kubectl delete pod {first['pod']} -n {first['namespace']} --grace-period=0 --force",
+            ],
+        }
+        return [
+            self._make_finding(
+                bundle_id,
+                summary,
+                evidence_ids=evidence_ids,
+                remediation=remediation,
+            )
+        ]

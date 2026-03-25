@@ -51,8 +51,35 @@ class PodCrashLoopRule(BaseRule):
                         for c in affected_containers
                     )
                     summary = f"Pod {namespace}/{pod_name} has containers in crash loop: {details}"
+                    # Use first affected container for remediation
+                    container = affected_containers[0]["name"]
+                    count = affected_containers[0]["restartCount"]
+                    remediation = {
+                        "what_happened": (
+                            f"Container {container} in pod {namespace}/{pod_name} has restarted "
+                            f"{count} times and is in CrashLoopBackOff. Kubernetes keeps restarting "
+                            f"it but it keeps failing."
+                        ),
+                        "why_it_matters": (
+                            "The pod is unavailable and consuming cluster resources during its "
+                            "restart backoff window."
+                        ),
+                        "how_to_fix": (
+                            "Check the container logs from the previous (crashed) instance to find "
+                            "the root cause, then fix the underlying application error."
+                        ),
+                        "cli_commands": [
+                            f"kubectl logs {pod_name} -n {namespace} --previous -c {container}",
+                            f"kubectl describe pod {pod_name} -n {namespace}",
+                        ],
+                    }
                     findings.append(
-                        self._make_finding(bundle_id, summary, evidence_ids=[pod.id])
+                        self._make_finding(
+                            bundle_id,
+                            summary,
+                            evidence_ids=[pod.id],
+                            remediation=remediation,
+                        )
                     )
             except Exception:
                 continue

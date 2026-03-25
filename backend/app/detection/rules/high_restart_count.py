@@ -27,6 +27,7 @@ class HighRestartCountRule(BaseRule):
 
         flagged = []
         evidence_ids = []
+        flagged_details = []
 
         for pod in pods:
             try:
@@ -59,6 +60,12 @@ class HighRestartCountRule(BaseRule):
                             f"(restarts={restart_count}, ready={cs.get('ready', False)})"
                         )
                         evidence_ids.append(pod.id)
+                        flagged_details.append({
+                            "namespace": namespace,
+                            "pod": name,
+                            "container": container_name,
+                            "count": restart_count,
+                        })
                         break  # one finding per pod
             except Exception:
                 continue
@@ -71,4 +78,30 @@ class HighRestartCountRule(BaseRule):
             f"{len(flagged)} container(s) have restarted {HIGH_RESTART_THRESHOLD}+ "
             f"times without entering CrashLoopBackOff: {objects_str}"
         )
-        return [self._make_finding(bundle_id, summary, evidence_ids=evidence_ids)]
+        first = flagged_details[0]
+        remediation = {
+            "what_happened": (
+                f"Container {first['container']} in pod {first['namespace']}/{first['pod']} "
+                f"has restarted {first['count']} times."
+            ),
+            "why_it_matters": (
+                "Frequent restarts indicate an unstable application that may be losing state "
+                "and dropping connections on each restart."
+            ),
+            "how_to_fix": (
+                "Review the container logs to identify the crash cause. Check liveness probe "
+                "configuration — overly aggressive probes can cause unnecessary restarts."
+            ),
+            "cli_commands": [
+                f"kubectl logs {first['pod']} -n {first['namespace']} -c {first['container']} --previous",
+                f"kubectl describe pod {first['pod']} -n {first['namespace']}",
+            ],
+        }
+        return [
+            self._make_finding(
+                bundle_id,
+                summary,
+                evidence_ids=evidence_ids,
+                remediation=remediation,
+            )
+        ]
