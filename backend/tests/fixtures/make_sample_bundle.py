@@ -489,6 +489,63 @@ items:
 """
 
 
+# ── KOTS Config Files ─────────────────────────────────────────────────────────
+
+KOTS_CONFIGVALUES_YAML = """apiVersion: kots.io/v1beta1
+kind: ConfigValues
+metadata:
+  name: my-app
+spec:
+  values:
+    replicas:
+      value: "1"
+    debug_mode:
+      value: "true"
+    tls_enabled:
+      value: "false"
+    storage_size:
+      value: "5"
+    s3_bucket:
+      value: ""
+    memory_limit:
+      value: "256Mi"
+"""
+
+KOTS_CONFIG_YAML = """apiVersion: kots.io/v1beta1
+kind: Config
+metadata:
+  name: my-app
+spec:
+  groups:
+    - name: deployment
+      title: Deployment Settings
+      items:
+        - name: replicas
+          title: Replica Count
+          type: text
+          default: "2"
+        - name: debug_mode
+          title: Debug Mode
+          type: bool
+          default: "false"
+        - name: tls_enabled
+          title: Enable TLS
+          type: bool
+          default: "true"
+        - name: storage_size
+          title: Storage Size (Gi)
+          type: text
+          default: "20"
+        - name: s3_bucket
+          title: S3 Bucket Name
+          type: text
+        - name: memory_limit
+          title: Memory Limit
+          type: text
+          default: "512Mi"
+"""
+
+
 def add_file(tf: tarfile.TarFile, path: str, content: str) -> None:
     encoded = content.encode("utf-8")
     info = tarfile.TarInfo(name=path)
@@ -508,6 +565,11 @@ def main() -> None:
         add_file(tf, f"{base}/deployments.yaml", DEPLOYMENTS_YAML)
         add_file(tf, f"{base}/jobs.yaml", JOBS_YAML)
         add_file(tf, f"{base}/replicasets.yaml", REPLICASETS_YAML)
+
+        # KOTS config files
+        kots_base = "sample-bundle/kots"
+        add_file(tf, f"{kots_base}/configvalues.yaml", KOTS_CONFIGVALUES_YAML)
+        add_file(tf, f"{kots_base}/config.yaml", KOTS_CONFIG_YAML)
 
     print(f"Created {OUTPUT_PATH}")
     import os
