@@ -6,6 +6,7 @@ from app.models.evidence import Evidence
 from app.parsing.parsers.cluster_info import ClusterInfoParser
 from app.parsing.parsers.cluster_resources import ClusterResourcesParser
 from app.parsing.parsers.host import HostParser
+from app.parsing.parsers.kots_config import KotsConfigParser
 from app.parsing.parsers.logs import LogsParser
 
 logger = get_logger(__name__)
@@ -15,6 +16,7 @@ ALL_PARSERS = [
     ClusterResourcesParser(),
     LogsParser(),
     HostParser(),
+    KotsConfigParser(),
 ]
 
 
