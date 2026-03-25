@@ -65,6 +65,10 @@ export interface RemediationData {
   patch_filename?: string;
   cli_commands?: string[];
   shell_script?: string;
+  // KOTS-specific fields
+  kots_key?: string;
+  kots_recommended_value?: string;
+  kots_diff?: string;
 }
 
 export interface FindingListResponse {

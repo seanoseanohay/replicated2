@@ -741,6 +741,20 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
                 </div>
               )}
 
+              {/* KOTS Config Key badge */}
+              {finding.remediation.kots_key && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200">
+                    KOTS Config Key: <span className="font-mono">{finding.remediation.kots_key}</span>
+                  </span>
+                  {finding.remediation.kots_recommended_value && (
+                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                      Recommended Value: <span className="font-mono">{finding.remediation.kots_recommended_value}</span>
+                    </span>
+                  )}
+                </div>
+              )}
+
               {/* CLI Commands */}
               {finding.remediation.cli_commands && finding.remediation.cli_commands.length > 0 && (
                 <div>
@@ -764,33 +778,40 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
                 </div>
               )}
 
-              {/* Patch YAML */}
-              {finding.remediation.patch_yaml && (
+              {/* KOTS unified diff (preferred over patch_yaml for KOTS findings) */}
+              {finding.remediation.kots_diff ? (
+                <div>
+                  <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">Config Diff (configvalues.yaml)</p>
+                  <pre className="text-xs bg-gray-900 text-green-300 rounded p-3 overflow-x-auto whitespace-pre font-mono">
+                    {finding.remediation.kots_diff}
+                  </pre>
+                </div>
+              ) : finding.remediation.patch_yaml ? (
                 <div>
                   <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">Patch YAML</p>
                   <pre className="text-xs bg-gray-900 text-green-300 rounded p-3 overflow-x-auto whitespace-pre font-mono">
                     {finding.remediation.patch_yaml}
                   </pre>
                 </div>
-              )}
+              ) : null}
 
               {/* Download buttons */}
               <div className="flex flex-wrap gap-2 pt-1">
-                {finding.remediation.patch_yaml && (
-                  <>
-                    <button
-                      onClick={() => downloadRemediation("yaml")}
-                      className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
-                    >
-                      Download .yaml
-                    </button>
-                    <button
-                      onClick={() => downloadRemediation("patch")}
-                      className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
-                    >
-                      Download .patch
-                    </button>
-                  </>
+                {(finding.remediation.kots_diff || finding.remediation.patch_yaml) && (
+                  <button
+                    onClick={() => downloadRemediation("patch")}
+                    className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
+                  >
+                    Download .patch
+                  </button>
+                )}
+                {!finding.remediation.kots_diff && finding.remediation.patch_yaml && (
+                  <button
+                    onClick={() => downloadRemediation("yaml")}
+                    className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
+                  >
+                    Download .yaml
+                  </button>
                 )}
                 <button
                   onClick={() => downloadRemediation("shell")}
