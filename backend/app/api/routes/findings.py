@@ -1,7 +1,9 @@
+import difflib
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -271,3 +273,67 @@ async def list_finding_events(
     events = events_result.scalars().all()
 
     return [FindingEventRead.model_validate(e) for e in events]
+
+
+@router.get(
+    "/{bundle_id}/findings/{finding_id}/remediation/download",
+)
+async def download_remediation(
+    bundle_id: uuid.UUID,
+    finding_id: uuid.UUID,
+    format: str = "yaml",
+    tenant_id: str = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_current_user),
+) -> Response:
+    await _get_bundle_for_tenant(bundle_id, tenant_id, db)
+
+    result = await db.execute(
+        select(Finding).where(Finding.id == finding_id, Finding.bundle_id == bundle_id)
+    )
+    finding = result.scalar_one_or_none()
+    if finding is None:
+        raise HTTPException(status_code=404, detail="Finding not found")
+    if not finding.remediation:
+        raise HTTPException(status_code=404, detail="No remediation available for this finding")
+
+    rem = finding.remediation
+    slug = finding.rule_id.replace("_", "-")
+
+    if format == "shell":
+        commands = rem.get("cli_commands", [])
+        script = rem.get("shell_script") or "#!/bin/bash\n# Fix for: {title}\n\n{cmds}".format(
+            title=finding.title,
+            cmds="\n".join(commands),
+        )
+        return Response(
+            content=script,
+            media_type="text/x-sh",
+            headers={"Content-Disposition": f'attachment; filename="fix-{slug}.sh"'},
+        )
+    elif format == "patch":
+        patch = rem.get("patch_yaml", "")
+        if not patch:
+            raise HTTPException(status_code=404, detail="No patch available for this finding")
+        lines_before = ["# No current config\n"]
+        lines_after = (patch + "\n").splitlines(keepends=True)
+        diff = "".join(difflib.unified_diff(
+            lines_before, lines_after,
+            fromfile="a/current.yaml", tofile="b/fixed.yaml",
+        ))
+        filename = rem.get("patch_filename", f"fix-{slug}.patch")
+        return Response(
+            content=diff,
+            media_type="text/plain",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    else:  # yaml
+        yaml_content = rem.get("patch_yaml", "")
+        if not yaml_content:
+            raise HTTPException(status_code=404, detail="No YAML patch available for this finding")
+        filename = rem.get("patch_filename", f"fix-{slug}.yaml")
+        return Response(
+            content=yaml_content,
+            media_type="application/x-yaml",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
