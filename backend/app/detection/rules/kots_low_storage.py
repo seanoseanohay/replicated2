@@ -76,8 +76,8 @@ class KotsLowStorageRule(BaseRule):
                             "the StorageClass to support volume expansion."
                         ),
                         "cli_commands": [
-                            f"kubectl kots set config <app-slug> --namespace <namespace> "
-                            f"--key {key} --value '10Gi' --deploy",
+                            f"kubectl kots set config <app-slug> -n <namespace> "
+                            f"--config-file fix-kots-{key}.yaml --merge --deploy",
                             "kubectl get pvc --all-namespaces",
                         ],
                         "kots_key": key,

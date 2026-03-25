@@ -307,15 +307,23 @@ async def download_remediation(
         commands = rem.get("cli_commands", [])
         if is_kots:
             key_slug = kots_key.replace("_", "-")
+            recommended = rem.get("kots_recommended_value", "<value>")
             script = (
                 "#!/bin/bash\n"
                 f"# Fix for: {finding.title}\n"
-                f"# Apply: bash fix-kots-{key_slug}.sh\n\n"
+                "#\n"
+                "# Steps:\n"
+                f"#   1. Download fix-kots-{key_slug}.yaml from Bundle Analyzer\n"
+                "#   2. Fill in APP_SLUG and NAMESPACE below\n"
+                "#   3. Run: bash fix-kots-{key_slug}.sh\n\n"
                 "# Set these to match your environment:\n"
                 'APP_SLUG="${APP_SLUG:-my-app}"\n'
                 'NAMESPACE="${NAMESPACE:-default}"\n\n'
-                + "\n".join(commands)
-                + "\n"
+                f"kubectl kots set config \"$APP_SLUG\" \\\n"
+                f"  -n \"$NAMESPACE\" \\\n"
+                f"  --config-file fix-kots-{key_slug}.yaml \\\n"
+                f"  --merge \\\n"
+                f"  --deploy\n"
             )
         else:
             script = rem.get("shell_script") or "#!/bin/bash\n# Fix for: {title}\n\n{cmds}".format(
@@ -328,7 +336,6 @@ async def download_remediation(
             headers={"Content-Disposition": f'attachment; filename="fix-{slug}.sh"'},
         )
     elif format == "patch":
-        # For KOTS findings prefer kots_diff (real unified diff of configvalues.yaml)
         kots_diff = rem.get("kots_diff", "")
         if is_kots and kots_diff:
             key_slug = kots_key.replace("_", "-")
@@ -354,10 +361,25 @@ async def download_remediation(
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     else:  # yaml
-        yaml_content = rem.get("patch_yaml", "")
-        if not yaml_content:
-            raise HTTPException(status_code=404, detail="No YAML patch available for this finding")
-        filename = rem.get("patch_filename", f"fix-{slug}.yaml")
+        if is_kots:
+            # Minimal ConfigValues manifest — safe to use with --config-file --merge
+            # Only the changed key is included so no other config is overwritten
+            key_slug = kots_key.replace("_", "-")
+            recommended = rem.get("kots_recommended_value", "")
+            yaml_content = (
+                "apiVersion: kots.io/v1beta1\n"
+                "kind: ConfigValues\n"
+                "spec:\n"
+                "  values:\n"
+                f"    {kots_key}:\n"
+                f'      value: "{recommended}"\n'
+            )
+            filename = f"fix-kots-{key_slug}.yaml"
+        else:
+            yaml_content = rem.get("patch_yaml", "")
+            if not yaml_content:
+                raise HTTPException(status_code=404, detail="No YAML patch available for this finding")
+            filename = rem.get("patch_filename", f"fix-{slug}.yaml")
         return Response(
             content=yaml_content,
             media_type="application/x-yaml",

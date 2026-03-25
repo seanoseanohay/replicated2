@@ -60,8 +60,8 @@ class KotsDebugEnabledRule(BaseRule):
                             "log_level to 'info'."
                         ),
                         "cli_commands": [
-                            f"kubectl kots set config <app-slug> --namespace <namespace> "
-                            f"--key {key} --value 'false' --deploy"
+                            f"kubectl kots set config <app-slug> -n <namespace> "
+                            f"--config-file fix-kots-{key}.yaml --merge --deploy"
                         ],
                         "kots_key": key,
                         "kots_recommended_value": "false",

@@ -61,8 +61,8 @@ class KotsTlsDisabledRule(BaseRule):
                             "certificate is configured."
                         ),
                         "cli_commands": [
-                            f"kubectl kots set config <app-slug> --namespace <namespace> "
-                            f"--key {key} --value 'true' --deploy"
+                            f"kubectl kots set config <app-slug> -n <namespace> "
+                            f"--config-file fix-kots-{key}.yaml --merge --deploy"
                         ],
                         "kots_key": key,
                         "kots_recommended_value": "true",

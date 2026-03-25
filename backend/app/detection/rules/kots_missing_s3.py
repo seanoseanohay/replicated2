@@ -62,8 +62,8 @@ class KotsMissingS3Rule(BaseRule):
                             "endpoint, access key, and secret key in the KOTS admin console."
                         ),
                         "cli_commands": [
-                            f"kubectl kots set config <app-slug> --namespace <namespace> "
-                            f"--key {key} --value 'my-bucket-name' --deploy"
+                            f"kubectl kots set config <app-slug> -n <namespace> "
+                            f"--config-file fix-kots-{key}.yaml --merge --deploy"
                         ],
                         "kots_key": key,
                         "kots_diff": kots_diff,

@@ -59,14 +59,9 @@ class KotsLowReplicasRule(BaseRule):
                             "Increase the replica count to at least 2 in the KOTS admin "
                             "console or via the CLI."
                         ),
-                        "patch_yaml": (
-                            f"# Set {key} to 2 replicas\n"
-                            f"# kots set config <app-slug> --key {key} --value '2' --deploy\n"
-                        ),
-                        "patch_filename": "fix-kots-replicas.patch",
                         "cli_commands": [
-                            f"kubectl kots set config <app-slug> --namespace <namespace> "
-                            f"--key {key} --value '2' --deploy"
+                            f"kubectl kots set config <app-slug> -n <namespace> "
+                            f"--config-file fix-kots-{key}.yaml --merge --deploy"
                         ],
                         "kots_key": key,
                         "kots_recommended_value": "2",
