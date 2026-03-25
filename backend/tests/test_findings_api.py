@@ -158,3 +158,149 @@ async def test_list_findings_tenant_isolation(client, bundle):
         headers={"X-Tenant-ID": "other-tenant"},
     )
     assert resp.status_code == 404
+
+
+# ── remediation download endpoint tests ─────────────────────────────────────
+
+@pytest_asyncio.fixture()
+async def finding_with_remediation(db_session, bundle):
+    """A finding that has remediation data including a patch_yaml."""
+    f = Finding(
+        id=uuid.uuid4(),
+        bundle_id=bundle.id,
+        rule_id="oom_killed",
+        title="Pod OOMKilled Detected",
+        severity="high",
+        summary="Pod production/oom-pod has OOMKilled containers: worker",
+        evidence_ids=[],
+        status="open",
+        remediation={
+            "what_happened": "Container worker in pod production/oom-pod was killed by the OOM killer.",
+            "why_it_matters": "OOM kills cause abrupt process termination.",
+            "how_to_fix": "Increase the memory limit for this container.",
+            "patch_yaml": (
+                "apiVersion: apps/v1\n"
+                "kind: Deployment\n"
+                "metadata:\n"
+                "  name: oom\n"
+                "  namespace: production\n"
+                "spec:\n"
+                "  template:\n"
+                "    spec:\n"
+                "      containers:\n"
+                "      - name: worker\n"
+                "        resources:\n"
+                "          limits:\n"
+                "            memory: \"512Mi\"\n"
+            ),
+            "patch_filename": "fix-oom-oom-pod-memory.yaml",
+            "cli_commands": [
+                "kubectl top pod oom-pod -n production",
+            ],
+        },
+    )
+    db_session.add(f)
+    await db_session.flush()
+    await db_session.refresh(f)
+    return f
+
+
+@pytest_asyncio.fixture()
+async def finding_no_remediation(db_session, bundle):
+    """A finding without any remediation data."""
+    f = Finding(
+        id=uuid.uuid4(),
+        bundle_id=bundle.id,
+        rule_id="pod_pending",
+        title="Pods Stuck in Pending State",
+        severity="medium",
+        summary="1 pod(s) stuck in Pending state",
+        evidence_ids=[],
+        status="open",
+        remediation=None,
+    )
+    db_session.add(f)
+    await db_session.flush()
+    await db_session.refresh(f)
+    return f
+
+
+@pytest.mark.asyncio
+async def test_download_remediation_shell(client, bundle, finding_with_remediation):
+    """Shell download returns a .sh file with correct Content-Disposition."""
+    resp = await client.get(
+        f"/api/v1/bundles/{bundle.id}/findings/{finding_with_remediation.id}"
+        f"/remediation/download?format=shell",
+        headers={"X-Tenant-ID": "tenant-1"},
+    )
+    assert resp.status_code == 200
+    assert "fix-oom-killed.sh" in resp.headers.get("content-disposition", "")
+    body = resp.text
+    # Should contain at least one of the CLI commands
+    assert "kubectl" in body
+
+
+@pytest.mark.asyncio
+async def test_download_remediation_yaml(client, bundle, finding_with_remediation):
+    """YAML download returns the patch with correct Content-Disposition."""
+    resp = await client.get(
+        f"/api/v1/bundles/{bundle.id}/findings/{finding_with_remediation.id}"
+        f"/remediation/download?format=yaml",
+        headers={"X-Tenant-ID": "tenant-1"},
+    )
+    assert resp.status_code == 200
+    cd = resp.headers.get("content-disposition", "")
+    assert "fix-oom-oom-pod-memory.yaml" in cd
+    assert "memory" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_download_remediation_patch(client, bundle, finding_with_remediation):
+    """Patch download returns a unified diff."""
+    resp = await client.get(
+        f"/api/v1/bundles/{bundle.id}/findings/{finding_with_remediation.id}"
+        f"/remediation/download?format=patch",
+        headers={"X-Tenant-ID": "tenant-1"},
+    )
+    assert resp.status_code == 200
+    # Unified diff starts with ---
+    assert "---" in resp.text or "+++" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_download_remediation_no_remediation(client, bundle, finding_no_remediation):
+    """404 when finding has no remediation data."""
+    resp = await client.get(
+        f"/api/v1/bundles/{bundle.id}/findings/{finding_no_remediation.id}"
+        f"/remediation/download?format=shell",
+        headers={"X-Tenant-ID": "tenant-1"},
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_download_remediation_not_found(client, bundle):
+    """404 when finding_id does not exist."""
+    resp = await client.get(
+        f"/api/v1/bundles/{bundle.id}/findings/{uuid.uuid4()}"
+        f"/remediation/download?format=shell",
+        headers={"X-Tenant-ID": "tenant-1"},
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_finding_read_includes_remediation(client, bundle, finding_with_remediation):
+    """FindingRead schema includes the remediation field."""
+    resp = await client.get(
+        f"/api/v1/bundles/{bundle.id}/findings",
+        headers={"X-Tenant-ID": "tenant-1"},
+    )
+    assert resp.status_code == 200
+    items = resp.json()["items"]
+    # Find our specific finding
+    target = next((i for i in items if i["id"] == str(finding_with_remediation.id)), None)
+    assert target is not None
+    assert "remediation" in target
+    assert target["remediation"] is not None
+    assert target["remediation"]["what_happened"] != ""
