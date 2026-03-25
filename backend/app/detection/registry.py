@@ -22,6 +22,11 @@ from app.detection.rules.high_restart_count import HighRestartCountRule
 from app.detection.rules.failed_jobs import FailedJobsRule
 from app.detection.rules.daemonset_unavailable import DaemonSetUnavailableRule
 from app.detection.rules.missing_resource_limits import MissingResourceLimitsRule
+from app.detection.rules.kots_low_replicas import KotsLowReplicasRule
+from app.detection.rules.kots_debug_enabled import KotsDebugEnabledRule
+from app.detection.rules.kots_tls_disabled import KotsTlsDisabledRule
+from app.detection.rules.kots_low_storage import KotsLowStorageRule
+from app.detection.rules.kots_missing_s3 import KotsMissingS3Rule
 from app.models.finding import Finding
 
 logger = logging.getLogger(__name__)
@@ -53,6 +58,12 @@ ALL_RULES = [
     # Warning events (broad + specific)
     WarningEventsRule(),
     WarningEventReasonsRule(),
+    # KOTS config analysis
+    KotsLowReplicasRule(),
+    KotsDebugEnabledRule(),
+    KotsTlsDisabledRule(),
+    KotsLowStorageRule(),
+    KotsMissingS3Rule(),
 ]
 
 
