@@ -796,30 +796,43 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
               ) : null}
 
               {/* Download buttons */}
-              <div className="flex flex-wrap gap-2 pt-1">
-                {(finding.remediation.kots_diff || finding.remediation.patch_yaml) && (
-                  <button
-                    onClick={() => downloadRemediation("patch")}
-                    className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
-                  >
-                    Download .patch
-                  </button>
-                )}
-                {!finding.remediation.kots_diff && finding.remediation.patch_yaml && (
-                  <button
-                    onClick={() => downloadRemediation("yaml")}
-                    className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
-                  >
-                    Download .yaml
-                  </button>
-                )}
-                <button
-                  onClick={() => downloadRemediation("shell")}
-                  className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
-                >
-                  Download .sh
-                </button>
-              </div>
+              {(() => {
+                const hasPatch = !!(finding.remediation.kots_diff || finding.remediation.patch_yaml);
+                const hasYaml = !!(finding.remediation.kots_key || finding.remediation.patch_yaml);
+                return (
+                  <div className="space-y-2 pt-1">
+                    {!hasPatch && (
+                      <p className="text-xs text-gray-500 italic">
+                        No file patch available for this finding type — use the CLI commands above.
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {hasPatch && (
+                        <button
+                          onClick={() => downloadRemediation("patch")}
+                          className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
+                        >
+                          ↓ Download .patch
+                        </button>
+                      )}
+                      {hasYaml && (
+                        <button
+                          onClick={() => downloadRemediation("yaml")}
+                          className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
+                        >
+                          ↓ Download .yaml
+                        </button>
+                      )}
+                      <button
+                        onClick={() => downloadRemediation("shell")}
+                        className="px-3 py-1 text-xs rounded border border-green-400 text-green-700 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 transition-colors"
+                      >
+                        ↓ Download .sh
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </ExpandSection>
         </div>
