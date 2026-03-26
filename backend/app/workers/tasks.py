@@ -68,11 +68,16 @@ def process_bundle(self, bundle_id: str) -> dict:
             log.error(f"Bundle {bundle_id} not found in database")
             return {"bundle_id": bundle_id, "status": "error", "error": "not found"}
 
+        def _progress(msg: str) -> None:
+            bundle.progress_message = msg
+            session.commit()
+            log.info(f"Bundle {bundle_id}: {msg}")
+
         # 2. Mark as processing
         bundle.status = "processing"
         bundle.error_message = None
+        bundle.progress_message = "Starting analysis…"
         session.commit()
-        log.info(f"Bundle {bundle_id} marked as processing")
 
         # 3. Download + extract
         extractor = BundleExtractor(storage_service)
@@ -80,28 +85,28 @@ def process_bundle(self, bundle_id: str) -> dict:
         if not s3_key:
             raise ValueError(f"Bundle {bundle_id} has no s3_key")
 
+        _progress("Downloading bundle from storage…")
         with extractor.extract(s3_key) as bundle_root:
-            log.info(f"Bundle {bundle_id} extracted to {bundle_root}")
+            _progress("Extracting bundle contents…")
 
             # 4. Run all parsers
+            _progress("Parsing Kubernetes resources…")
             evidence_list = run_all_parsers(bundle_root, uuid.UUID(bundle_id))
-            log.info(
-                f"Parsed {len(evidence_list)} evidence records for bundle {bundle_id}"
-            )
+            log.info(f"Parsed {len(evidence_list)} evidence records for bundle {bundle_id}")
 
         # 5. Bulk insert evidence
         if evidence_list:
+            _progress(f"Storing {len(evidence_list)} evidence records…")
             session.bulk_save_objects(evidence_list)
             session.commit()
-            log.info(
-                f"Inserted {len(evidence_list)} evidence records for bundle {bundle_id}"
-            )
 
         # 6. Run detection rules
         from app.detection.registry import run_all_rules
 
+        _progress("Running detection rules…")
         findings = run_all_rules(uuid.UUID(bundle_id), session)
         if findings:
+            _progress(f"Saving {len(findings)} finding(s)…")
             # add_all + flush populates f.id (uuid.uuid4 default) back onto Python objects
             session.add_all(findings)
             session.flush()
@@ -132,6 +137,7 @@ def process_bundle(self, bundle_id: str) -> dict:
         try:
             from app.ai.explainer import auto_explain_bundle
 
+            _progress("Running AI explanations…")
             explained = auto_explain_bundle(bundle_id, session)
             if explained:
                 log.info(f"Auto-explained {explained} findings for bundle {bundle_id}")
@@ -144,13 +150,12 @@ def process_bundle(self, bundle_id: str) -> dict:
 
             notify_bundle_findings(bundle_id, session)
         except Exception as notif_exc:
-            log.warning(
-                f"Notification delivery failed for bundle {bundle_id}: {notif_exc}"
-            )
+            log.warning(f"Notification delivery failed for bundle {bundle_id}: {notif_exc}")
 
         # 9. Mark as ready
         bundle.status = "ready"
         bundle.error_message = None
+        bundle.progress_message = None
         session.commit()
         log.info(f"Bundle {bundle_id} marked as ready")
 

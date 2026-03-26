@@ -28,6 +28,7 @@ export interface Bundle {
   tenant_id: string;
   s3_key: string | null;
   error_message: string | null;
+  progress_message: string | null;
   created_at: string;
   updated_at: string;
 }

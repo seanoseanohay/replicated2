@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { bundleApi, findingApi, type Bundle, type Finding } from "../api/client";
 import FindingCard from "../components/FindingCard";
@@ -50,6 +50,8 @@ export default function BundleDetail() {
   const [reanalyzing, setReanalyzing] = useState(false);
   // Bump this to force the polling effect to restart after reanalysis
   const [pollKey, setPollKey] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const processingStartRef = useRef<number | null>(null);
 
   const loadFindings = useCallback((bundleId: string, cancelled: { v: boolean }) => {
     setFindingsLoading(true);
@@ -101,6 +103,24 @@ export default function BundleDetail() {
       cancelled.v = true;
     };
   }, [id, pollKey, loadFindings]);
+
+  // Elapsed timer — starts when processing begins, clears when done
+  useEffect(() => {
+    if (!bundle) return;
+    const isProcessing = bundle.status === "uploaded" || bundle.status === "processing";
+    if (isProcessing) {
+      if (processingStartRef.current === null) {
+        processingStartRef.current = Date.now();
+      }
+      const interval = setInterval(() => {
+        setElapsedSeconds(Math.floor((Date.now() - processingStartRef.current!) / 1000));
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      processingStartRef.current = null;
+      setElapsedSeconds(0);
+    }
+  }, [bundle?.status]);
 
   function handleFindingUpdate(updated: Finding) {
     setFindings((prev) => prev.map((f) => (f.id === updated.id ? updated : f)));
@@ -226,9 +246,20 @@ export default function BundleDetail() {
         )}
 
         {(bundle.status === "uploaded" || bundle.status === "processing") && (
-          <div className="mt-4 flex items-center gap-2 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-md p-3">
-            <div className="h-4 w-4 rounded-full border-2 border-yellow-400 border-t-yellow-700 animate-spin shrink-0" />
-            Analyzing bundle... This page will update automatically.
+          <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium text-yellow-800">
+                <div className="h-4 w-4 rounded-full border-2 border-yellow-400 border-t-yellow-700 animate-spin shrink-0" />
+                Analyzing bundle…
+              </div>
+              <span className="text-xs text-yellow-600 font-mono tabular-nums">
+                {elapsedSeconds}s elapsed
+              </span>
+            </div>
+            {bundle.progress_message && (
+              <p className="text-xs text-yellow-700 pl-6">{bundle.progress_message}</p>
+            )}
+            <p className="text-xs text-yellow-600 pl-6">This page updates automatically every 2 seconds.</p>
           </div>
         )}
       </div>

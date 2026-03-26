@@ -23,6 +23,7 @@ class BundleRead(BaseModel):
     tenant_id: str
     s3_key: str | None
     error_message: str | None
+    progress_message: str | None = None
     created_at: datetime
     updated_at: datetime
 
