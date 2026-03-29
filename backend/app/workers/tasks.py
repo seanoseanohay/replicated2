@@ -27,6 +27,7 @@ celery_app.conf.update(
     task_soft_time_limit=540,  # seconds — raises SoftTimeLimitExceeded
     task_time_limit=600,  # hard kill
     task_reject_on_worker_lost=True,
+    beat_schedule_filename="/tmp/celerybeat-schedule",
     beat_schedule={
         "cleanup-stuck-bundles": {
             "task": "tasks.cleanup_stuck_bundles",
