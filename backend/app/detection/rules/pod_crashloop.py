@@ -10,7 +10,7 @@ from app.models.finding import Finding
 
 class PodCrashLoopRule(BaseRule):
     rule_id = "pod_crashloop"
-    title = "Pod CrashLoopBackOff Detected"
+    title = "Pod Crash Detected"
     severity = "high"
 
     def evaluate(self, bundle_id: uuid.UUID, session: Session) -> list[Finding]:
@@ -32,15 +32,31 @@ class PodCrashLoopRule(BaseRule):
                 affected_containers = []
                 for cs in container_statuses:
                     restart_count = cs.get("restartCount", 0) or 0
+                    waiting_reason = (
+                        cs.get("state", {}).get("waiting", {}).get("reason", "")
+                    )
+                    last_exit_code = (
+                        cs.get("lastState", {}).get("terminated", {}).get("exitCode")
+                    )
+                    current_exit_code = (
+                        cs.get("state", {}).get("terminated", {}).get("exitCode")
+                    )
                     last_reason = (
                         cs.get("lastState", {}).get("terminated", {}).get("reason", "")
                     )
-                    if restart_count > 5 or last_reason == "CrashLoopBackOff":
+                    is_crashing = (
+                        waiting_reason == "CrashLoopBackOff"
+                        or restart_count > 5
+                        or (restart_count >= 2 and last_exit_code not in (0, None))
+                        or (current_exit_code not in (0, None) and restart_count >= 1)
+                    )
+                    if is_crashing:
+                        reason = waiting_reason or last_reason or "Error"
                         affected_containers.append(
                             {
                                 "name": cs.get("name", "unknown"),
                                 "restartCount": restart_count,
-                                "reason": last_reason,
+                                "reason": reason,
                             }
                         )
                 if affected_containers:
