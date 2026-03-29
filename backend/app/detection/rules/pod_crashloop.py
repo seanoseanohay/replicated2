@@ -46,6 +46,7 @@ class PodCrashLoopRule(BaseRule):
                     )
                     is_crashing = (
                         waiting_reason == "CrashLoopBackOff"
+                        or last_reason == "CrashLoopBackOff"
                         or restart_count > 5
                         or (restart_count >= 2 and last_exit_code not in (0, None))
                         or (current_exit_code not in (0, None) and restart_count >= 1)
