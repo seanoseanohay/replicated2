@@ -134,18 +134,7 @@ def process_bundle(self, bundle_id: str) -> dict:
                 session.rollback()
                 log.warning(f"Failed to record finding created events: {evt_exc}")
 
-        # 7. Auto-explain findings with AI (best-effort)
-        try:
-            from app.ai.explainer import auto_explain_bundle
-
-            _progress("Running AI explanations…")
-            explained = auto_explain_bundle(bundle_id, session)
-            if explained:
-                log.info(f"Auto-explained {explained} findings for bundle {bundle_id}")
-        except Exception as ai_exc:
-            log.warning(f"Auto-explain failed for bundle {bundle_id}: {ai_exc}")
-
-        # 8. Send notifications (best-effort)
+        # 7. Send notifications (best-effort)
         try:
             from app.services.notifications import notify_bundle_findings
 
@@ -257,16 +246,6 @@ def reanalyze_bundle(self, bundle_id: str) -> dict:
             except Exception as evt_exc:
                 session.rollback()
                 log.warning(f"Failed to record finding created events: {evt_exc}")
-
-        # Auto-explain findings with AI (best-effort)
-        try:
-            from app.ai.explainer import auto_explain_bundle
-
-            explained = auto_explain_bundle(bundle_id, session)
-            if explained:
-                log.info(f"Auto-explained {explained} findings for bundle {bundle_id}")
-        except Exception as ai_exc:
-            log.warning(f"Auto-explain failed for bundle {bundle_id}: {ai_exc}")
 
         bundle.status = "ready"
         bundle.error_message = None
