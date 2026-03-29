@@ -96,6 +96,9 @@ class HighRestartCountRule(BaseRule):
                 f"kubectl logs {first['pod']} -n {first['namespace']} -c {first['container']} --previous",
                 f"kubectl describe pod {first['pod']} -n {first['namespace']}",
             ],
+            "_affected_pods": [
+                f"{d['namespace']}/{d['pod']}" for d in flagged_details
+            ],
         }
         return [
             self._make_finding(

@@ -64,6 +64,9 @@ HIGH_SEVERITY_REASONS = {
 
 REASON_THRESHOLD = 3  # default; critical reasons use threshold of 1
 
+# Events from these namespaces are Kubernetes internals — downgrade to info
+SYSTEM_NAMESPACES = {"kube-system", "kube-public", "kube-node-lease", "local-path-storage"}
+
 
 class WarningEventReasonsRule(BaseRule):
     rule_id = "warning_event_reasons"
@@ -118,11 +121,28 @@ class WarningEventReasonsRule(BaseRule):
             )
             evidence_ids = [eid for eid, _, _ in entries]
             namespace = entries[0][2] if entries else "default"
-            severity = "high" if reason in HIGH_SEVERITY_REASONS else "medium"
+
+            # Downgrade to info when all events are from system namespaces
+            all_system = all(ns in SYSTEM_NAMESPACES for _, _, ns in entries)
+            if all_system:
+                severity = "info"
+            elif reason in HIGH_SEVERITY_REASONS:
+                severity = "high"
+            else:
+                severity = "medium"
+
+            # Collect affected pod names for BackOff deduplication
+            affected_pods = []
+            if reason == "BackOff":
+                for _, obj_ref, ns in entries:
+                    if obj_ref.startswith("pod/"):
+                        affected_pods.append(f"{ns}/{obj_ref[4:]}")
+
             remediation = {
                 "what_happened": (
                     f"{count} Kubernetes Warning events detected in namespace {namespace}. "
                     f"Top reasons: {reason}."
+                    + (" (System namespace — may be transient startup noise.)" if all_system else "")
                 ),
                 "why_it_matters": (
                     "Warning events indicate cluster components are reporting problems that may "
@@ -135,6 +155,8 @@ class WarningEventReasonsRule(BaseRule):
                     f"kubectl get events -n {namespace} --field-selector type=Warning --sort-by=.lastTimestamp",
                     "kubectl get events --all-namespaces --field-selector type=Warning",
                 ],
+                "_affected_pods": affected_pods,
+                "_system_namespace_only": all_system,
             }
             finding = Finding(
                 bundle_id=bundle_id,

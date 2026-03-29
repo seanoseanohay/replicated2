@@ -44,6 +44,24 @@ class MissingResourceLimitsRule(BaseRule):
                 if phase in ("Succeeded", "Failed"):
                     continue
 
+                # Skip crashing pods — missing limits are noise when the pod is already broken
+                container_statuses = (raw.get("status", {}) or {}).get("containerStatuses", []) or []
+                is_crashing = any(
+                    cs.get("state", {}).get("waiting", {}).get("reason") == "CrashLoopBackOff"
+                    or cs.get("lastState", {}).get("terminated", {}).get("reason") == "CrashLoopBackOff"
+                    or (
+                        cs.get("state", {}).get("terminated", {}).get("exitCode") not in (0, None)
+                        and (cs.get("restartCount", 0) or 0) >= 1
+                    )
+                    or (
+                        cs.get("lastState", {}).get("terminated", {}).get("exitCode") not in (0, None)
+                        and (cs.get("restartCount", 0) or 0) >= 1
+                    )
+                    for cs in container_statuses
+                )
+                if is_crashing:
+                    continue
+
                 spec = raw.get("spec", {}) or {}
                 containers = spec.get("containers", []) or []
 

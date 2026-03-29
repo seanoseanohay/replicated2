@@ -39,6 +39,40 @@ celery_app.conf.update(
 log = logging.getLogger(__name__)
 
 
+def _deduplicate_findings(findings: list) -> list:
+    """Suppress cascade findings when the root cause is already captured.
+
+    Rules:
+    - high_restart_count is suppressed when all its affected pods already have
+      a pod_crashloop finding (same underlying problem, lower-signal rule).
+    - BackOff event findings are suppressed when all affected pods are already
+      covered by a pod_crashloop finding (BackOff is a symptom of the crash).
+    """
+    crash_pods: set[str] = set()
+    for f in findings:
+        if f.rule_id == "pod_crashloop":
+            for pod in (f.remediation or {}).get("_affected_pods", []):
+                crash_pods.add(pod)
+
+    if not crash_pods:
+        return findings
+
+    result = []
+    for f in findings:
+        if f.rule_id == "high_restart_count":
+            affected = set((f.remediation or {}).get("_affected_pods", []))
+            if affected and affected.issubset(crash_pods):
+                log.info(f"Suppressing high_restart_count finding — all pods already in crash findings: {affected}")
+                continue
+        elif f.rule_id == "warning_event_reasons" and "BackOff" in f.title:
+            affected = set((f.remediation or {}).get("_affected_pods", []))
+            if affected and affected.issubset(crash_pods):
+                log.info(f"Suppressing BackOff event finding — all affected pods already in crash findings: {affected}")
+                continue
+        result.append(f)
+    return result
+
+
 def _make_sync_session() -> tuple[Engine, Session]:
     """Create a synchronous SQLAlchemy engine + session for use inside Celery tasks."""
     sync_url = settings.DATABASE_URL.replace(
@@ -106,6 +140,7 @@ def process_bundle(self, bundle_id: str) -> dict:
 
         _progress("Running detection rules…")
         findings = run_all_rules(uuid.UUID(bundle_id), session)
+        findings = _deduplicate_findings(findings)
         if findings:
             _progress(f"Saving {len(findings)} finding(s)…")
             # add_all + flush populates f.id (uuid.uuid4 default) back onto Python objects
@@ -220,6 +255,7 @@ def reanalyze_bundle(self, bundle_id: str) -> dict:
         from app.detection.registry import run_all_rules
 
         findings = run_all_rules(uuid.UUID(bundle_id), session)
+        findings = _deduplicate_findings(findings)
         if findings:
             session.add_all(findings)
             session.flush()

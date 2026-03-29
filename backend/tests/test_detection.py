@@ -654,3 +654,188 @@ class TestWarningEventReasonsRule:
         rule = WarningEventReasonsRule()
         findings = rule.evaluate(bundle_id, session)
         assert len(findings) == 0
+
+
+# ── Deduplication ──────────────────────────────────────────────────────────────
+
+class TestDeduplication:
+    """Tests for _deduplicate_findings post-processing logic."""
+
+    def _make_crash_finding(self, bundle_id):
+        from app.models.finding import Finding
+        return Finding(
+            id=uuid.uuid4(),
+            bundle_id=bundle_id,
+            rule_id="pod_crashloop",
+            title="Pod Crash Detected",
+            severity="high",
+            summary="Pod default/bad-pod crashed",
+            status="open",
+            remediation={"_affected_pods": ["default/bad-pod"]},
+        )
+
+    def _make_restart_finding(self, bundle_id, pods):
+        from app.models.finding import Finding
+        return Finding(
+            id=uuid.uuid4(),
+            bundle_id=bundle_id,
+            rule_id="high_restart_count",
+            title="Containers with High Restart Count",
+            severity="medium",
+            summary="1 container has restarted",
+            status="open",
+            remediation={"_affected_pods": pods},
+        )
+
+    def _make_backoff_finding(self, bundle_id, pods):
+        from app.models.finding import Finding
+        return Finding(
+            id=uuid.uuid4(),
+            bundle_id=bundle_id,
+            rule_id="warning_event_reasons",
+            title="BackOff Events Detected",
+            severity="medium",
+            summary="BackOff events",
+            status="open",
+            remediation={"_affected_pods": pods},
+        )
+
+    def test_high_restart_suppressed_when_covered_by_crash(self):
+        from app.workers.tasks import _deduplicate_findings
+        bundle_id = uuid.uuid4()
+        crash = self._make_crash_finding(bundle_id)
+        restart = self._make_restart_finding(bundle_id, ["default/bad-pod"])
+        result = _deduplicate_findings([crash, restart])
+        assert len(result) == 1
+        assert result[0].rule_id == "pod_crashloop"
+
+    def test_high_restart_kept_when_different_pod(self):
+        from app.workers.tasks import _deduplicate_findings
+        bundle_id = uuid.uuid4()
+        crash = self._make_crash_finding(bundle_id)
+        restart = self._make_restart_finding(bundle_id, ["default/other-pod"])
+        result = _deduplicate_findings([crash, restart])
+        assert len(result) == 2
+
+    def test_backoff_suppressed_when_covered_by_crash(self):
+        from app.workers.tasks import _deduplicate_findings
+        bundle_id = uuid.uuid4()
+        crash = self._make_crash_finding(bundle_id)
+        backoff = self._make_backoff_finding(bundle_id, ["default/bad-pod"])
+        result = _deduplicate_findings([crash, backoff])
+        assert len(result) == 1
+        assert result[0].rule_id == "pod_crashloop"
+
+    def test_no_suppression_without_crash_finding(self):
+        from app.workers.tasks import _deduplicate_findings
+        bundle_id = uuid.uuid4()
+        restart = self._make_restart_finding(bundle_id, ["default/bad-pod"])
+        result = _deduplicate_findings([restart])
+        assert len(result) == 1
+
+
+# ── System namespace downgrade ─────────────────────────────────────────────────
+
+class TestSystemNamespaceDowngrade:
+    """FailedScheduling events from system namespaces should be info severity."""
+
+    def test_system_namespace_finding_is_info(self, session):
+        bundle_id = make_bundle_id()
+        for i in range(3):
+            ev = Evidence(
+                id=uuid.uuid4(),
+                bundle_id=bundle_id,
+                kind="Event",
+                namespace="kube-system",
+                name=f"sched-sys-{bundle_id}-{i}",
+                source_path="test",
+                raw_data={
+                    "type": "Warning",
+                    "reason": "FailedScheduling",
+                    "involvedObject": {"kind": "Pod", "name": f"coredns-{i}"},
+                },
+            )
+            session.add(ev)
+        session.commit()
+        rule = WarningEventReasonsRule()
+        findings = rule.evaluate(bundle_id, session)
+        assert len(findings) == 1
+        assert findings[0].severity == "info"
+
+    def test_mixed_namespace_finding_is_not_info(self, session):
+        bundle_id = make_bundle_id()
+        # One system, two user-space
+        for i, ns in enumerate(["kube-system", "production", "production"]):
+            ev = Evidence(
+                id=uuid.uuid4(),
+                bundle_id=bundle_id,
+                kind="Event",
+                namespace=ns,
+                name=f"sched-mix-{bundle_id}-{i}",
+                source_path="test",
+                raw_data={
+                    "type": "Warning",
+                    "reason": "FailedScheduling",
+                    "involvedObject": {"kind": "Pod", "name": f"pod-{i}"},
+                },
+            )
+            session.add(ev)
+        session.commit()
+        rule = WarningEventReasonsRule()
+        findings = rule.evaluate(bundle_id, session)
+        assert len(findings) == 1
+        assert findings[0].severity == "high"  # FailedScheduling is HIGH_SEVERITY
+
+
+# ── Missing limits skips crashing pods ────────────────────────────────────────
+
+class TestMissingLimitsSkipsCrashing:
+
+    def test_crashing_pod_excluded_from_missing_limits(self, session):
+        from app.detection.rules.missing_resource_limits import MissingResourceLimitsRule
+        bundle_id = make_bundle_id()
+        # Pod with no limits AND crashing (terminated exitCode=1, restartCount=2)
+        pod = make_pod_evidence(
+            bundle_id,
+            "crash-no-limits",
+            raw_data={
+                "metadata": {"name": "crash-no-limits", "namespace": "default"},
+                "status": {
+                    "phase": "Running",
+                    "containerStatuses": [{
+                        "name": "app",
+                        "restartCount": 2,
+                        "ready": False,
+                        "state": {"terminated": {"exitCode": 1}},
+                        "lastState": {"terminated": {"exitCode": 1}},
+                    }],
+                },
+                "spec": {"containers": [{"name": "app", "resources": {}}]},
+            },
+        )
+        session.add(pod)
+        session.commit()
+        rule = MissingResourceLimitsRule()
+        findings = rule.evaluate(bundle_id, session)
+        assert len(findings) == 0
+
+    def test_healthy_pod_still_flagged_for_missing_limits(self, session):
+        from app.detection.rules.missing_resource_limits import MissingResourceLimitsRule
+        bundle_id = make_bundle_id()
+        pod = make_pod_evidence(
+            bundle_id,
+            "healthy-no-limits",
+            raw_data={
+                "metadata": {"name": "healthy-no-limits", "namespace": "default"},
+                "status": {
+                    "phase": "Running",
+                    "containerStatuses": [{"name": "app", "restartCount": 0, "ready": True}],
+                },
+                "spec": {"containers": [{"name": "app", "resources": {}}]},
+            },
+        )
+        session.add(pod)
+        session.commit()
+        rule = MissingResourceLimitsRule()
+        findings = rule.evaluate(bundle_id, session)
+        assert len(findings) == 1

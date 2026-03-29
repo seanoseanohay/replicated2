@@ -89,6 +89,7 @@ class PodCrashLoopRule(BaseRule):
                             f"kubectl logs {pod_name} -n {namespace} --previous -c {container}",
                             f"kubectl describe pod {pod_name} -n {namespace}",
                         ],
+                        "_affected_pods": [f"{namespace}/{pod_name}"],
                     }
                     findings.append(
                         self._make_finding(
