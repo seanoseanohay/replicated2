@@ -1,3 +1,4 @@
+import re
 import uuid
 
 from sqlalchemy import select
@@ -7,8 +8,25 @@ from app.detection.base import BaseRule
 from app.models.evidence import Evidence
 from app.models.finding import Finding
 
-# Namespaces where missing limits are expected / not worth flagging
-IGNORED_NAMESPACES = {"kube-system", "kube-public", "kube-node-lease"}
+# Kubernetes core namespaces — skip entirely, not customer workloads
+_KUBE_CORE_RE = re.compile(r"^kube-")
+
+# Infrastructure addon namespaces — flag at info, not medium
+# Matches namespace names containing common addon/infrastructure keywords
+_INFRA_NS_RE = re.compile(
+    r"storage|operator|controller|manager|monitoring|logging|"
+    r"cert-|ingress|istio|linkerd|calico|flannel|weave|cilium|"
+    r"metallb|external-dns|velero|vault|consul|traefik|-system$",
+    re.IGNORECASE,
+)
+
+
+def _is_kube_core(ns: str) -> bool:
+    return bool(_KUBE_CORE_RE.match(ns))
+
+
+def _is_infra(ns: str) -> bool:
+    return bool(_INFRA_NS_RE.search(ns))
 
 
 class MissingResourceLimitsRule(BaseRule):
@@ -25,9 +43,15 @@ class MissingResourceLimitsRule(BaseRule):
         )
         pods = result.scalars().all()
 
-        missing = []
-        evidence_ids = []
-        missing_details = []
+        # user-space pods missing limits (medium severity)
+        missing: list[str] = []
+        evidence_ids: list = []
+        missing_details: list[dict] = []
+
+        # infrastructure addon pods missing limits (info severity)
+        infra_missing: list[str] = []
+        infra_evidence_ids: list = []
+        infra_missing_details: list[dict] = []
 
         for pod in pods:
             try:
@@ -36,7 +60,7 @@ class MissingResourceLimitsRule(BaseRule):
                 name = metadata.get("name", "unknown")
                 namespace = metadata.get("namespace", "default")
 
-                if namespace in IGNORED_NAMESPACES:
+                if _is_kube_core(namespace):
                     continue
 
                 # Skip completed / succeeded pods
@@ -79,84 +103,107 @@ class MissingResourceLimitsRule(BaseRule):
                             missing_parts.append("memory")
                         if missing_cpu:
                             missing_parts.append("cpu")
-                        missing.append(
+                        entry = (
                             f"{namespace}/{name}/{container_name} "
                             f"(missing: {', '.join(missing_parts)})"
                         )
-                        evidence_ids.append(pod.id)
-                        missing_details.append({
+                        detail = {
                             "namespace": namespace,
                             "pod": name,
                             "container": container_name,
-                        })
-                        break  # one finding per pod is enough
+                        }
+                        if _is_infra(namespace):
+                            infra_missing.append(entry)
+                            infra_evidence_ids.append(pod.id)
+                            infra_missing_details.append(detail)
+                        else:
+                            missing.append(entry)
+                            evidence_ids.append(pod.id)
+                            missing_details.append(detail)
+                        break  # one entry per pod is enough
             except Exception:
                 continue
 
-        if not missing:
-            return []
+        findings = []
 
-        objects_str = ", ".join(missing[:10])
-        extra = f" (+{len(missing) - 10} more)" if len(missing) > 10 else ""
-        summary = (
-            f"{len(missing)} container(s) have no resource limits set: "
-            f"{objects_str}{extra}. This can lead to node starvation and OOM kills."
-        )
-        first = missing_details[0]
-        namespace = first["namespace"]
-        # Derive deployment name from pod name
-        parts = first["pod"].rsplit("-", 2)
-        deployment = parts[0] if len(parts) >= 3 else first["pod"]
-        patch_yaml = (
-            f"apiVersion: apps/v1\n"
-            f"kind: Deployment\n"
-            f"metadata:\n"
-            f"  name: {deployment}\n"
-            f"  namespace: {namespace}\n"
-            f"spec:\n"
-            f"  template:\n"
-            f"    spec:\n"
-            f"      containers:\n"
-            f"      - name: {first['container']}\n"
-            f"        resources:\n"
-            f"          requests:\n"
-            f"            memory: \"256Mi\"\n"
-            f"            cpu: \"100m\"\n"
-            f"          limits:\n"
-            f"            memory: \"512Mi\"\n"
-            f"            cpu: \"500m\"\n"
-        )
-        remediation = {
-            "what_happened": (
-                f"{len(missing)} container(s) across {namespace} have no CPU or memory "
-                f"resource limits set."
-            ),
-            "why_it_matters": (
-                "Containers without limits can consume unbounded resources, causing node "
-                "pressure and OOM kills affecting other workloads."
-            ),
-            "how_to_fix": (
-                "Add resource requests and limits to each container. Start with conservative "
-                "values and tune based on observed usage."
-            ),
-            "patch_yaml": patch_yaml,
-            "patch_filename": f"fix-resource-limits-{namespace}.yaml",
-            "cli_commands": [
-                f"kubectl top pods -n {namespace} --containers",
-                (
-                    f"kubectl patch deployment {deployment} -n {namespace} "
-                    f"--type=merge -p '{{\"spec\":{{\"template\":{{\"spec\":{{\"containers\":"
-                    f"[{{\"name\":\"{first['container']}\",\"resources\":{{\"requests\":"
-                    f"{{\"memory\":\"256Mi\",\"cpu\":\"100m\"}},\"limits\":"
-                    f"{{\"memory\":\"512Mi\",\"cpu\":\"500m\"}}}}}}]}}}}}}}}'"
+        def _build_finding(details, eids, entries, severity_override=None):
+            if not details:
+                return None
+            first = details[0]
+            namespace = first["namespace"]
+            parts = first["pod"].rsplit("-", 2)
+            deployment = parts[0] if len(parts) >= 3 else first["pod"]
+            objects_str = ", ".join(entries[:10])
+            extra = f" (+{len(entries) - 10} more)" if len(entries) > 10 else ""
+            summary = (
+                f"{len(entries)} container(s) have no resource limits set: "
+                f"{objects_str}{extra}. This can lead to node starvation and OOM kills."
+            )
+            patch_yaml = (
+                f"apiVersion: apps/v1\n"
+                f"kind: Deployment\n"
+                f"metadata:\n"
+                f"  name: {deployment}\n"
+                f"  namespace: {namespace}\n"
+                f"spec:\n"
+                f"  template:\n"
+                f"    spec:\n"
+                f"      containers:\n"
+                f"      - name: {first['container']}\n"
+                f"        resources:\n"
+                f"          requests:\n"
+                f"            memory: \"256Mi\"\n"
+                f"            cpu: \"100m\"\n"
+                f"          limits:\n"
+                f"            memory: \"512Mi\"\n"
+                f"            cpu: \"500m\"\n"
+            )
+            remediation = {
+                "what_happened": (
+                    f"{len(entries)} container(s) across {namespace} have no CPU or memory "
+                    f"resource limits set."
+                    + (" (Infrastructure namespace — lower priority.)" if severity_override == "info" else "")
                 ),
-            ],
-        }
-        return [
-            self._make_finding(
+                "why_it_matters": (
+                    "Containers without limits can consume unbounded resources, causing node "
+                    "pressure and OOM kills affecting other workloads."
+                ),
+                "how_to_fix": (
+                    "Add resource requests and limits to each container. Start with conservative "
+                    "values and tune based on observed usage."
+                ),
+                "patch_yaml": patch_yaml,
+                "patch_filename": f"fix-resource-limits-{namespace}.yaml",
+                "cli_commands": [
+                    f"kubectl top pods -n {namespace} --containers",
+                    (
+                        f"kubectl patch deployment {deployment} -n {namespace} "
+                        f"--type=merge -p '{{\"spec\":{{\"template\":{{\"spec\":{{\"containers\":"
+                        f"[{{\"name\":\"{first['container']}\",\"resources\":{{\"requests\":"
+                        f"{{\"memory\":\"256Mi\",\"cpu\":\"100m\"}},\"limits\":"
+                        f"{{\"memory\":\"512Mi\",\"cpu\":\"500m\"}}}}}}]}}}}}}}}'"
+                    ),
+                ],
+            }
+            f = self._make_finding(
                 bundle_id,
                 summary,
-                evidence_ids=list(dict.fromkeys(evidence_ids)),
+                evidence_ids=list(dict.fromkeys(eids)),
                 remediation=remediation,
             )
-        ]
+            if severity_override:
+                f.severity = severity_override
+            return f
+
+        user_finding = _build_finding(missing_details, evidence_ids, missing)
+        if user_finding:
+            findings.append(user_finding)
+
+        infra_finding = _build_finding(
+            infra_missing_details, infra_evidence_ids, infra_missing,
+            severity_override="info",
+        )
+        if infra_finding:
+            findings.append(infra_finding)
+
+        return findings
