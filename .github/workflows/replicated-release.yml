@@ -1,0 +1,47 @@
+name: Replicated PR Release
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - ".replicated"
+      - "chart/**"
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/replicated-release.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+      REPLICATED_APP: ${{ secrets.REPLICATED_APP }}
+      RELEASE_VERSION: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Replicated CLI
+        run: |
+          version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          curl -Ls "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" -o replicated.tar.gz
+          tar xf replicated.tar.gz replicated
+          sudo mv replicated /usr/local/bin/replicated
+
+      - name: Create and test release
+        run: |
+          release_output=$(replicated --app "$REPLICATED_APP" release create --version "$RELEASE_VERSION" --promote Unstable --ensure-channel --auto -y --lint)
+          echo "$release_output"
+
+          sequence=$(printf '%s\n' "$release_output" | awk '/SEQUENCE:/{print $2; exit}')
+          if [[ -z "$sequence" ]]; then
+            echo "Unable to parse release sequence from Replicated output"
+            exit 1
+          fi
+
+          replicated --app "$REPLICATED_APP" release test "$sequence"
