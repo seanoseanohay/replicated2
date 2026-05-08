@@ -4,6 +4,7 @@ fullnameOverride: ""
 imagePullSecrets: []
 
 global:
+  imageRegistry: ""
   appEnv: development
   corsAllowedOrigins: "*"
   secretKey: dev-secret-key-change-in-prod
@@ -11,11 +12,17 @@ global:
   allowRegistration: true
   appBaseUrl: http://localhost:3001
 
+initContainers:
+  image:
+    repository: docker.io/library/alpine
+    tag: "3.20"
+    pullPolicy: IfNotPresent
+
 backend:
   replicaCount: 1
   image:
-    repository: replicated2-backend
-    tag: ""
+    repository: ghcr.io/seanoseanohay/replicated2-backend
+    tag: latest
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -41,8 +48,8 @@ backend:
 worker:
   replicaCount: 1
   image:
-    repository: replicated2-worker
-    tag: ""
+    repository: ghcr.io/seanoseanohay/replicated2-worker
+    tag: latest
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -55,8 +62,8 @@ worker:
 beat:
   replicaCount: 1
   image:
-    repository: replicated2-beat
-    tag: ""
+    repository: ghcr.io/seanoseanohay/replicated2-beat
+    tag: latest
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -69,8 +76,8 @@ beat:
 frontend:
   replicaCount: 1
   image:
-    repository: replicated2-frontend
-    tag: ""
+    repository: ghcr.io/seanoseanohay/replicated2-frontend
+    tag: latest
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -132,7 +139,9 @@ redis:
       memory: 128Mi
 
 minio:
-  image: minio/minio:latest
+  image:
+    repository: docker.io/minio/minio
+    tag: latest
   accessKey: minioadmin
   secretKey: minioadmin
   bucket: bundles

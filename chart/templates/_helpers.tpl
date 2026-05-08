@@ -69,3 +69,11 @@ redis://{{ include "bundle-analyzer.redisName" . }}:6379/0
 {{- define "bundle-analyzer.minioName" -}}
 {{ include "bundle-analyzer.fullname" . }}-minio
 {{- end -}}
+
+{{- define "bundle-analyzer.image" -}}
+{{- $global := index . 0 -}}
+{{- $repo := index . 1 -}}
+{{- $tag := index . 2 -}}
+{{- $registry := $global.imageRegistry | default "" -}}
+{{- if $registry -}}{{ $registry }}/{{ end -}}{{ $repo }}:{{ $tag }}
+{{- end -}}

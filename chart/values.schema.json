@@ -20,12 +20,28 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "imageRegistry": { "type": "string" },
         "appEnv": { "type": "string" },
         "corsAllowedOrigins": { "type": "string" },
         "secretKey": { "type": "string" },
         "jwtSecretKey": { "type": "string" },
         "allowRegistration": { "type": "boolean" },
         "appBaseUrl": { "type": "string" }
+      }
+    },
+    "initContainers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          }
+        }
       }
     },
     "backend": {
@@ -68,8 +84,40 @@
         "rateLimitAi": { "type": "string" }
       }
     },
-    "worker": { "type": "object" },
-    "beat": { "type": "object" },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          }
+        },
+        "resources": { "type": "object" }
+      }
+    },
+    "beat": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          }
+        },
+        "resources": { "type": "object" }
+      }
+    },
     "frontend": {
       "type": "object",
       "additionalProperties": false,
@@ -127,7 +175,14 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "image": { "type": "string" },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" }
+          }
+        },
         "accessKey": { "type": "string" },
         "secretKey": { "type": "string" },
         "bucket": { "type": "string" },

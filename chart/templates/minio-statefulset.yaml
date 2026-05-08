@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: minio
-          image: {{ .Values.minio.image | quote }}
+          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.minio.image.repository .Values.minio.image.tag) }}"
           imagePullPolicy: IfNotPresent
           args:
             - server
