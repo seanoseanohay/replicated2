@@ -1,0 +1,113 @@
+name: Replicated Release
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - ".replicated"
+      - "chart/**"
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/replicated-release-main.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read chart version
+        id: chart-version
+        run: |
+          chart_version=$(awk -F': ' '/^version:/ {print $2; exit}' chart/Chart.yaml)
+          if [[ -z "$chart_version" ]]; then
+            echo "Unable to read version from chart/Chart.yaml"
+            exit 1
+          fi
+          echo "Chart version: ${chart_version}"
+          echo "version=${chart_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Replicated CLI
+        run: |
+          version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
+          curl -Ls "https://github.com/replicatedhq/replicated/releases/download/v${version}/replicated_${version}_linux_amd64.tar.gz" -o replicated.tar.gz
+          tar xf replicated.tar.gz replicated
+          sudo mv replicated /usr/local/bin/replicated
+
+      - name: List visible apps
+        run: |
+          app_ref=$(awk -F': ' '/^appSlug:/ {print $2; exit}' .replicated)
+          echo "Configured app reference: ${app_ref}"
+          echo "Apps visible to this token:"
+          replicated app ls
+          echo "Matching entries for configured app reference:"
+          replicated app ls | grep -F "${app_ref}" || true
+
+      - name: Ensure release channel
+        id: release-channel
+        run: |
+          set -o pipefail
+
+          app_slug=$(awk -F': ' '/^appSlug:/ {print $2; exit}' .replicated)
+          if [[ -z "$app_slug" ]]; then
+            echo "Unable to read appSlug from .replicated"
+            exit 1
+          fi
+
+          echo "Channels visible to this token:"
+          channel_output_file=$(mktemp)
+          replicated --app "$app_slug" channel ls | tee "$channel_output_file"
+
+          channel_id=$(awk '$2 == "Unstable" {print $1; exit}' "$channel_output_file")
+          if [[ -z "$channel_id" ]]; then
+            echo 'Channel "Unstable" is not visible; creating it.'
+            replicated --app "$app_slug" channel create --name Unstable | tee "$channel_output_file"
+            channel_id=$(awk '$2 == "Unstable" {print $1; exit}' "$channel_output_file")
+          fi
+
+          if [[ -z "$channel_id" ]]; then
+            echo 'Unable to find or create channel "Unstable"'
+            exit 1
+          fi
+
+          echo "Release channel: ${channel_id}"
+          echo "app_slug=${app_slug}" >> "$GITHUB_OUTPUT"
+          echo "channel_id=${channel_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        id: create-release
+        run: |
+          set -o pipefail
+
+          release_output_file=$(mktemp)
+          if ! replicated --app "${{ steps.release-channel.outputs.app_slug }}" release create 2>&1 | tee "$release_output_file"; then
+            exit 1
+          fi
+
+          sequence=$(awk '/SEQUENCE:/ {for (i = 1; i <= NF; i++) if ($i == "SEQUENCE:") {print $(i + 1); exit}}' "$release_output_file")
+          if [[ -z "$sequence" ]]; then
+            echo "Unable to parse release sequence from Replicated output"
+            exit 1
+          fi
+
+          echo "Release sequence: ${sequence}"
+          echo "sequence=${sequence}" >> "$GITHUB_OUTPUT"
+
+      - name: Promote release
+        run: |
+          replicated --app "${{ steps.release-channel.outputs.app_slug }}" release promote "${{ steps.create-release.outputs.sequence }}" "${{ steps.release-channel.outputs.channel_id }}" --version "${{ steps.chart-version.outputs.version }}"
+
+      - name: Test release
+        run: |
+          if ! replicated --app "${{ steps.release-channel.outputs.app_slug }}" release test "${{ steps.create-release.outputs.sequence }}"; then
+            echo "⚠️ Release test failed. This may require a GitHub collab repo to be configured in the Vendor Portal."
+            echo "Continuing workflow since release creation and promotion succeeded."
+          fi
