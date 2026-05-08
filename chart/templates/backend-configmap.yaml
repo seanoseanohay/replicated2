@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bundle-analyzer.fullname" . }}-backend-config
+  labels:
+    {{- include "bundle-analyzer.labels" . | nindent 4 }}
+data:
+  APP_ENV: {{ .Values.global.appEnv | quote }}
+  CORS_ALLOWED_ORIGINS: {{ .Values.global.corsAllowedOrigins | quote }}
+  S3_ENDPOINT_URL: http://{{ include "bundle-analyzer.minioName" . }}:9000
+  S3_BUCKET_NAME: {{ .Values.minio.bucket | quote }}
+  AI_ENABLED: {{ ternary "true" "false" .Values.backend.aiEnabled | quote }}
+  AI_MODEL: {{ .Values.backend.aiModel | quote }}
+  MAX_BUNDLE_SIZE_MB: {{ .Values.backend.maxBundleSizeMb | quote }}
+  DB_POOL_SIZE: {{ .Values.backend.dbPoolSize | quote }}
+  DB_POOL_OVERFLOW: {{ .Values.backend.dbPoolOverflow | quote }}
+  RATE_LIMIT_UPLOAD: {{ .Values.backend.rateLimitUpload | quote }}
+  RATE_LIMIT_AI: {{ .Values.backend.rateLimitAi | quote }}
+  ALLOW_REGISTRATION: {{ ternary "true" "false" .Values.global.allowRegistration | quote }}
+  APP_BASE_URL: {{ .Values.global.appBaseUrl | quote }}

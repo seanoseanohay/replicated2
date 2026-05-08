@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bundle-analyzer.fullname" . }}-backend
+  labels:
+    {{- include "bundle-analyzer.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: backend
+      {{- include "bundle-analyzer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: backend
+        {{- include "bundle-analyzer.selectorLabels" . | nindent 8 }}
+    spec:
+      initContainers:
+        - name: wait-for-deps
+          image: alpine:3.20
+          command:
+            - /bin/sh
+            - -c
+            - >
+              until nc -z {{ include "bundle-analyzer.postgresHost" . }} {{ include "bundle-analyzer.postgresPort" . }} &&
+              nc -z {{ include "bundle-analyzer.redisName" . }} 6379 &&
+              nc -z {{ include "bundle-analyzer.minioName" . }} 9000;
+              do echo "waiting for dependencies"; sleep 2; done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ default .Chart.AppVersion .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - secretRef:
+                name: {{ include "bundle-analyzer.fullname" . }}-secret
+            - configMapRef:
+                name: {{ include "bundle-analyzer.fullname" . }}-backend-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bundle-analyzer.fullname" . }}-secret
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bundle-analyzer.fullname" . }}-secret
+                  key: REDIS_URL
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bundle-analyzer.fullname" . }}-secret
+                  key: S3_ACCESS_KEY
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bundle-analyzer.fullname" . }}-secret
+                  key: S3_SECRET_KEY
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bundle-analyzer.fullname" . }}-secret
+                  key: SECRET_KEY
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bundle-analyzer.fullname" . }}-secret
+                  key: JWT_SECRET_KEY
+            - name: BOOTSTRAP_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bundle-analyzer.fullname" . }}-secret
+                  key: BOOTSTRAP_ADMIN_EMAIL
+            - name: BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bundle-analyzer.fullname" . }}-secret
+                  key: BOOTSTRAP_ADMIN_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}

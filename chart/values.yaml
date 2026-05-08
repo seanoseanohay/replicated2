@@ -1,0 +1,160 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+global:
+  appEnv: development
+  corsAllowedOrigins: "*"
+  secretKey: dev-secret-key-change-in-prod
+  jwtSecretKey: dev-jwt-secret-change-in-prod
+  allowRegistration: true
+  appBaseUrl: http://localhost:3001
+
+backend:
+  replicaCount: 1
+  image:
+    repository: replicated2-backend
+    tag: ""
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  bootstrapAdmin:
+    email: ""
+    password: ""
+  aiEnabled: false
+  aiModel: claude-haiku-4-5-20251001
+  maxBundleSizeMb: 500
+  dbPoolSize: 5
+  dbPoolOverflow: 10
+  rateLimitUpload: 10/minute
+  rateLimitAi: 20/minute
+
+worker:
+  replicaCount: 1
+  image:
+    repository: replicated2-worker
+    tag: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+beat:
+  replicaCount: 1
+  image:
+    repository: replicated2-beat
+    tag: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+frontend:
+  replicaCount: 1
+  image:
+    repository: replicated2-frontend
+    tag: ""
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+  backendUrl: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+postgresql:
+  enabled: true
+  architecture: standalone
+  image:
+    tag: latest
+  auth:
+    username: bundleanalyzer
+    password: bundleanalyzer
+    database: bundleanalyzer
+    postgresPassword: postgres
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+externalPostgresql:
+  host: ""
+  port: 5432
+  username: ""
+  password: ""
+  database: ""
+
+redis:
+  architecture: standalone
+  auth:
+    enabled: false
+  image:
+    tag: latest
+  master:
+    persistence:
+      enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+minio:
+  image: minio/minio:latest
+  accessKey: minioadmin
+  secretKey: minioadmin
+  bucket: bundles
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: bundle-analyzer.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
