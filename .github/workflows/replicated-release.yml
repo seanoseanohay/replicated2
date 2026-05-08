@@ -20,10 +20,20 @@ jobs:
     runs-on: ubuntu-latest
     env:
       REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
-      RELEASE_VERSION: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Read chart version
+        id: chart-version
+        run: |
+          chart_version=$(awk -F': ' '/^version:/ {print $2; exit}' chart/Chart.yaml)
+          if [[ -z "$chart_version" ]]; then
+            echo "Unable to read version from chart/Chart.yaml"
+            exit 1
+          fi
+          echo "Chart version: ${chart_version}"
+          echo "version=${chart_version}" >> "$GITHUB_OUTPUT"
 
       - name: Install Replicated CLI
         run: |
@@ -93,7 +103,7 @@ jobs:
 
       - name: Promote release
         run: |
-          replicated --app "${{ steps.release-channel.outputs.app_slug }}" release promote "${{ steps.create-release.outputs.sequence }}" "${{ steps.release-channel.outputs.channel_id }}" --version "$RELEASE_VERSION"
+          replicated --app "${{ steps.release-channel.outputs.app_slug }}" release promote "${{ steps.create-release.outputs.sequence }}" "${{ steps.release-channel.outputs.channel_id }}" --version "${{ steps.chart-version.outputs.version }}"
 
       - name: Test release
         run: |
