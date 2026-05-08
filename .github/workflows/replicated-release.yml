@@ -41,7 +41,7 @@ jobs:
           echo "Matching entries for configured app reference:"
           replicated app ls | grep -F "${app_ref}" || true
 
-      - name: Create and test release
+      - name: Verify channel access
         run: |
           app_slug=$(awk -F': ' '/^appSlug:/ {print $2; exit}' .replicated)
           if [[ -z "$app_slug" ]]; then
@@ -49,13 +49,39 @@ jobs:
             exit 1
           fi
 
-          release_output=$(replicated --app "$app_slug" release create --version "$RELEASE_VERSION" --promote Unstable --ensure-channel)
-          echo "$release_output"
+          echo "Channels visible to this token:"
+          replicated --app "$app_slug" channel ls
 
-          sequence=$(printf '%s\n' "$release_output" | awk '/SEQUENCE:/{print $2; exit}')
+      - name: Create release
+        id: create-release
+        run: |
+          set -o pipefail
+
+          app_slug=$(awk -F': ' '/^appSlug:/ {print $2; exit}' .replicated)
+          if [[ -z "$app_slug" ]]; then
+            echo "Unable to read appSlug from .replicated"
+            exit 1
+          fi
+
+          release_output_file=$(mktemp)
+          if ! replicated --app "$app_slug" release create 2>&1 | tee "$release_output_file"; then
+            exit 1
+          fi
+
+          sequence=$(awk '/SEQUENCE:/ {for (i = 1; i <= NF; i++) if ($i == "SEQUENCE:") {print $(i + 1); exit}}' "$release_output_file")
           if [[ -z "$sequence" ]]; then
             echo "Unable to parse release sequence from Replicated output"
             exit 1
           fi
 
-          replicated --app "$app_slug" release test "$sequence"
+          echo "Release sequence: ${sequence}"
+          echo "app_slug=${app_slug}" >> "$GITHUB_OUTPUT"
+          echo "sequence=${sequence}" >> "$GITHUB_OUTPUT"
+
+      - name: Promote release
+        run: |
+          replicated --app "${{ steps.create-release.outputs.app_slug }}" release promote "${{ steps.create-release.outputs.sequence }}" Unstable --version "$RELEASE_VERSION"
+
+      - name: Test release
+        run: |
+          replicated --app "${{ steps.create-release.outputs.app_slug }}" release test "${{ steps.create-release.outputs.sequence }}"
