@@ -115,6 +115,14 @@
       "type": "object",
       "additionalProperties": true
     },
+    "bundle-analyzer-sdk": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "replicated": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "minio": {
       "type": "object",
       "additionalProperties": false,

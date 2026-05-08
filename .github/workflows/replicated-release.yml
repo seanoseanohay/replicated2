@@ -35,6 +35,14 @@ jobs:
           echo "Chart version: ${chart_version}"
           echo "version=${chart_version}" >> "$GITHUB_OUTPUT"
 
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v4.1.4'
+
+      - name: Update chart dependencies
+        run: helm dependency update chart/
+
       - name: Install Replicated CLI
         run: |
           version=$(curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest | grep -m1 -Po '"tag_name":\s*"v\K[^"]+')
