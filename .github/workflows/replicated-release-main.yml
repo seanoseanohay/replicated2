@@ -1,22 +1,22 @@
-name: Replicated PR Release
+name: Replicated Release
 
 on:
-  pull_request:
+  push:
     branches:
       - master
+      - main
     paths:
       - ".replicated"
       - "chart/**"
       - "backend/**"
       - "frontend/**"
-      - ".github/workflows/replicated-release.yml"
+      - ".github/workflows/replicated-release-main.yml"
 
 permissions:
   contents: read
 
 jobs:
   release:
-    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     env:
       REPLICATED_API_TOKEN: ${{ secrets.REPLICATED_API_TOKEN }}
