@@ -32,6 +32,15 @@ jobs:
           tar xf replicated.tar.gz replicated
           sudo mv replicated /usr/local/bin/replicated
 
+      - name: List visible apps
+        run: |
+          app_ref=$(awk -F': ' '/^appSlug:/ {print $2; exit}' .replicated)
+          echo "Configured app reference: ${app_ref}"
+          echo "Apps visible to this token:"
+          replicated app ls
+          echo "Matching entries for configured app reference:"
+          replicated app ls | grep -F "${app_ref}" || true
+
       - name: Create and test release
         run: |
           app_slug=$(awk -F': ' '/^appSlug:/ {print $2; exit}' .replicated)
