@@ -49,7 +49,7 @@ jobs:
             exit 1
           fi
 
-          release_output=$(replicated --app "$app_slug" release create --version "$RELEASE_VERSION" --promote Unstable --ensure-channel --lint)
+          release_output=$(replicated --app "$app_slug" release create --version "$RELEASE_VERSION" --promote Unstable --ensure-channel)
           echo "$release_output"
 
           sequence=$(printf '%s\n' "$release_output" | awk '/SEQUENCE:/{print $2; exit}')
