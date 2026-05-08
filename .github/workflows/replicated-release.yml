@@ -44,6 +44,8 @@ jobs:
       - name: Ensure release channel
         id: release-channel
         run: |
+          set -o pipefail
+
           app_slug=$(awk -F': ' '/^appSlug:/ {print $2; exit}' .replicated)
           if [[ -z "$app_slug" ]]; then
             echo "Unable to read appSlug from .replicated"
