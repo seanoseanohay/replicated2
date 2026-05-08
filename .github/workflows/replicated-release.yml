@@ -41,7 +41,8 @@ jobs:
           echo "Matching entries for configured app reference:"
           replicated app ls | grep -F "${app_ref}" || true
 
-      - name: Verify channel access
+      - name: Ensure release channel
+        id: release-channel
         run: |
           app_slug=$(awk -F': ' '/^appSlug:/ {print $2; exit}' .replicated)
           if [[ -z "$app_slug" ]]; then
@@ -50,21 +51,32 @@ jobs:
           fi
 
           echo "Channels visible to this token:"
-          replicated --app "$app_slug" channel ls
+          channel_output_file=$(mktemp)
+          replicated --app "$app_slug" channel ls | tee "$channel_output_file"
+
+          channel_id=$(awk '$2 == "Unstable" {print $1; exit}' "$channel_output_file")
+          if [[ -z "$channel_id" ]]; then
+            echo 'Channel "Unstable" is not visible; creating it.'
+            replicated --app "$app_slug" channel create --name Unstable | tee "$channel_output_file"
+            channel_id=$(awk '$2 == "Unstable" {print $1; exit}' "$channel_output_file")
+          fi
+
+          if [[ -z "$channel_id" ]]; then
+            echo 'Unable to find or create channel "Unstable"'
+            exit 1
+          fi
+
+          echo "Release channel: ${channel_id}"
+          echo "app_slug=${app_slug}" >> "$GITHUB_OUTPUT"
+          echo "channel_id=${channel_id}" >> "$GITHUB_OUTPUT"
 
       - name: Create release
         id: create-release
         run: |
           set -o pipefail
 
-          app_slug=$(awk -F': ' '/^appSlug:/ {print $2; exit}' .replicated)
-          if [[ -z "$app_slug" ]]; then
-            echo "Unable to read appSlug from .replicated"
-            exit 1
-          fi
-
           release_output_file=$(mktemp)
-          if ! replicated --app "$app_slug" release create 2>&1 | tee "$release_output_file"; then
+          if ! replicated --app "${{ steps.release-channel.outputs.app_slug }}" release create 2>&1 | tee "$release_output_file"; then
             exit 1
           fi
 
@@ -75,13 +87,12 @@ jobs:
           fi
 
           echo "Release sequence: ${sequence}"
-          echo "app_slug=${app_slug}" >> "$GITHUB_OUTPUT"
           echo "sequence=${sequence}" >> "$GITHUB_OUTPUT"
 
       - name: Promote release
         run: |
-          replicated --app "${{ steps.create-release.outputs.app_slug }}" release promote "${{ steps.create-release.outputs.sequence }}" Unstable --version "$RELEASE_VERSION"
+          replicated --app "${{ steps.release-channel.outputs.app_slug }}" release promote "${{ steps.create-release.outputs.sequence }}" "${{ steps.release-channel.outputs.channel_id }}" --version "$RELEASE_VERSION"
 
       - name: Test release
         run: |
-          replicated --app "${{ steps.create-release.outputs.app_slug }}" release test "${{ steps.create-release.outputs.sequence }}"
+          replicated --app "${{ steps.release-channel.outputs.app_slug }}" release test "${{ steps.create-release.outputs.sequence }}"
