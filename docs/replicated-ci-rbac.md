@@ -19,7 +19,7 @@ The CI token should have the minimum permissions needed to create releases and r
 5. Use the resource permissions below.
 6. Create a **Service Account** and assign it this policy.
 7. Copy the service account token and store it as `REPLICATED_API_TOKEN` in the GitHub repository secrets.
-8. Ensure the service account is granted access to the app with slug `awesome-sauce`.
+8. Ensure the service account is granted access to the app with slug `bundle-analyzer`.
 
 ## Recommended Policy Permissions
 
@@ -43,7 +43,7 @@ The CI token should have the minimum permissions needed to create releases and r
 
 ## Troubleshooting
 
-If the workflow fails with `App not found: awesome-sauce` and `replicated app ls` returns an empty list, the service account token is authenticated but does not have access to the app. Verify:
+If the workflow fails with `App not found: bundle-analyzer` and `replicated app ls` returns an empty list, the service account token is authenticated but does not have access to the app. Verify:
 
 1. The app slug in `.replicated` matches the app in the Vendor Portal.
 2. The service account is assigned to the app.
@@ -58,9 +58,9 @@ The Replicated CLI `--app` flag expects the **app slug**, not the **app name**. 
 
 **What we tried first:** Updating `.replicated` to use the slug (`appSlug: awesome-sauce`) alone did **not** resolve the `App not found` error. The workflow continued to fail.
 
-**What actually fixed it:** Renaming the app in the Vendor Portal so the **name matches the slug exactly** (e.g., changing the name from `awesome_sauce` to `awesome-sauce`). Once the name and slug were identical, the CLI accepted the reference and the workflow succeeded.
+**What actually fixed it:** Renaming the app in the Vendor Portal so the **name matches the slug exactly** (e.g., changing the name from `awesome_sauce` to `awesome-sauce`), then creating a new app (`bundle-analyzer`) with identical name and slug from the start. Once the name and slug were identical, the CLI accepted the reference and the workflow succeeded.
 
-**Takeaway:** When creating an app in the Vendor Portal, ensure the app **name and slug are identical** from the start. This avoids ambiguity in both the CLI and the `.replicated` configuration. If they already differ, rename the app to match the slug rather than trying to work around the mismatch in `.replicated`.
+**Takeaway:** When creating an app in the Vendor Portal, ensure the app **name and slug are identical** from the start (e.g., `bundle-analyzer`). This avoids ambiguity in both the CLI and the `.replicated` configuration. If they already differ, rename the app to match the slug rather than trying to work around the mismatch in `.replicated`.
 
 **How to verify:** Run `replicated app ls` in the workflow (or locally with the same token). The `SLUG` column is the value the CLI expects. The `NAME` column is not accepted by `--app`.
 
@@ -70,7 +70,7 @@ This section captures real issues encountered while wiring the CI token and poli
 
 ### 1. Missing `app/read` permission
 
-**Symptom:** `replicated app ls` returns an empty table, and every subsequent command fails with `App not found: awesome-sauce`.
+**Symptom:** `replicated app ls` returns an empty table, and every subsequent command fails with `App not found: bundle-analyzer`.
 
 **Root cause:** The initial scoped policy only allowed `channel/*` and `release/*`. The CLI needs `kots/app/[]/read` to resolve the app slug to an internal app ID before it can access channels or releases.
 
@@ -82,7 +82,7 @@ This section captures real issues encountered while wiring the CI token and poli
 
 **Root cause:** The app's **name** in the Vendor Portal was `awesome_sauce` (underscore), while the **slug** was `awesome-sauce` (hyphen). The Replicated CLI resolves `--app` against the name in some contexts, not the slug.
 
-**Fix:** Rename the app in the Vendor Portal so the **name matches the slug exactly** (`awesome-sauce`). Once aligned, the CLI accepted the reference immediately.
+**Fix:** Rename the app in the Vendor Portal so the **name matches the slug exactly** (`awesome-sauce`), or create a new app (`bundle-analyzer`) with identical name and slug from the start. Once aligned, the CLI accepted the reference immediately.
 
 **Takeaway:** Create the app with identical name and slug from the start. If they diverge, rename the app to match the slug rather than trying to work around it in `.replicated`.
 
