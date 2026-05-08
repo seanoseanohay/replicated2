@@ -1,5 +1,4 @@
+appSlug: awesome-sauce
 charts:
   - path: ./chart
 manifests: []
-
-# trigger PR workflow
