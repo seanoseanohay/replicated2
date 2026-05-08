@@ -1,4 +1,4 @@
-appSlug: awesome-sauce
+appSlug: awesome_sauce
 charts:
   - path: ./chart
 manifests: []
