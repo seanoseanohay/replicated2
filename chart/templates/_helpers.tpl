@@ -74,7 +74,7 @@ redis://{{ include "bundle-analyzer.redisName" . }}:6379/0
 {{- $global := index . 0 -}}
 {{- $repo := index . 1 -}}
 {{- $tag := index . 2 -}}
-{{- $registry := $global.proxyRegistry | default "" -}}
+{{- $registry := ($global.proxyRegistry | default "") -}}
 {{- if $registry -}}{{ $registry }}/{{ end -}}{{ $repo }}:{{ $tag }}
 {{- end -}}
 

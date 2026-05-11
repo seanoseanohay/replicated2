@@ -3,9 +3,8 @@ fullnameOverride: ""
 
 imagePullSecrets: []
 
-proxyRegistry: images.bundlyzer.com/proxy/bundle-analyzer
-
 global:
+  proxyRegistry: images.bundlyzer.com/proxy/bundle-analyzer
   imageRegistry: ""
   imagePullSecrets:
     - name: enterprise-pull-secret
