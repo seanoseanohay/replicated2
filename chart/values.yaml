@@ -16,7 +16,7 @@ global:
 
 initContainers:
   image:
-    repository: docker.io/library/alpine
+    repository: index.docker.io/library/alpine
     tag: "3.20"
     pullPolicy: IfNotPresent
 
@@ -142,7 +142,7 @@ redis:
 
 minio:
   image:
-    repository: docker.io/minio/minio
+    repository: index.docker.io/minio/minio
     tag: latest
   accessKey: minioadmin
   secretKey: minioadmin
