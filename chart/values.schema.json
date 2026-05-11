@@ -21,6 +21,16 @@
       "additionalProperties": false,
       "properties": {
         "imageRegistry": { "type": "string" },
+        "imagePullSecrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" }
+            },
+            "required": ["name"]
+          }
+        },
         "replicated": { "type": "object", "additionalProperties": true },
         "appEnv": { "type": "string" },
         "corsAllowedOrigins": { "type": "string" },

@@ -77,3 +77,10 @@ redis://{{ include "bundle-analyzer.redisName" . }}:6379/0
 {{- $registry := $global.imageRegistry | default "" -}}
 {{- if $registry -}}{{ $registry }}/{{ end -}}{{ $repo }}:{{ $tag }}
 {{- end -}}
+
+{{- define "bundle-analyzer.imagePullSecrets" -}}
+{{- if and .Values.global.replicated .Values.global.replicated.dockerconfigjson }}
+imagePullSecrets:
+  - name: enterprise-pull-secret
+{{- end }}
+{{- end -}}

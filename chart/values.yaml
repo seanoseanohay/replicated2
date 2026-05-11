@@ -5,6 +5,8 @@ imagePullSecrets: []
 
 global:
   imageRegistry: ""
+  imagePullSecrets:
+    - name: enterprise-pull-secret
   appEnv: development
   corsAllowedOrigins: "*"
   secretKey: dev-secret-key-change-in-prod
