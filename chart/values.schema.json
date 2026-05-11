@@ -21,6 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "imageRegistry": { "type": "string" },
+        "replicated": { "type": "object", "additionalProperties": true },
         "appEnv": { "type": "string" },
         "corsAllowedOrigins": { "type": "string" },
         "secretKey": { "type": "string" },
