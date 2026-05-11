@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.core.config import settings
 from app.core.limiter import limiter
@@ -69,8 +70,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await _bootstrap_admin()
     except Exception as exc:
         logger.warning("bootstrap_admin_failed", error=str(exc))
+
+    # Start APScheduler for periodic metrics reporting (backend pod only)
+    scheduler: BackgroundScheduler | None = None
+    if settings.METRICS_ENABLED:
+        from app.services.metrics_reporter import collect_and_send_metrics_sync
+
+        scheduler = BackgroundScheduler()
+
+        def _report_metrics() -> None:
+            try:
+                collect_and_send_metrics_sync()
+            except Exception as exc:
+                logger.warning("scheduled_metrics_report_failed", error=str(exc))
+
+        scheduler.add_job(
+            _report_metrics,
+            "interval",
+            hours=1,
+            id="report-custom-metrics",
+            replace_existing=True,
+        )
+        scheduler.start()
+        logger.info("metrics_scheduler_started", interval_hours=1)
+    else:
+        logger.info("metrics_scheduler_disabled")
+
     logger.info("startup_complete")
     yield
+    if scheduler is not None and scheduler.running:
+        scheduler.shutdown()
+        logger.info("metrics_scheduler_shutdown")
     logger.info("shutdown")
 
 
@@ -108,12 +138,14 @@ from app.api.routes.notifications import router as notifications_router  # noqa:
 from app.api.routes.reports import router as reports_router  # noqa: E402
 from app.api.routes.chat import router as chat_router  # noqa: E402
 from app.api.routes.admin import router as admin_router  # noqa: E402
+from app.api.routes.metrics import router as metrics_router  # noqa: E402
 
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(bundles_router)
 app.include_router(chat_router)
+app.include_router(metrics_router)
 app.include_router(comments_router)
 app.include_router(dashboard_router)
 app.include_router(evidence_router)

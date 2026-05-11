@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "bundleanalyzer@example.com"
     APP_BASE_URL: str = "http://localhost:5173"
+    METRICS_ENABLED: bool = True
 
     @model_validator(mode="after")
     def check_secret_key(self):

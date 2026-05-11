@@ -92,7 +92,8 @@
         "dbPoolSize": { "type": "integer" },
         "dbPoolOverflow": { "type": "integer" },
         "rateLimitUpload": { "type": "string" },
-        "rateLimitAi": { "type": "string" }
+        "rateLimitAi": { "type": "string" },
+        "metricsEnabled": { "type": "boolean" }
       }
     },
     "worker": {

@@ -302,3 +302,12 @@ async def delete_bundle(
     # Delete from DB (cascades to evidence + findings via DB cascade)
     await db.delete(bundle)
     await db.flush()
+
+    # Emit metrics on deletion (best-effort, fire-and-forget)
+    import asyncio
+    from app.services.metrics_reporter import collect_and_send_metrics_sync
+
+    try:
+        asyncio.create_task(asyncio.to_thread(collect_and_send_metrics_sync))
+    except Exception:
+        pass
