@@ -3,6 +3,8 @@ fullnameOverride: ""
 
 imagePullSecrets: []
 
+proxyRegistry: images.bundlyzer.com/proxy/bundle-analyzer
+
 global:
   imageRegistry: ""
   imagePullSecrets:
@@ -177,3 +179,7 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
+
+bundle-analyzer-sdk:
+  image:
+    registry: images.bundlyzer.com
