@@ -97,6 +97,8 @@ postgresql:
   enabled: true
   architecture: standalone
   image:
+    registry: images.bundlyzer.com/proxy/bundle-analyzer/index.docker.io
+    repository: bitnami/postgresql
     tag: latest
   auth:
     username: bundleanalyzer
@@ -128,6 +130,8 @@ redis:
   auth:
     enabled: false
   image:
+    registry: images.bundlyzer.com/proxy/bundle-analyzer/index.docker.io
+    repository: bitnami/redis
     tag: latest
   master:
     persistence:
