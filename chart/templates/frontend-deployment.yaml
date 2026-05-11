@@ -19,7 +19,7 @@ spec:
 {{- include "bundle-analyzer.imagePullSecrets" . | nindent 6 }}
       initContainers:
         - name: wait-for-backend
-          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.initContainers.image.repository .Values.initContainers.image.tag) }}"
+          image: "{{ .Values.initContainers.image.repository }}:{{ .Values.initContainers.image.tag }}"
           command:
             - /bin/sh
             - -c

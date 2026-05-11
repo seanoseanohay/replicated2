@@ -20,7 +20,7 @@ spec:
 {{- include "bundle-analyzer.imagePullSecrets" . | nindent 6 }}
       containers:
         - name: minio
-          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.minio.image.repository .Values.minio.image.tag) }}"
+          image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag }}"
           imagePullPolicy: IfNotPresent
           args:
             - server
