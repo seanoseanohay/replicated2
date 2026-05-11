@@ -16,9 +16,10 @@ spec:
         app.kubernetes.io/component: worker
         {{- include "bundle-analyzer.selectorLabels" . | nindent 8 }}
     spec:
+{{- include "bundle-analyzer.imagePullSecrets" . | nindent 6 }}
       initContainers:
         - name: wait-for-deps
-          image: alpine:3.20
+          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.initContainers.image.repository .Values.initContainers.image.tag) }}"
           command:
             - /bin/sh
             - -c
@@ -36,7 +37,7 @@ spec:
               memory: 32Mi
       containers:
         - name: worker
-          image: "{{ .Values.worker.image.repository }}:{{ default .Chart.AppVersion .Values.worker.image.tag }}"
+          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.worker.image.repository .Values.worker.image.tag) }}"
           imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
           command:
             - /app/entrypoint.sh

@@ -20,12 +20,39 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "imageRegistry": { "type": "string" },
+        "imagePullSecrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" }
+            },
+            "required": ["name"]
+          }
+        },
+        "replicated": { "type": "object", "additionalProperties": true },
         "appEnv": { "type": "string" },
         "corsAllowedOrigins": { "type": "string" },
         "secretKey": { "type": "string" },
         "jwtSecretKey": { "type": "string" },
         "allowRegistration": { "type": "boolean" },
         "appBaseUrl": { "type": "string" }
+      }
+    },
+    "initContainers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          }
+        }
       }
     },
     "backend": {
@@ -65,11 +92,44 @@
         "dbPoolSize": { "type": "integer" },
         "dbPoolOverflow": { "type": "integer" },
         "rateLimitUpload": { "type": "string" },
-        "rateLimitAi": { "type": "string" }
+        "rateLimitAi": { "type": "string" },
+        "metricsEnabled": { "type": "boolean" }
       }
     },
-    "worker": { "type": "object" },
-    "beat": { "type": "object" },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          }
+        },
+        "resources": { "type": "object" }
+      }
+    },
+    "beat": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 1 },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" },
+            "pullPolicy": { "type": "string" }
+          }
+        },
+        "resources": { "type": "object" }
+      }
+    },
     "frontend": {
       "type": "object",
       "additionalProperties": false,
@@ -115,11 +175,26 @@
       "type": "object",
       "additionalProperties": true
     },
+    "bundle-analyzer-sdk": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "replicated": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "minio": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "image": { "type": "string" },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": { "type": "string" },
+            "tag": { "type": "string" }
+          }
+        },
         "accessKey": { "type": "string" },
         "secretKey": { "type": "string" },
         "bucket": { "type": "string" },
@@ -145,6 +220,15 @@
           "type": "object",
           "additionalProperties": { "type": "string" }
         },
+        "certManager": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "clusterIssuer": { "type": "string" }
+          }
+        },
+        "generateSelfSignedCert": { "type": "boolean" },
         "hosts": {
           "type": "array",
           "items": {

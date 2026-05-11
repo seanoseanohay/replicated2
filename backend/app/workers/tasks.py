@@ -32,7 +32,7 @@ celery_app.conf.update(
         "cleanup-stuck-bundles": {
             "task": "tasks.cleanup_stuck_bundles",
             "schedule": 300.0,  # every 5 minutes
-        }
+        },
     },
 )
 
@@ -362,6 +362,19 @@ def cleanup_stuck_bundles() -> dict:
     finally:
         session.close()
         engine.dispose()
+
+
+@celery_app.task(name="tasks.report_custom_metrics")
+def report_custom_metrics() -> dict:
+    """Collect and send custom app metrics to the Replicated SDK."""
+    from app.services.metrics_reporter import collect_and_send_metrics_sync
+
+    try:
+        result = collect_and_send_metrics_sync()
+        return result
+    except Exception as exc:
+        log.error(f"report_custom_metrics failed: {exc}")
+        return {"error": str(exc)}
 
 
 # Make celery_app importable as `app` for the CLI command

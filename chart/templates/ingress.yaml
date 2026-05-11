@@ -5,10 +5,13 @@ metadata:
   name: {{ include "bundle-analyzer.fullname" . }}
   labels:
     {{- include "bundle-analyzer.labels" . | nindent 4 }}
-  {{- if .Values.ingress.annotations }}
   annotations:
+    {{- if .Values.ingress.certManager.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.certManager.clusterIssuer | quote }}
+    {{- end }}
+    {{- if .Values.ingress.annotations }}
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
@@ -31,5 +34,19 @@ spec:
   {{- if .Values.ingress.tls }}
   tls:
     {{- toYaml .Values.ingress.tls | nindent 4 }}
+  {{- else if .Values.ingress.generateSelfSignedCert }}
+  tls:
+    - hosts:
+        {{- range .Values.ingress.hosts }}
+        - {{ .host | quote }}
+        {{- end }}
+      secretName: {{ include "bundle-analyzer.fullname" . }}-tls
+  {{- else if .Values.ingress.certManager.enabled }}
+  tls:
+    - hosts:
+        {{- range .Values.ingress.hosts }}
+        - {{ .host | quote }}
+        {{- end }}
+      secretName: {{ include "bundle-analyzer.fullname" . }}-tls
   {{- end }}
 {{- end }}

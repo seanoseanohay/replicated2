@@ -4,6 +4,10 @@ fullnameOverride: ""
 imagePullSecrets: []
 
 global:
+  proxyRegistry: images.bundlyzer.com/proxy/bundle-analyzer
+  imageRegistry: ""
+  imagePullSecrets:
+    - name: enterprise-pull-secret
   appEnv: development
   corsAllowedOrigins: "*"
   secretKey: dev-secret-key-change-in-prod
@@ -11,11 +15,17 @@ global:
   allowRegistration: true
   appBaseUrl: http://localhost:3001
 
+initContainers:
+  image:
+    repository: index.docker.io/library/alpine
+    tag: "3.20"
+    pullPolicy: IfNotPresent
+
 backend:
   replicaCount: 1
   image:
-    repository: replicated2-backend
-    tag: ""
+    repository: ghcr.io/seanoseanohay/replicated2-backend
+    tag: latest
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -37,12 +47,13 @@ backend:
   dbPoolOverflow: 10
   rateLimitUpload: 10/minute
   rateLimitAi: 20/minute
+  metricsEnabled: true
 
 worker:
   replicaCount: 1
   image:
-    repository: replicated2-worker
-    tag: ""
+    repository: ghcr.io/seanoseanohay/replicated2-worker
+    tag: latest
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -55,8 +66,8 @@ worker:
 beat:
   replicaCount: 1
   image:
-    repository: replicated2-beat
-    tag: ""
+    repository: ghcr.io/seanoseanohay/replicated2-beat
+    tag: latest
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -69,8 +80,8 @@ beat:
 frontend:
   replicaCount: 1
   image:
-    repository: replicated2-frontend
-    tag: ""
+    repository: ghcr.io/seanoseanohay/replicated2-frontend
+    tag: latest
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -88,6 +99,8 @@ postgresql:
   enabled: true
   architecture: standalone
   image:
+    registry: images.bundlyzer.com/proxy/bundle-analyzer/index.docker.io
+    repository: bitnami/postgresql
     tag: latest
   auth:
     username: bundleanalyzer
@@ -119,6 +132,8 @@ redis:
   auth:
     enabled: false
   image:
+    registry: images.bundlyzer.com/proxy/bundle-analyzer/index.docker.io
+    repository: bitnami/redis
     tag: latest
   master:
     persistence:
@@ -132,7 +147,9 @@ redis:
       memory: 128Mi
 
 minio:
-  image: minio/minio:latest
+  image:
+    repository: index.docker.io/minio/minio
+    tag: latest
   accessKey: minioadmin
   secretKey: minioadmin
   bucket: bundles
@@ -151,10 +168,20 @@ minio:
 ingress:
   enabled: false
   className: ""
-  annotations: {}
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  certManager:
+    enabled: false
+    clusterIssuer: ""
+  generateSelfSignedCert: false
+  regenerateSelfSignedCert: false
   hosts:
     - host: bundle-analyzer.local
       paths:
         - path: /
           pathType: Prefix
   tls: []
+
+bundle-analyzer-sdk:
+  image:
+    registry: images.bundlyzer.com

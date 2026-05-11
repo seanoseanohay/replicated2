@@ -18,3 +18,4 @@ data:
   RATE_LIMIT_AI: {{ .Values.backend.rateLimitAi | quote }}
   ALLOW_REGISTRATION: {{ ternary "true" "false" .Values.global.allowRegistration | quote }}
   APP_BASE_URL: {{ .Values.global.appBaseUrl | quote }}
+  METRICS_ENABLED: {{ ternary "true" "false" .Values.backend.metricsEnabled | quote }}
