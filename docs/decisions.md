@@ -39,3 +39,13 @@ Tradeoffs: Slight complexity in Dockerfile; file permission care needed for volu
 Decision: Hosted + Offline
 Reason: Enterprise requirements
 Tradeoffs: Increased maintenance
+
+## Replicated Custom Metrics
+Decision: Event-driven + heartbeat hybrid, backend-only SDK calls
+Reason: Replicated SDK sidecar only runs in the backend pod; workers and beat lack it. Heartbeat ensures Vendor Portal always has recent data even when no user activity occurs.
+Tradeoffs: APScheduler adds a lightweight thread; metrics are best-effort (fire-and-forget) to avoid blocking API requests
+
+## TLS Certificate Persistence
+Decision: Helm `lookup` + `helm.sh/resource-policy: keep` for self-signed certs
+Reason: Prevents certificate regeneration on every `helm upgrade`, avoiding browser cache warnings and Ingress TLS disruption
+Tradeoffs: Slightly more complex template; explicit `regenerateSelfSignedCert=true` required to force rotation

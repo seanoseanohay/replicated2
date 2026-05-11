@@ -83,3 +83,15 @@ Goal: Diff two bundles from the same cluster over time
 Deliverables: Comparison view, new/resolved/persisting findings
 Success: "What changed since last week?" answered in one click
 Built: FindingSummary/ComparisonResult schemas, GET /api/v1/bundles/compare?bundle_a={id}&bundle_b={id} endpoint (placed before /{bundle_id} route to avoid UUID parse conflict) with tenant validation on both bundles, rule_id set diff for new/resolved/persisting, sorted output; BundleCompare.tsx page (/bundles/compare) with two dropdowns for bundle selection, Compare button, 3-column results grid (red/New, green/Resolved, yellow/Persisting) with severity badges, summary counts bar; Compare link in Navbar; comparisonApi.compare() + ComparisonResult/FindingSummary interfaces in client.ts; 5 tests passing
+
+## Phase 2.4 — Replicated Custom Metrics Reporting ✓ COMPLETE
+Goal: Report real app activity to Replicated Vendor Portal
+Deliverables: metrics_reporter service, APScheduler heartbeat, event-driven emission, manual endpoint
+Success: Vendor Portal Instance Details shows bundle counts, findings, and user totals
+Built: _send_metrics() via PATCH to Replicated SDK in-cluster API, collect_and_send_metrics_sync() with synchronous DB session querying bundles by status, open findings by severity, and total users; hourly APScheduler job added in backend lifespan (metrics_scheduler_started), event-driven calls after finding status change, bundle deletion, and user registration; POST /api/v1/metrics/report manager-only endpoint; METRICS_ENABLED toggle (default true, false for local dev); removed custom-metrics from Celery beat schedule because workers lack SDK sidecar; verified with mock SDK in kind cluster — payload contains real scalar values only (no nested objects)
+
+## Phase 2.5 — Replicated TLS Configuration ✓ COMPLETE
+Goal: Secure HTTPS ingress with multiple certificate options
+Deliverables: Self-signed cert persistence, cert-manager support, manual upload path
+Success: No cert regeneration on helm upgrade; HTTPS redirect works
+Built: tls-secret.yaml using Helm `lookup` function and `helm.sh/resource-policy: keep` to preserve existing self-signed certificates across upgrades; `regenerateSelfSignedCert` toggle to force rotation; `nginx.ingress.kubernetes.io/force-ssl-redirect: "true"` annotation for automatic HTTP→HTTPS redirect; `docs/tls-setup.md` documenting three modes (auto-provisioned cert-manager, manually uploaded secret, self-signed for testing)
