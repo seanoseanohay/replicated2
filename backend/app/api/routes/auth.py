@@ -79,6 +79,15 @@ async def register(
     await db.flush()
     await db.refresh(user)
 
+    # Emit metrics on new user registration (best-effort, fire-and-forget)
+    import asyncio
+    from app.services.metrics_reporter import collect_and_send_metrics_sync
+
+    try:
+        asyncio.create_task(asyncio.to_thread(collect_and_send_metrics_sync))
+    except Exception:
+        pass
+
     return _build_token_response(user)
 
 

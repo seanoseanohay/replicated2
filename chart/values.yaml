@@ -47,6 +47,7 @@ backend:
   dbPoolOverflow: 10
   rateLimitUpload: 10/minute
   rateLimitAi: 20/minute
+  metricsEnabled: true
 
 worker:
   replicaCount: 1
@@ -167,11 +168,13 @@ minio:
 ingress:
   enabled: false
   className: ""
-  annotations: {}
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
   certManager:
     enabled: false
     clusterIssuer: ""
   generateSelfSignedCert: false
+  regenerateSelfSignedCert: false
   hosts:
     - host: bundle-analyzer.local
       paths:

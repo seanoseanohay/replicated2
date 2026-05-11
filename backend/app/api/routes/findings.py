@@ -158,6 +158,16 @@ async def update_finding(
         tenant_id=tenant_id,
     )
 
+    # Emit metrics on status changes (best-effort, fire-and-forget)
+    if update.status is not None:
+        import asyncio
+        from app.services.metrics_reporter import collect_and_send_metrics_sync
+
+        try:
+            asyncio.create_task(asyncio.to_thread(collect_and_send_metrics_sync))
+        except Exception:
+            pass
+
     return FindingRead.model_validate(finding)
 
 

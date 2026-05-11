@@ -37,7 +37,8 @@
         "secretKey": { "type": "string" },
         "jwtSecretKey": { "type": "string" },
         "allowRegistration": { "type": "boolean" },
-        "appBaseUrl": { "type": "string" }
+        "appBaseUrl": { "type": "string" },
+        "proxyRegistry": { "type": "string" }
       }
     },
     "initContainers": {
@@ -92,7 +93,8 @@
         "dbPoolSize": { "type": "integer" },
         "dbPoolOverflow": { "type": "integer" },
         "rateLimitUpload": { "type": "string" },
-        "rateLimitAi": { "type": "string" }
+        "rateLimitAi": { "type": "string" },
+        "metricsEnabled": { "type": "boolean" }
       }
     },
     "worker": {
@@ -228,6 +230,7 @@
           }
         },
         "generateSelfSignedCert": { "type": "boolean" },
+        "regenerateSelfSignedCert": { "type": "boolean" },
         "hosts": {
           "type": "array",
           "items": {
@@ -248,7 +251,7 @@
                 }
               }
             },
-            "required": ["host", "paths"]
+            "required": ["host"]
           }
         },
         "tls": {
