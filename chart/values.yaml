@@ -163,6 +163,10 @@ ingress:
   enabled: false
   className: ""
   annotations: {}
+  certManager:
+    enabled: false
+    clusterIssuer: ""
+  generateSelfSignedCert: false
   hosts:
     - host: bundle-analyzer.local
       paths:

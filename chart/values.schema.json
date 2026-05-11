@@ -219,6 +219,15 @@
           "type": "object",
           "additionalProperties": { "type": "string" }
         },
+        "certManager": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "clusterIssuer": { "type": "string" }
+          }
+        },
+        "generateSelfSignedCert": { "type": "boolean" },
         "hosts": {
           "type": "array",
           "items": {
