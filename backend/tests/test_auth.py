@@ -14,7 +14,7 @@ from app.models.user import User
 
 
 async def _create_user(
-    db_session, email="analyst@example.com", role="analyst", tenant_id="default"
+    db_session, email="user@example.com", role="user", tenant_id="default"
 ):
     user = User(
         id=uuid.uuid4(),
@@ -48,31 +48,75 @@ def _auth_headers(user: User) -> dict:
 
 
 @pytest.mark.asyncio
-async def test_register_returns_tokens(client):
+async def test_register_returns_tokens_and_admin_role(client):
     resp = await client.post(
         "/api/v1/auth/register",
         json={"email": "newuser@example.com", "password": "securepassword"},
-        headers={"X-Tenant-ID": "default"},
     )
     assert resp.status_code == 201
     data = resp.json()
     assert "access_token" in data
     assert "refresh_token" in data
     assert data["token_type"] == "bearer"
-    assert data["role"] == "analyst"
+    assert data["role"] == "admin"
+    assert data["tenant_id"] != "default"
+    assert data["org_key"] is not None
+    assert len(data["org_key"]) == 8
 
 
 @pytest.mark.asyncio
-async def test_register_duplicate_email_returns_409(client):
-    payload = {"email": "dup@example.com", "password": "securepassword"}
-    resp1 = await client.post(
-        "/api/v1/auth/register", json=payload, headers={"X-Tenant-ID": "default"}
+async def test_register_with_org_key_joins_existing_tenant(client):
+    # Admin registers solo
+    admin_resp = await client.post(
+        "/api/v1/auth/register",
+        json={"email": "admin@example.com", "password": "securepassword"},
     )
-    assert resp1.status_code == 201
+    assert admin_resp.status_code == 201
+    admin_data = admin_resp.json()
+    org_key = admin_data["org_key"]
+
+    # New user joins with org_key
+    user_resp = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "member@example.com",
+            "password": "securepassword",
+            "org_key": org_key,
+        },
+    )
+    assert user_resp.status_code == 201
+    user_data = user_resp.json()
+    assert user_data["role"] == "user"
+    assert user_data["tenant_id"] == admin_data["tenant_id"]
+    assert user_data["org_key"] is None
+
+
+@pytest.mark.asyncio
+async def test_register_duplicate_email_same_tenant_returns_409(client):
+    payload = {"email": "dup@example.com", "password": "securepassword"}
+    admin_resp = await client.post("/api/v1/auth/register", json=payload)
+    assert admin_resp.status_code == 201
+    org_key = admin_resp.json()["org_key"]
+
+    # Same email, same org_key -> conflict
     resp2 = await client.post(
-        "/api/v1/auth/register", json=payload, headers={"X-Tenant-ID": "default"}
+        "/api/v1/auth/register",
+        json={"email": "dup@example.com", "password": "securepassword", "org_key": org_key},
     )
     assert resp2.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_register_invalid_org_key_returns_400(client):
+    resp = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "badkey@example.com",
+            "password": "securepassword",
+            "org_key": "NOEXIST",
+        },
+    )
+    assert resp.status_code == 400
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +130,6 @@ async def test_login_correct_credentials(client, db_session):
     resp = await client.post(
         "/api/v1/auth/login",
         json={"email": "logintest@example.com", "password": "password123"},
-        headers={"X-Tenant-ID": "default"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -100,7 +143,6 @@ async def test_login_wrong_password_returns_401(client, db_session):
     resp = await client.post(
         "/api/v1/auth/login",
         json={"email": "wrongpw@example.com", "password": "wrongpassword"},
-        headers={"X-Tenant-ID": "default"},
     )
     assert resp.status_code == 401
 
@@ -117,7 +159,7 @@ async def test_me_with_valid_token(client, db_session):
     assert resp.status_code == 200
     data = resp.json()
     assert data["email"] == "me@example.com"
-    assert data["role"] == "analyst"
+    assert data["role"] == "user"
 
 
 @pytest.mark.asyncio
@@ -132,8 +174,8 @@ async def test_me_without_token_returns_401(client):
 
 
 @pytest.mark.asyncio
-async def test_analyst_cannot_resolve_finding(client, db_session):
-    """An analyst trying to resolve a finding should get 403."""
+async def test_user_cannot_resolve_finding(client, db_session):
+    """An user trying to resolve a finding should get 403."""
     from app.models.bundle import Bundle
     from app.models.finding import Finding
 
@@ -162,21 +204,21 @@ async def test_analyst_cannot_resolve_finding(client, db_session):
     db_session.add(finding)
     await db_session.flush()
 
-    analyst = await _create_user(
-        db_session, email="analyst_role@example.com", role="analyst"
+    user = await _create_user(
+        db_session, email="user_role@example.com", role="user"
     )
 
     resp = await client.patch(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}",
         json={"status": "resolved"},
-        headers={**_auth_headers(analyst), "X-Tenant-ID": "default"},
+        headers={**_auth_headers(user), "X-Tenant-ID": "default"},
     )
     assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_manager_can_resolve_finding(client, db_session):
-    """A manager can resolve a finding."""
+async def test_admin_can_resolve_finding(client, db_session):
+    """A admin can resolve a finding."""
     from app.models.bundle import Bundle
     from app.models.finding import Finding
 
@@ -204,14 +246,14 @@ async def test_manager_can_resolve_finding(client, db_session):
     db_session.add(finding)
     await db_session.flush()
 
-    manager = await _create_user(
-        db_session, email="manager_role@example.com", role="manager"
+    admin = await _create_user(
+        db_session, email="admin_role@example.com", role="admin"
     )
 
     resp = await client.patch(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}",
         json={"status": "resolved"},
-        headers={**_auth_headers(manager), "X-Tenant-ID": "default"},
+        headers={**_auth_headers(admin), "X-Tenant-ID": "default"},
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "resolved"

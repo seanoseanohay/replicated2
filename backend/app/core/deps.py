@@ -43,11 +43,21 @@ async def require_auth(user: User | None = Depends(get_current_user)) -> User:
     return user
 
 
-async def require_manager(user: User = Depends(require_auth)) -> User:
-    """Raises 403 if not manager or admin."""
-    if user.role not in ("manager", "admin"):
+async def require_admin(user: User = Depends(require_auth)) -> User:
+    """Raises 403 if not admin."""
+    if user.role != "admin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Manager role required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required"
+        )
+    return user
+
+
+async def require_manager(user: User = Depends(require_auth)) -> User:
+    """Raises 403 if not admin or manager."""
+    if user.role not in ("admin", "manager"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manager or admin role required",
         )
     return user
 

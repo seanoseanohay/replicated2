@@ -1,6 +1,8 @@
+import secrets
+import string
 import uuid
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +27,13 @@ from app.schemas.auth import (
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
+ALPHANUM = string.ascii_uppercase + string.digits
+
+
+def _generate_org_key() -> str:
+    """Generate an 8-character random org key."""
+    return "".join(secrets.choice(ALPHANUM) for _ in range(8))
+
 
 def _build_token_response(user: User) -> TokenResponse:
     token_data = {
@@ -38,6 +47,7 @@ def _build_token_response(user: User) -> TokenResponse:
         refresh_token=create_refresh_token(token_data),
         role=user.role,
         tenant_id=user.tenant_id,
+        org_key=user.org_key,
     )
 
 
@@ -46,7 +56,6 @@ def _build_token_response(user: User) -> TokenResponse:
 )
 async def register(
     body: RegisterRequest,
-    x_tenant_id: str = Header(default="default"),
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     if not settings.ALLOW_REGISTRATION:
@@ -55,9 +64,43 @@ async def register(
             detail="Registration is disabled",
         )
 
+    # Determine target tenant and role based on org_key
+    if body.org_key:
+        # Look up the admin that owns this org_key
+        admin_result = await db.execute(
+            select(User).where(User.org_key == body.org_key)
+        )
+        admin_user = admin_result.scalar_one_or_none()
+        if admin_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid org key",
+            )
+        target_tenant_id = admin_user.tenant_id
+        assigned_role = "user"
+        org_key = None
+    else:
+        # Solo registration: new tenant, new org_key, admin role
+        target_tenant_id = str(uuid.uuid4())
+        assigned_role = "admin"
+        # Ensure uniqueness (collision probability is negligible but handle it)
+        for _ in range(10):
+            candidate = _generate_org_key()
+            collision_check = await db.execute(
+                select(User).where(User.org_key == candidate)
+            )
+            if collision_check.scalar_one_or_none() is None:
+                org_key = candidate
+                break
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to generate unique org key",
+            )
+
     # Check email not already taken in this tenant
     result = await db.execute(
-        select(User).where(User.email == body.email, User.tenant_id == x_tenant_id)
+        select(User).where(User.email == body.email, User.tenant_id == target_tenant_id)
     )
     existing = result.scalar_one_or_none()
     if existing is not None:
@@ -71,8 +114,9 @@ async def register(
         email=body.email,
         hashed_password=hash_password(body.password),
         full_name=body.full_name,
-        role="analyst",
-        tenant_id=x_tenant_id,
+        role=assigned_role,
+        tenant_id=target_tenant_id,
+        org_key=org_key,
         is_active=True,
     )
     db.add(user)
@@ -94,12 +138,9 @@ async def register(
 @router.post("/login", response_model=TokenResponse)
 async def login(
     body: LoginRequest,
-    x_tenant_id: str = Header(default="default"),
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    result = await db.execute(
-        select(User).where(User.email == body.email, User.tenant_id == x_tenant_id)
-    )
+    result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
     if user is None or not verify_password(body.password, user.hashed_password):

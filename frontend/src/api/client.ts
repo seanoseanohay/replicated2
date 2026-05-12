@@ -7,6 +7,7 @@ export interface TokenResponse {
   token_type: string;
   role: string;
   tenant_id: string;
+  org_key: string | null;
 }
 
 export interface UserRead {
@@ -15,6 +16,7 @@ export interface UserRead {
   full_name: string | null;
   role: string;
   tenant_id: string;
+  org_key: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -96,8 +98,9 @@ export interface EvidenceRead {
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("access_token");
+  const tenantId = localStorage.getItem("tenant_id") || "default";
   const headers: Record<string, string> = {
-    "X-Tenant-ID": "default",
+    "X-Tenant-ID": tenantId,
   };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
@@ -475,11 +478,11 @@ export const authApi = {
     });
   },
 
-  register(email: string, password: string, fullName?: string): Promise<TokenResponse> {
+  register(email: string, password: string, fullName?: string, orgKey?: string): Promise<TokenResponse> {
     return request<TokenResponse>("/api/v1/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, full_name: fullName ?? null }),
+      body: JSON.stringify({ email, password, full_name: fullName ?? null, org_key: orgKey ?? null }),
     });
   },
 
@@ -564,5 +567,8 @@ export const adminApi = {
   },
   getStats(): Promise<AdminStats> {
     return request<AdminStats>("/api/v1/admin/stats");
+  },
+  getOrgKey(): Promise<{ org_key: string | null }> {
+    return request<{ org_key: string | null }>("/api/v1/admin/org-key");
   },
 };

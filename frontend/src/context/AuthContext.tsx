@@ -11,7 +11,7 @@ import { authApi, licenseApi } from "../api/client";
 export interface AuthUser {
   id: string;
   email: string;
-  role: "analyst" | "manager" | "admin";
+  role: "user" | "admin";
   tenant_id: string;
 }
 
@@ -27,9 +27,8 @@ interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   login(email: string, password: string): Promise<void>;
-  register(email: string, password: string, fullName?: string): Promise<void>;
+  register(email: string, password: string, fullName?: string, orgKey?: string): Promise<void>;
   logout(): void;
-  isManager: boolean;
   isAdmin: boolean;
   isLoading: boolean;
   license: LicenseStatus | null;
@@ -96,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (data: { access_token: string; refresh_token: string; role: string; tenant_id: string; email?: string; id?: string }) => {
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
+      localStorage.setItem("tenant_id", data.tenant_id);
       setToken(data.access_token);
       // Fetch full user info
       authApi.me().then((u) => {
@@ -119,8 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (email: string, password: string, fullName?: string) => {
-      const data = await authApi.register(email, password, fullName);
+    async (email: string, password: string, fullName?: string, orgKey?: string) => {
+      const data = await authApi.register(email, password, fullName, orgKey);
       _applyTokenResponse(data);
     },
     [_applyTokenResponse]
@@ -129,17 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
+    localStorage.removeItem("tenant_id");
     setToken(null);
     setUser(null);
   }, []);
 
-  const isManager =
-    user?.role === "manager" || user?.role === "admin" || false;
   const isAdmin = user?.role === "admin" || false;
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, register, logout, isManager, isAdmin, isLoading, license }}
+      value={{ user, token, login, register, logout, isAdmin, isLoading, license }}
     >
       {children}
     </AuthContext.Provider>

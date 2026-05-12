@@ -40,7 +40,7 @@ function groupByRuleId(findings: Finding[]): Map<string, Finding[]> {
 export default function BundleDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const isManager = user?.role === "manager" || user?.role === "admin";
+  const isAdmin = user?.role === "admin";
   const [bundle, setBundle] = useState<Bundle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -230,7 +230,7 @@ export default function BundleDetail() {
           </div>
         )}
 
-        {bundle.status === "ready" && isManager && (
+        {bundle.status === "ready" && isAdmin && (
           <div className="mt-4">
             <button
               onClick={handleReanalyze}

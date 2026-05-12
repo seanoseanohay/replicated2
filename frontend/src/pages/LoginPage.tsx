@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [orgKey, setOrgKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -23,7 +24,7 @@ export default function LoginPage() {
       if (tab === "signin") {
         await login(email, password);
       } else {
-        await register(email, password, fullName || undefined);
+        await register(email, password, fullName || undefined, orgKey || undefined);
       }
       navigate("/");
     } catch (err: unknown) {
@@ -76,18 +77,35 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {tab === "register" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Full Name <span className="text-gray-500">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Jane Smith"
-                  className="w-full rounded-lg bg-gray-700 border border-gray-600 text-gray-100 placeholder-gray-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Full Name <span className="text-gray-500">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Jane Smith"
+                    className="w-full rounded-lg bg-gray-700 border border-gray-600 text-gray-100 placeholder-gray-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Org Key <span className="text-gray-500">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={orgKey}
+                    onChange={(e) => setOrgKey(e.target.value.toUpperCase())}
+                    placeholder="Join an existing team"
+                    className="w-full rounded-lg bg-gray-700 border border-gray-600 text-gray-100 placeholder-gray-500 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leave blank to create your own workspace.
+                  </p>
+                </div>
+              </>
             )}
 
             <div>

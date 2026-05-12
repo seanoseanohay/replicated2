@@ -36,7 +36,7 @@ function SummaryCard({
 }
 
 export default function Dashboard() {
-  const { isManager } = useAuth();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,7 +215,7 @@ export default function Dashboard() {
                         >
                           View
                         </button>
-                        {isManager && (
+                        {isAdmin && (
                           <button
                             onClick={() => setConfirmTarget(b)}
                             className="text-red-400 hover:text-red-600 text-xs font-medium"
@@ -311,8 +311,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Most Recent Critical Findings — manager only */}
-      {isManager && stats.most_recent_critical.length > 0 && (
+      {/* Most Recent Critical Findings — admin only */}
+      {isAdmin && stats.most_recent_critical.length > 0 && (
         <div className="bg-white rounded-lg border border-red-200 shadow-sm">
           <div className="px-5 py-4 border-b border-red-100 bg-red-50 rounded-t-lg">
             <h2 className="text-base font-semibold text-red-800">

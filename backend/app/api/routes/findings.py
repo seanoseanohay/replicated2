@@ -23,7 +23,6 @@ from app.schemas.finding import (
     FindingUpdate,
 )
 from app.schemas.finding_event import FindingEventRead
-from app.services.metrics_reporter import collect_and_send_metrics_sync
 from app.services.license_service import check_ai_chat_entitlement
 
 logger = get_logger(__name__)
@@ -112,10 +111,10 @@ async def update_finding(
         )
 
     if update.status == "resolved":
-        if current_user is None or current_user.role not in ("manager", "admin"):
+        if current_user is None or current_user.role != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Manager role required to resolve findings",
+                detail="Admin role required to resolve findings",
             )
 
     actor = current_user.email if current_user is not None else "anonymous"

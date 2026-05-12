@@ -83,6 +83,7 @@ async def test_explain_returns_200_with_mocked_client(client, bundle, finding):
         patch("app.ai.explainer.get_client", return_value=mock_client),
         patch("app.api.routes.findings.settings") as route_settings,
         patch("app.ai.explainer.settings") as explainer_settings,
+        patch("app.api.routes.findings.check_ai_chat_entitlement", return_value=True),
     ):
         mock_settings.AI_ENABLED = True
         mock_settings.ANTHROPIC_API_KEY = "test-key"

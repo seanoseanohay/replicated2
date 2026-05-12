@@ -233,7 +233,7 @@ function SectionToggle({
 export default function FindingCard({ finding: initialFinding, onUpdate }: Props) {
   const { user, license } = useAuth();
   const { showToast } = useToast();
-  const isManager = user?.role === "manager" || user?.role === "admin";
+  const isAdmin = user?.role === "admin";
   const aiChatEnabled = license?.entitlements?.ai_chat_enabled === true || license?.entitlements?.ai_chat_enabled === "true";
   const [finding, setFinding] = useState<Finding>(initialFinding);
   const [explaining, setExplaining] = useState(false);
@@ -510,7 +510,7 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
             Acknowledge
           </button>
         )}
-        {isManager && finding.status !== "resolved" && (
+        {isAdmin && finding.status !== "resolved" && (
           <button
             disabled={updating}
             onClick={() => handleStatusChange("resolved")}
@@ -519,11 +519,10 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
             Resolve
           </button>
         )}
-        {!isManager && finding.status !== "resolved" && (
-          <button
-            disabled
-            title="Manager role required to resolve findings"
-            className="px-3 py-1 text-xs rounded border border-gray-200 text-gray-400 cursor-not-allowed flex items-center gap-1"
+        {!isAdmin && finding.status !== "resolved" && (
+          <div
+            className="text-xs text-gray-400 italic"
+            title="Admin role required to resolve findings"
           >
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
               <path
@@ -533,7 +532,7 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
               />
             </svg>
             Resolve
-          </button>
+          </div>
         )}
         {finding.status !== "open" && (
           <button
@@ -906,7 +905,7 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
                   <ul className="space-y-2">
                     {(comments ?? []).map((c) => {
                       const isOwn = user?.email === c.actor;
-                      const canDelete = isOwn || isManager;
+                      const canDelete = isOwn || isAdmin;
                       return (
                         <li key={c.id} className="bg-white rounded border border-gray-200 p-2">
                           <div className="flex items-center justify-between gap-2">

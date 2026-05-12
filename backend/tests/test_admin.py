@@ -13,7 +13,7 @@ from app.models.user import User
 # ---------------------------------------------------------------------------
 
 
-async def _create_user(db_session, email, role="analyst", tenant_id="default") -> User:
+async def _create_user(db_session, email, role="user", tenant_id="default") -> User:
     user = User(
         id=uuid.uuid4(),
         email=email,
@@ -47,19 +47,19 @@ def _headers(user: User) -> dict:
 
 @pytest.mark.asyncio
 async def test_list_users_requires_admin(client, db_session) -> None:
-    """An analyst cannot access the admin user list."""
-    analyst = await _create_user(db_session, "nonadmin@example.com", role="analyst")
-    resp = await client.get("/api/v1/admin/users", headers=_headers(analyst))
+    """An user cannot access the admin user list."""
+    user = await _create_user(db_session, "nonadmin@example.com", role="user")
+    resp = await client.get("/api/v1/admin/users", headers=_headers(user))
     assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_manager_cannot_access_admin(client, db_session) -> None:
-    """A manager (not admin) cannot access admin routes."""
-    manager = await _create_user(
-        db_session, "manager-noadmin@example.com", role="manager"
+async def test_user_cannot_access_admin(client, db_session) -> None:
+    """A user (not admin) cannot access admin routes."""
+    user = await _create_user(
+        db_session, "user-noadmin@example.com", role="user"
     )
-    resp = await client.get("/api/v1/admin/users", headers=_headers(manager))
+    resp = await client.get("/api/v1/admin/users", headers=_headers(user))
     assert resp.status_code == 403
 
 
@@ -79,24 +79,24 @@ async def test_admin_can_list_users(client, db_session) -> None:
 
 @pytest.mark.asyncio
 async def test_admin_can_update_user_role(client, db_session) -> None:
-    """Admin can promote an analyst to manager."""
+    """Admin can promote a user to admin."""
     admin = await _create_user(db_session, "adminrole@example.com", role="admin")
-    target = await _create_user(db_session, "targetrole@example.com", role="analyst")
+    target = await _create_user(db_session, "targetrole@example.com", role="user")
 
     resp = await client.patch(
         f"/api/v1/admin/users/{target.id}/role",
-        json={"role": "manager"},
+        json={"role": "admin"},
         headers=_headers(admin),
     )
     assert resp.status_code == 200
-    assert resp.json()["role"] == "manager"
+    assert resp.json()["role"] == "admin"
 
 
 @pytest.mark.asyncio
 async def test_admin_role_update_invalid_role(client, db_session) -> None:
     """Invalid role value returns 400."""
     admin = await _create_user(db_session, "adminbadrole@example.com", role="admin")
-    target = await _create_user(db_session, "targetbadrole@example.com", role="analyst")
+    target = await _create_user(db_session, "targetbadrole@example.com", role="user")
 
     resp = await client.patch(
         f"/api/v1/admin/users/{target.id}/role",
@@ -115,7 +115,7 @@ async def test_admin_role_update_invalid_role(client, db_session) -> None:
 async def test_admin_can_deactivate_user(client, db_session) -> None:
     """Admin can deactivate another user account."""
     admin = await _create_user(db_session, "adminstatus@example.com", role="admin")
-    target = await _create_user(db_session, "targetstatus@example.com", role="analyst")
+    target = await _create_user(db_session, "targetstatus@example.com", role="user")
 
     resp = await client.patch(
         f"/api/v1/admin/users/{target.id}/status",
@@ -168,7 +168,7 @@ async def test_refresh_token_returns_new_access_token(client, db_session) -> Non
     """POST /auth/refresh with a valid refresh token returns new tokens."""
     from app.core.auth import create_refresh_token
 
-    user = await _create_user(db_session, "refresh@example.com", role="analyst")
+    user = await _create_user(db_session, "refresh@example.com", role="user")
     refresh_token = create_refresh_token(
         {
             "sub": str(user.id),
@@ -185,13 +185,13 @@ async def test_refresh_token_returns_new_access_token(client, db_session) -> Non
     assert resp.status_code == 200
     data = resp.json()
     assert "access_token" in data
-    assert data["role"] == "analyst"
+    assert data["role"] == "user"
 
 
 @pytest.mark.asyncio
 async def test_refresh_token_rejects_access_token(client, db_session) -> None:
     """Using an access token as a refresh token should return 401."""
-    user = await _create_user(db_session, "refreshwrong@example.com", role="analyst")
+    user = await _create_user(db_session, "refreshwrong@example.com", role="user")
     access_token = create_access_token(
         {
             "sub": str(user.id),

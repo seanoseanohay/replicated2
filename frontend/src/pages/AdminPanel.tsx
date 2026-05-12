@@ -3,11 +3,10 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminApi, type AdminUser, type AdminStats } from "../api/client";
 
-const ROLES = ["analyst", "manager", "admin"] as const;
+const ROLES = ["user", "admin"] as const;
 
 const ROLE_BADGE: Record<string, string> = {
-  analyst: "bg-blue-100 text-blue-700 border border-blue-200",
-  manager: "bg-purple-100 text-purple-700 border border-purple-200",
+  user: "bg-blue-100 text-blue-700 border border-blue-200",
   admin: "bg-red-100 text-red-700 border border-red-200",
 };
 
@@ -25,15 +24,17 @@ export default function AdminPanel() {
 
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [orgKey, setOrgKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([adminApi.listUsers(), adminApi.getStats()])
-      .then(([u, s]) => {
+    Promise.all([adminApi.listUsers(), adminApi.getStats(), adminApi.getOrgKey()])
+      .then(([u, s, k]) => {
         setUsers(u);
         setStats(s);
+        setOrgKey(k.org_key);
       })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
@@ -73,6 +74,33 @@ export default function AdminPanel() {
         <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
         <p className="text-sm text-gray-500 mt-1">Manage users and view system stats</p>
       </div>
+
+      {/* Org Key */}
+      {orgKey && (
+        <div className="bg-indigo-50 rounded-lg border border-indigo-200 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-indigo-900">Team Invite Key</p>
+              <p className="text-xs text-indigo-700 mt-0.5">
+                Share this key so teammates can join your workspace.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="bg-white border border-indigo-200 rounded px-3 py-1.5 text-sm font-mono text-indigo-900 tracking-wider">
+                {orgKey}
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(orgKey);
+                }}
+                className="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       {stats && (

@@ -27,12 +27,12 @@ TENANT = "comment-tenant"
 
 
 @pytest_asyncio.fixture()
-async def manager_cmt(db_session):
+async def admin_cmt(db_session):
     user = User(
         id=uuid.uuid4(),
-        email=f"mgr-cmt-{uuid.uuid4().hex[:6]}@test.com",
+        email=f"admin-cmt-{uuid.uuid4().hex[:6]}@test.com",
         hashed_password=hash_password("pass"),
-        role="manager",
+        role="admin",
         tenant_id=TENANT,
         is_active=True,
     )
@@ -43,12 +43,12 @@ async def manager_cmt(db_session):
 
 
 @pytest_asyncio.fixture()
-async def analyst_cmt(db_session):
+async def user_cmt(db_session):
     user = User(
         id=uuid.uuid4(),
-        email=f"analyst-cmt-{uuid.uuid4().hex[:6]}@test.com",
+        email=f"user-cmt-{uuid.uuid4().hex[:6]}@test.com",
         hashed_password=hash_password("pass"),
-        role="analyst",
+        role="user",
         tenant_id=TENANT,
         is_active=True,
     )
@@ -90,9 +90,9 @@ async def bfpair(db_session):
 
 
 @pytest.mark.asyncio
-async def test_list_comments_empty(client, manager_cmt, bfpair):
+async def test_list_comments_empty(client, admin_cmt, bfpair):
     bundle, finding = bfpair
-    headers = _token(manager_cmt)
+    headers = _token(admin_cmt)
     resp = await client.get(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}/comments",
         headers=headers,
@@ -102,24 +102,24 @@ async def test_list_comments_empty(client, manager_cmt, bfpair):
 
 
 @pytest.mark.asyncio
-async def test_post_comment_creates(client, analyst_cmt, bfpair):
+async def test_post_comment_creates(client, user_cmt, bfpair):
     bundle, finding = bfpair
-    headers = _token(analyst_cmt)
+    headers = _token(user_cmt)
     resp = await client.post(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}/comments",
-        json={"body": "Hello from analyst"},
+        json={"body": "Hello from user"},
         headers=headers,
     )
     assert resp.status_code == 201
     data = resp.json()
-    assert data["body"] == "Hello from analyst"
-    assert data["actor"] == analyst_cmt.email
+    assert data["body"] == "Hello from user"
+    assert data["actor"] == user_cmt.email
 
 
 @pytest.mark.asyncio
-async def test_delete_own_comment_succeeds(client, analyst_cmt, bfpair):
+async def test_delete_own_comment_succeeds(client, user_cmt, bfpair):
     bundle, finding = bfpair
-    headers = _token(analyst_cmt)
+    headers = _token(user_cmt)
 
     # Create comment
     create_resp = await client.post(
@@ -139,57 +139,57 @@ async def test_delete_own_comment_succeeds(client, analyst_cmt, bfpair):
 
 
 @pytest.mark.asyncio
-async def test_delete_other_user_comment_as_analyst_forbidden(
-    client, analyst_cmt, manager_cmt, bfpair
+async def test_delete_other_user_comment_as_user_forbidden(
+    client, user_cmt, admin_cmt, bfpair
 ):
     bundle, finding = bfpair
 
-    # Manager creates a comment
-    mgr_headers = _token(manager_cmt)
+    # Admin creates a comment
+    admin_headers = _token(admin_cmt)
     create_resp = await client.post(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}/comments",
-        json={"body": "Manager comment"},
-        headers=mgr_headers,
+        json={"body": "Admin comment"},
+        headers=admin_headers,
     )
     assert create_resp.status_code == 201
     comment_id = create_resp.json()["id"]
 
-    # Analyst tries to delete manager's comment
-    analyst_headers = _token(analyst_cmt)
+    # User tries to delete admin's comment
+    user_headers = _token(user_cmt)
     del_resp = await client.delete(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}/comments/{comment_id}",
-        headers=analyst_headers,
+        headers=user_headers,
     )
     assert del_resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_delete_other_user_comment_as_manager_succeeds(
-    client, analyst_cmt, manager_cmt, bfpair
+async def test_delete_other_user_comment_as_admin_succeeds(
+    client, user_cmt, admin_cmt, bfpair
 ):
     bundle, finding = bfpair
 
-    # Analyst creates a comment
-    analyst_headers = _token(analyst_cmt)
+    # User creates a comment
+    user_headers = _token(user_cmt)
     create_resp = await client.post(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}/comments",
-        json={"body": "Analyst comment"},
-        headers=analyst_headers,
+        json={"body": "User comment"},
+        headers=user_headers,
     )
     assert create_resp.status_code == 201
     comment_id = create_resp.json()["id"]
 
-    # Manager deletes analyst's comment
-    mgr_headers = _token(manager_cmt)
+    # Admin deletes user's comment
+    admin_headers = _token(admin_cmt)
     del_resp = await client.delete(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}/comments/{comment_id}",
-        headers=mgr_headers,
+        headers=admin_headers,
     )
     assert del_resp.status_code == 204
 
 
 @pytest.mark.asyncio
-async def test_comments_tenant_isolation(client, manager_cmt, bfpair):
+async def test_comments_tenant_isolation(client, admin_cmt, bfpair):
     """Comments should not be accessible from a different tenant."""
     bundle, finding = bfpair
 

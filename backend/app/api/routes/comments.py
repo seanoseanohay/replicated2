@@ -131,15 +131,15 @@ async def delete_comment(
             status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found"
         )
 
-    # Authorization: own comment OR manager/admin
-    is_manager = current_user is not None and current_user.role in ("manager", "admin")
+    # Authorization: own comment OR admin
+    is_admin = current_user is not None and current_user.role == "admin"
     is_own = (
         current_user is not None
         and comment.user_id is not None
         and comment.user_id == current_user.id
     )
 
-    if not (is_own or is_manager):
+    if not (is_own or is_admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this comment",

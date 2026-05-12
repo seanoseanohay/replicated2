@@ -46,8 +46,51 @@ async def client(db_session):
 
 
 @pytest_asyncio.fixture()
+async def admin_user(db_session):
+    """An admin-role user for tests that require elevated permissions."""
+    user = User(
+        id=uuid.uuid4(),
+        email=f"admin-{uuid.uuid4().hex[:8]}@test.example.com",
+        hashed_password=hash_password("adminpass1"),
+        role="admin",
+        tenant_id="default",
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+    return user
+
+
+def make_admin_headers(user: User, tenant_id: str = "default") -> dict:
+    """Build Authorization + X-Tenant-ID headers for an admin user."""
+    token = create_access_token(
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
+    )
+    return {"Authorization": f"Bearer {token}", "X-Tenant-ID": tenant_id}
+
+
+def make_manager_headers(user: User, tenant_id: str = "default") -> dict:
+    """Build Authorization + X-Tenant-ID headers for any authenticated user."""
+    token = create_access_token(
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role,
+            "tenant_id": user.tenant_id,
+        }
+    )
+    return {"Authorization": f"Bearer {token}", "X-Tenant-ID": tenant_id}
+
+
+@pytest_asyncio.fixture()
 async def manager_user(db_session):
-    """A manager-role user for tests that require elevated permissions."""
+    """A manager-role user for tests that require manager permissions."""
     user = User(
         id=uuid.uuid4(),
         email=f"manager-{uuid.uuid4().hex[:8]}@test.example.com",
@@ -60,16 +103,3 @@ async def manager_user(db_session):
     await db_session.flush()
     await db_session.refresh(user)
     return user
-
-
-def make_manager_headers(user: User, tenant_id: str = "default") -> dict:
-    """Build Authorization + X-Tenant-ID headers for a manager user."""
-    token = create_access_token(
-        {
-            "sub": str(user.id),
-            "email": user.email,
-            "role": user.role,
-            "tenant_id": user.tenant_id,
-        }
-    )
-    return {"Authorization": f"Bearer {token}", "X-Tenant-ID": tenant_id}

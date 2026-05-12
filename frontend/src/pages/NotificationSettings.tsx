@@ -3,7 +3,7 @@ import { notificationApi, type NotificationConfig } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 
 export default function NotificationSettings() {
-  const { isManager } = useAuth();
+  const { isAdmin } = useAuth();
   const [config, setConfig] = useState<NotificationConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -18,7 +18,7 @@ export default function NotificationSettings() {
   const [notifyOnSeverities, setNotifyOnSeverities] = useState("critical,high");
 
   useEffect(() => {
-    if (!isManager) {
+    if (!isAdmin) {
       setLoading(false);
       return;
     }
@@ -34,7 +34,7 @@ export default function NotificationSettings() {
       })
       .catch((e) => console.error("Failed to load notification config", e))
       .finally(() => setLoading(false));
-  }, [isManager]);
+  }, [isAdmin]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -58,7 +58,7 @@ export default function NotificationSettings() {
     }
   };
 
-  if (!isManager) {
+  if (!isAdmin) {
     return (
       <div className="max-w-lg mx-auto mt-16 text-center">
         <p className="text-gray-500">Manager access required to view notification settings.</p>

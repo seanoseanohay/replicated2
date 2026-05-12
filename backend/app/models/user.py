@@ -17,9 +17,12 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
     hashed_password: Mapped[str] = mapped_column(String(256), nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    role: Mapped[str] = mapped_column(String(32), nullable=False, default="analyst")
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="user")
     tenant_id: Mapped[str] = mapped_column(
         String(128), nullable=False, default="default", index=True
+    )
+    org_key: Mapped[str | None] = mapped_column(
+        String(32), nullable=True, unique=True, index=True
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(

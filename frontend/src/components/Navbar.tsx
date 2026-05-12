@@ -4,19 +4,17 @@ import { useAuth } from "../context/AuthContext";
 
 
 const ROLE_BADGE: Record<string, string> = {
-  analyst: "bg-blue-900/50 text-blue-300 border border-blue-700",
-  manager: "bg-purple-900/50 text-purple-300 border border-purple-700",
+  user: "bg-blue-900/50 text-blue-300 border border-blue-700",
   admin: "bg-red-900/50 text-red-300 border border-red-700",
 };
 
 const ROLE_LABEL: Record<string, string> = {
-  analyst: "Analyst",
-  manager: "Manager",
+  user: "User",
   admin: "Admin",
 };
 
 export default function Navbar() {
-  const { user, logout, isManager, isAdmin } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
 
   if (!user) return null;
 
@@ -48,12 +46,12 @@ export default function Navbar() {
           >
             Compare
           </Link>
-          {isManager && (
+          {isAdmin && (
             <Link
               to="/settings/notifications"
               className="text-sm text-gray-300 hover:text-white transition-colors"
             >
-              Settings
+              Notifications
             </Link>
           )}
           {isAdmin && (

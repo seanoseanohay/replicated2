@@ -95,7 +95,7 @@ async def update_user_role(
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> UserAdminRead:
-    if body.role not in ("analyst", "manager", "admin"):
+    if body.role not in ("user", "admin"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role"
         )
@@ -179,3 +179,11 @@ async def get_stats(
         total_findings=total_findings,
         users_by_role=users_by_role,
     )
+
+
+@router.get("/org-key")
+async def get_org_key(
+    admin: User = Depends(require_admin),
+) -> dict:
+    """Return the admin's org key for sharing with teammates."""
+    return {"org_key": admin.org_key}

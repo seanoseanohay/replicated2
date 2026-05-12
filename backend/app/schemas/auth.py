@@ -8,6 +8,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     full_name: str | None = None
+    org_key: str | None = None
 
     @field_validator("password")
     @classmethod
@@ -28,6 +29,7 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     role: str
     tenant_id: str
+    org_key: str | None = None
 
 
 class RefreshRequest(BaseModel):
@@ -40,6 +42,7 @@ class UserRead(BaseModel):
     full_name: str | None
     role: str
     tenant_id: str
+    org_key: str | None
     is_active: bool
     created_at: datetime
 
