@@ -3,7 +3,7 @@ import logging
 import os
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -65,6 +65,13 @@ def _fetch_available_updates() -> list[dict[str, Any]] | None:
         return None
 
 
+def clear_cache() -> None:
+    """Clear the in-memory update status cache (useful in tests)."""
+    global _cache, _cache_time
+    _cache = None
+    _cache_time = None
+
+
 def get_update_status() -> dict[str, Any]:
     """Return whether an app update is available.
 
@@ -74,7 +81,7 @@ def get_update_status() -> dict[str, Any]:
     global _cache, _cache_time
 
     if _cache is not None and _cache_time is not None:
-        if datetime.utcnow() - _cache_time < timedelta(seconds=CACHE_TTL_SECONDS):
+        if datetime.now(timezone.utc) - _cache_time < timedelta(seconds=CACHE_TTL_SECONDS):
             log.debug("Returning cached update status")
             return _cache
 
@@ -91,7 +98,7 @@ def get_update_status() -> dict[str, Any]:
             "current_version": None,
         }
         _cache = result
-        _cache_time = datetime.utcnow()
+        _cache_time = datetime.now(timezone.utc)
         return result
 
     current_version = info.get("versionLabel") or info.get("appVersion")
@@ -126,6 +133,6 @@ def get_update_status() -> dict[str, Any]:
     }
 
     _cache = result
-    _cache_time = datetime.utcnow()
+    _cache_time = datetime.now(timezone.utc)
     log.info(f"Update status: {result}")
     return result

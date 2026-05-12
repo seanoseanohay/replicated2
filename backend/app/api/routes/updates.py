@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.core.deps import get_current_user
+from app.core.deps import require_auth
 from app.core.logging import get_logger
 from app.models.user import User
 from app.schemas.update import UpdateStatusRead
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/v1/updates", tags=["updates"])
 
 @router.get("/status", response_model=UpdateStatusRead)
 async def read_update_status(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_auth),
 ) -> UpdateStatusRead:
     """Return whether a newer app release is available from Replicated."""
     status = get_update_status()

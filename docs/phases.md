@@ -95,3 +95,9 @@ Goal: Secure HTTPS ingress with multiple certificate options
 Deliverables: Self-signed cert persistence, cert-manager support, manual upload path
 Success: No cert regeneration on helm upgrade; HTTPS redirect works
 Built: tls-secret.yaml using Helm `lookup` function and `helm.sh/resource-policy: keep` to preserve existing self-signed certificates across upgrades; `regenerateSelfSignedCert` toggle to force rotation; `nginx.ingress.kubernetes.io/force-ssl-redirect: "true"` annotation for automatic HTTP→HTTPS redirect; `docs/tls-setup.md` documenting three modes (auto-provisioned cert-manager, manually uploaded secret, self-signed for testing)
+
+## Phase 2.6 — Replicated Update Available Banner ✓ COMPLETE
+Goal: Surface pending app updates to end users inside the UI
+Deliverables: Update status endpoint, in-memory cache, dismissible banner
+Success: Users see a blue banner when a newer release is available; yellow banner when license is invalid
+Built: `update_service.py` fetches Replicated SDK `/api/v1/app/info` (current version + license validity) and `/api/v1/app/updates` (available releases) with 5-minute in-memory TTL cache; version comparison by `versionLabel` (available when next != current); `GET /api/v1/updates/status` returns `UpdateStatusRead` (`available`, `version`, `notes`, `license_valid`, `current_version`) with `require_auth` dependency; `UpdateBanner.tsx` mounts inside `ProtectedLayout`, shows blue info banner for available updates, yellow warning banner for invalid license, dismissible via localStorage key per version; 8 backend tests covering no-update, new-version, invalid-license, SDK-unreachable, empty updates list, multiple-updates picks newest, and auth-required
