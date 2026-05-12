@@ -101,7 +101,8 @@ async def test_update_status_license_invalid(client, db_session):
 
     with patch("app.services.update_service._fetch_app_info", return_value=app_info):
         with patch("app.services.update_service._fetch_available_updates", return_value=updates):
-            resp = await client.get("/api/v1/updates/status", headers=_auth_headers(user))
+            with patch("app.services.update_service._is_license_valid", return_value=False):
+                resp = await client.get("/api/v1/updates/status", headers=_auth_headers(user))
 
     assert resp.status_code == 200
     data = resp.json()

@@ -6,6 +6,8 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from app.services.license_service import is_license_valid as _is_license_valid
+
 log = logging.getLogger(__name__)
 
 # SDK service name may vary based on Helm release name (e.g., bundle-analyzer-sdk)
@@ -106,7 +108,8 @@ def get_update_status() -> dict[str, Any]:
         or info.get("appVersion")
         or info.get("currentRelease", {}).get("versionLabel")
     )
-    license_valid = info.get("license", {}).get("isValid", True)
+    # Read license validity from the dedicated license endpoint (app/info lacks license field)
+    license_valid = _is_license_valid()
 
     next_update = None
     if updates:

@@ -12,6 +12,7 @@ from app.core.limiter import limiter
 from app.core.logging import get_logger, setup_logging
 from app.middleware.logging import AccessLogMiddleware
 from app.middleware.request_id import RequestIDMiddleware
+from app.services.license_service import is_license_valid
 from app.services.storage import storage_service
 
 setup_logging()
@@ -125,6 +126,35 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# License enforcement middleware — blocks protected routes when license expired/invalid
+_LICENSE_ALLOWLIST = {
+    "/health",
+    "/api/v1/auth",
+    "/api/v1/license",
+    "/api/v1/updates",
+}
+
+
+@app.middleware("http")
+async def license_check_middleware(request, call_next):
+    path = request.url.path
+    # Skip allowlisted paths and docs/redoc/openapi
+    if any(path.startswith(prefix) for prefix in _LICENSE_ALLOWLIST):
+        return await call_next(request)
+    if path in ("/docs", "/redoc", "/openapi.json"):
+        return await call_next(request)
+    if not is_license_valid():
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": "License expired or invalid. Please contact support to renew.",
+                "code": "LICENSE_INVALID",
+            },
+        )
+    return await call_next(request)
 
 # Routers
 from app.api.routes.health import router as health_router  # noqa: E402

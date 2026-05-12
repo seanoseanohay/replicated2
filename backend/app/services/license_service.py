@@ -3,6 +3,7 @@ import logging
 import os
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any
 
@@ -66,6 +67,49 @@ def _get_cached_license_info() -> dict[str, Any] | None:
     return _fetch_license_info()
 
 
+def _parse_expires_at(entitlements: dict[str, Any]) -> datetime | None:
+    """Extract and parse the expires_at entitlement value."""
+    raw = entitlements.get("expires_at")
+    if isinstance(raw, dict):
+        value = raw.get("value")
+    else:
+        value = raw
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return None
+
+
+def is_license_valid() -> bool:
+    """Check whether the current Replicated license is valid (not expired).
+
+    Returns True when:
+      - SDK is unreachable (local dev / testing)
+      - License exists and has no expiry
+      - License exists and expiry is in the future
+
+    Returns False when:
+      - License info is present but expires_at is in the past
+      - A future explicit invalid flag is added by the SDK
+    """
+    info = _fetch_license_info()
+    if info is None:
+        # SDK unreachable — be permissive so local dev works
+        return True
+
+    entitlements = info.get("entitlements", {})
+    expires = _parse_expires_at(entitlements)
+    if expires is not None and datetime.now(timezone.utc) > expires:
+        log.warning(f"License expired at {expires.isoformat()}")
+        return False
+
+    return True
+
+
 def get_license_status() -> dict[str, Any]:
     """Return current license status suitable for API response."""
     info = _fetch_license_info()
@@ -80,8 +124,13 @@ def get_license_status() -> dict[str, Any]:
         }
 
     entitlements = info.get("entitlements", {})
+    expires = _parse_expires_at(entitlements)
+    expired = False
+    if expires is not None and datetime.now(timezone.utc) > expires:
+        expired = True
+
     return {
-        "valid": True,
+        "valid": not expired,
         "license_type": info.get("licenseType"),
         "customer_name": info.get("customerName"),
         "expires_at": entitlements.get("expires_at", {}).get("value") if isinstance(entitlements.get("expires_at"), dict) else None,
