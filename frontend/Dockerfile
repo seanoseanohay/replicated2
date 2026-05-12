@@ -1,5 +1,6 @@
 # ---- build stage ----
-FROM node:20-alpine AS builder
+# Use Debian-based node to avoid qemu illegal-instruction crashes on arm64
+FROM node:20 AS builder
 
 WORKDIR /app
 
