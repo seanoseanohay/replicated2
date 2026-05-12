@@ -80,10 +80,14 @@ class AdminStats(BaseModel):
 
 @router.get("/users", response_model=list[UserAdminRead])
 async def list_users(
-    _admin: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[UserAdminRead]:
-    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    result = await db.execute(
+        select(User)
+        .where(User.tenant_id == admin.tenant_id)
+        .order_by(User.created_at.desc())
+    )
     users = result.scalars().all()
     return [UserAdminRead.from_orm_user(u) for u in users]
 
@@ -100,7 +104,9 @@ async def update_user_role(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role"
         )
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.tenant_id == admin.tenant_id)
+    )
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(
@@ -129,7 +135,9 @@ async def update_user_status(
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> UserAdminRead:
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.tenant_id == admin.tenant_id)
+    )
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(
@@ -157,20 +165,33 @@ async def update_user_status(
 
 @router.get("/stats", response_model=AdminStats)
 async def get_stats(
-    _admin: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> AdminStats:
     total_users = (
-        await db.execute(select(func.count()).select_from(User))
+        await db.execute(
+            select(func.count()).select_from(User).where(User.tenant_id == admin.tenant_id)
+        )
     ).scalar_one()
     total_bundles = (
-        await db.execute(select(func.count()).select_from(Bundle))
+        await db.execute(
+            select(func.count()).select_from(Bundle).where(Bundle.tenant_id == admin.tenant_id)
+        )
     ).scalar_one()
     total_findings = (
-        await db.execute(select(func.count()).select_from(Finding))
+        await db.execute(
+            select(func.count())
+            .select_from(Finding)
+            .join(Bundle, Finding.bundle_id == Bundle.id)
+            .where(Bundle.tenant_id == admin.tenant_id)
+        )
     ).scalar_one()
 
-    role_rows = await db.execute(select(User.role, func.count()).group_by(User.role))
+    role_rows = await db.execute(
+        select(User.role, func.count())
+        .where(User.tenant_id == admin.tenant_id)
+        .group_by(User.role)
+    )
     users_by_role = {row[0]: row[1] for row in role_rows.all()}
 
     return AdminStats(
