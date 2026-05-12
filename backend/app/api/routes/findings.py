@@ -17,8 +17,14 @@ from app.models.evidence import Evidence
 from app.models.finding import Finding
 from app.models.finding_event import FindingEvent
 from app.models.user import User
-from app.schemas.finding import FindingListResponse, FindingRead, FindingUpdate
-from app.schemas.finding_event import FindingEventRead
+from app.schemas.finding import (
+    FindingEventRead,
+    FindingListResponse,
+    FindingRead,
+    FindingUpdate,
+)
+from app.services.metrics_reporter import collect_and_send_metrics_sync
+from app.services.license_service import check_ai_chat_entitlement
 
 logger = get_logger(__name__)
 
@@ -188,6 +194,11 @@ async def explain_finding(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI features are not enabled",
+        )
+    if not check_ai_chat_entitlement():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI features are not enabled on your license. Please contact your vendor to upgrade.",
         )
 
     await _get_bundle_for_tenant(bundle_id, tenant_id, db)

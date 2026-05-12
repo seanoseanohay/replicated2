@@ -496,6 +496,21 @@ export const authApi = {
   },
 };
 
+// ---- License ----
+export interface LicenseStatus {
+  valid: boolean;
+  license_type: string | null;
+  customer_name: string | null;
+  expires_at: string | null;
+  entitlements: Record<string, unknown>;
+}
+
+export const licenseApi = {
+  getStatus(): Promise<LicenseStatus> {
+    return request<LicenseStatus>("/api/v1/license/status");
+  },
+};
+
 // ---- Admin ----
 export interface AdminUser {
   id: string;

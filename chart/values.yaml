@@ -6,6 +6,10 @@ imagePullSecrets: []
 global:
   proxyRegistry: images.bundlyzer.com/proxy/bundle-analyzer
   imageRegistry: ""
+  # Override this at deploy time to pin all component images to a specific tag
+  # (e.g. git SHA). Leave empty to use per-component tags below.
+  image:
+    tag: ""
   imagePullSecrets:
     - name: enterprise-pull-secret
   appEnv: development
@@ -167,13 +171,22 @@ minio:
 
 ingress:
   enabled: false
-  className: ""
+  className: "nginx"
   annotations:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
   certManager:
     enabled: false
     clusterIssuer: ""
+  # CAUTION: Self-signed cert generation is a ONE-TIME operation.
+  # Once the TLS secret exists in the cluster, Helm will NEVER overwrite it
+  # (see tls-secret.yaml: only generates if secret does not exist).
+  # If you need to replace the cert, manually delete the secret first:
+  #   kubectl delete secret <release-name>-tls -n <namespace>
+  # Then reinstall. For local dev with a custom domain, use mkcert
+  # instead of self-signed to avoid browser trust issues.
   generateSelfSignedCert: false
+  # DEPRECATED: regenerateSelfSignedCert is permanently ignored.
+  # The chart will never regenerate an existing TLS secret.
   regenerateSelfSignedCert: false
   hosts:
     - host: bundle-analyzer.local
@@ -184,4 +197,10 @@ ingress:
 
 bundle-analyzer-sdk:
   image:
-    registry: images.bundlyzer.com
+    registry: proxy.replicated.com
+    repository: library/replicated-sdk-image
+    tag: "1.19.3"
+  integration:
+    enabled: false
+  existingSecret:
+    name: "bundle-analyzer-license"

@@ -31,6 +31,13 @@
             "required": ["name"]
           }
         },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tag": { "type": "string" }
+          }
+        },
         "replicated": { "type": "object", "additionalProperties": true },
         "appEnv": { "type": "string" },
         "corsAllowedOrigins": { "type": "string" },

@@ -6,13 +6,21 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { authApi } from "../api/client";
+import { authApi, licenseApi } from "../api/client";
 
 export interface AuthUser {
   id: string;
   email: string;
   role: "analyst" | "manager" | "admin";
   tenant_id: string;
+}
+
+export interface LicenseStatus {
+  valid: boolean;
+  license_type: string | null;
+  customer_name: string | null;
+  expires_at: string | null;
+  entitlements: Record<string, unknown>;
 }
 
 interface AuthContextType {
@@ -24,6 +32,7 @@ interface AuthContextType {
   isManager: boolean;
   isAdmin: boolean;
   isLoading: boolean;
+  license: LicenseStatus | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -34,6 +43,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.getItem("access_token")
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [license, setLicense] = useState<LicenseStatus | null>(null);
+
+  const _fetchLicense = useCallback(async () => {
+    try {
+      const data = await licenseApi.getStatus();
+      setLicense(data);
+    } catch {
+      // License endpoint may be unavailable (local dev); that's fine
+      setLicense(null);
+    }
+  }, []);
 
   // On mount, try to restore session from stored token
   useEffect(() => {
@@ -62,6 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => setIsLoading(false));
   }, []);
+
+  // Fetch license whenever user changes
+  useEffect(() => {
+    if (user) {
+      _fetchLicense();
+    } else {
+      setLicense(null);
+    }
+  }, [user, _fetchLicense]);
 
   const _applyTokenResponse = useCallback(
     (data: { access_token: string; refresh_token: string; role: string; tenant_id: string; email?: string; id?: string }) => {
@@ -110,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, register, logout, isManager, isAdmin, isLoading }}
+      value={{ user, token, login, register, logout, isManager, isAdmin, isLoading, license }}
     >
       {children}
     </AuthContext.Provider>

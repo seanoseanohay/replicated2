@@ -231,9 +231,10 @@ function SectionToggle({
 }
 
 export default function FindingCard({ finding: initialFinding, onUpdate }: Props) {
-  const { user } = useAuth();
+  const { user, license } = useAuth();
   const { showToast } = useToast();
   const isManager = user?.role === "manager" || user?.role === "admin";
+  const aiChatEnabled = license?.entitlements?.ai_chat_enabled === true || license?.entitlements?.ai_chat_enabled === "true";
   const [finding, setFinding] = useState<Finding>(initialFinding);
   const [explaining, setExplaining] = useState(false);
   const [explainError, setExplainError] = useState<string | null>(null);
@@ -543,13 +544,18 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
             Reopen
           </button>
         )}
-        {!finding.ai_explanation && !explaining && (
+        {!finding.ai_explanation && !explaining && aiChatEnabled && (
           <button
             onClick={handleExplain}
             className="px-3 py-1 text-xs rounded border border-indigo-300 text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-1 transition-colors duration-150"
           >
             Get AI Explanation
           </button>
+        )}
+        {!finding.ai_explanation && !explaining && !aiChatEnabled && (
+          <span className="px-3 py-1 text-xs text-gray-400 italic">
+            AI Explanation requires license upgrade
+          </span>
         )}
         {explaining && (
           <span className="px-3 py-1 text-xs text-indigo-500 italic flex items-center gap-1.5">
@@ -587,77 +593,85 @@ export default function FindingCard({ finding: initialFinding, onUpdate }: Props
       {/* AI Chat */}
       {finding.ai_explanation && (
         <div className="mt-3">
-          <SectionToggle
-            open={chatOpen}
-            onClick={handleChatToggle}
-            label="Ask AI a follow-up question"
-          />
-          <ExpandSection open={chatOpen}>
-            <div className="mt-2 rounded border border-indigo-100 overflow-hidden">
-              {/* Message thread */}
-              <div className="bg-white max-h-80 overflow-y-auto p-3 space-y-3">
-                {chatLoading ? (
-                  <p className="text-xs text-gray-400 italic">Loading conversation...</p>
-                ) : chatMessages && chatMessages.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic">
-                    Ask a follow-up question about this finding. The AI can only answer questions related to this specific issue.
-                  </p>
-                ) : (
-                  (chatMessages ?? []).map((m) => (
-                    <div
-                      key={m.id}
-                      className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[85%] rounded-lg px-3 py-2 text-xs ${
-                          m.role === "user"
-                            ? "bg-indigo-600 text-white"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {m.role === "assistant"
-                          ? renderMarkdown(m.content)
-                          : <p>{m.content}</p>}
-                        <p className={`mt-1 text-[10px] ${m.role === "user" ? "text-indigo-200" : "text-gray-400"}`}>
-                          {m.actor} &middot; {timeAgo(m.created_at)}
-                        </p>
+          {aiChatEnabled ? (
+            <>
+              <SectionToggle
+                open={chatOpen}
+                onClick={handleChatToggle}
+                label="Ask AI a follow-up question"
+              />
+              <ExpandSection open={chatOpen}>
+                <div className="mt-2 rounded border border-indigo-100 overflow-hidden">
+                  {/* Message thread */}
+                  <div className="bg-white max-h-80 overflow-y-auto p-3 space-y-3">
+                    {chatLoading ? (
+                      <p className="text-xs text-gray-400 italic">Loading conversation...</p>
+                    ) : chatMessages && chatMessages.length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">
+                        Ask a follow-up question about this finding. The AI can only answer questions related to this specific issue.
+                      </p>
+                    ) : (
+                      (chatMessages ?? []).map((m) => (
+                        <div
+                          key={m.id}
+                          className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={`max-w-[85%] rounded-lg px-3 py-2 text-xs ${
+                              m.role === "user"
+                                ? "bg-indigo-600 text-white"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {m.role === "assistant"
+                              ? renderMarkdown(m.content)
+                              : <p>{m.content}</p>}
+                            <p className={`mt-1 text-[10px] ${m.role === "user" ? "text-indigo-200" : "text-gray-400"}`}>
+                              {m.actor} &middot; {timeAgo(m.created_at)}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    {chatSending && (
+                      <div className="flex justify-start">
+                        <div className="bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-400 italic flex items-center gap-1.5">
+                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                          </svg>
+                          Thinking...
+                        </div>
                       </div>
-                    </div>
-                  ))
-                )}
-                {chatSending && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-400 italic flex items-center gap-1.5">
-                      <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                      </svg>
-                      Thinking...
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
-              {/* Input */}
-              <div className="border-t border-indigo-100 bg-indigo-50 p-2 flex gap-2">
-                <input
-                  type="text"
-                  className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
-                  placeholder="Ask a follow-up question..."
-                  value={chatInput}
-                  disabled={chatSending}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) handleChatSend(); }}
-                />
-                <button
-                  onClick={handleChatSend}
-                  disabled={chatSending || !chatInput.trim()}
-                  className="px-3 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                >
-                  Send
-                </button>
-              </div>
-            </div>
-          </ExpandSection>
+                  {/* Input */}
+                  <div className="border-t border-indigo-100 bg-indigo-50 p-2 flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                      placeholder="Ask a follow-up question..."
+                      value={chatInput}
+                      disabled={chatSending}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) handleChatSend(); }}
+                    />
+                    <button
+                      onClick={handleChatSend}
+                      disabled={chatSending || !chatInput.trim()}
+                      className="px-3 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
+              </ExpandSection>
+            </>
+          ) : (
+            <p className="text-xs text-gray-400 italic bg-gray-50 rounded border border-gray-200 px-3 py-2">
+              AI Chat is not available on your current license. Contact your vendor to upgrade.
+            </p>
+          )}
         </div>
       )}
 

@@ -14,6 +14,7 @@ from app.models.chat_message import ChatMessage
 from app.models.finding import Finding
 from app.models.user import User
 from app.schemas.chat import ChatMessageRead, ChatRequest
+from app.services.license_service import check_ai_chat_entitlement
 
 logger = get_logger(__name__)
 
@@ -92,6 +93,11 @@ async def send_chat_message(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI features are not enabled",
+        )
+    if not check_ai_chat_entitlement():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI Chat is not enabled on your license. Please contact your vendor to upgrade.",
         )
 
     await _get_bundle_for_tenant(bundle_id, tenant_id, db)

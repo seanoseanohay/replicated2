@@ -74,8 +74,10 @@ redis://{{ include "bundle-analyzer.redisName" . }}:6379/0
 {{- $global := index . 0 -}}
 {{- $repo := index . 1 -}}
 {{- $tag := index . 2 -}}
+{{- $globalTag := ($global.image.tag | default "") -}}
+{{- $effectiveTag := (or (and $globalTag $globalTag) $tag) -}}
 {{- $registry := ($global.proxyRegistry | default "") -}}
-{{- if $registry -}}{{ $registry }}/{{ end -}}{{ $repo }}:{{ $tag }}
+{{- if $registry -}}{{ $registry }}/{{ end -}}{{ $repo }}:{{ $effectiveTag }}
 {{- end -}}
 
 {{- define "bundle-analyzer.imagePullSecrets" -}}
