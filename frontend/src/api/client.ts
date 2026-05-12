@@ -111,11 +111,13 @@ function getAuthHeaders(): Record<string, string> {
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  tenantId = "default"
+  tenantId?: string
 ): Promise<T> {
   const url = `${API_BASE}${path}`;
   const authHeaders = getAuthHeaders();
-  authHeaders["X-Tenant-ID"] = tenantId;
+  if (tenantId !== undefined) {
+    authHeaders["X-Tenant-ID"] = tenantId;
+  }
   const res = await fetch(url, {
     ...options,
     headers: {
@@ -136,11 +138,13 @@ async function request<T>(
 async function requestText(
   path: string,
   options: RequestInit = {},
-  tenantId = "default"
+  tenantId?: string
 ): Promise<string> {
   const url = `${API_BASE}${path}`;
   const authHeaders = getAuthHeaders();
-  authHeaders["X-Tenant-ID"] = tenantId;
+  if (tenantId !== undefined) {
+    authHeaders["X-Tenant-ID"] = tenantId;
+  }
   const res = await fetch(url, {
     ...options,
     headers: {
@@ -156,15 +160,15 @@ async function requestText(
 }
 
 export const bundleApi = {
-  list(tenantId = "default"): Promise<BundleListResponse> {
+  list(tenantId?: string): Promise<BundleListResponse> {
     return request<BundleListResponse>("/api/v1/bundles", {}, tenantId);
   },
 
-  get(id: string, tenantId = "default"): Promise<Bundle> {
+  get(id: string, tenantId?: string): Promise<Bundle> {
     return request<Bundle>(`/api/v1/bundles/${id}`, {}, tenantId);
   },
 
-  upload(file: File, tenantId = "default"): Promise<Bundle> {
+  upload(file: File, tenantId?: string): Promise<Bundle> {
     const form = new FormData();
     form.append("file", file);
     return request<Bundle>(
@@ -176,7 +180,6 @@ export const bundleApi = {
 
   uploadWithProgress(
     file: File,
-    tenantId = "default",
     onProgress?: (pct: number) => void
   ): Promise<Bundle> {
     return new Promise((resolve, reject) => {
@@ -185,7 +188,11 @@ export const bundleApi = {
       form.append("file", file);
 
       xhr.open("POST", `${API_BASE}/api/v1/bundles`);
-      xhr.setRequestHeader("X-Tenant-ID", tenantId);
+
+      const authHeaders = getAuthHeaders();
+      for (const [key, value] of Object.entries(authHeaders)) {
+        xhr.setRequestHeader(key, value);
+      }
 
       if (onProgress) {
         xhr.upload.addEventListener("progress", (e) => {
@@ -207,11 +214,11 @@ export const bundleApi = {
     });
   },
 
-  delete(id: string, tenantId = "default"): Promise<void> {
+  delete(id: string, tenantId?: string): Promise<void> {
     return request<void>(`/api/v1/bundles/${id}`, { method: "DELETE" }, tenantId);
   },
 
-  reanalyze(id: string, tenantId = "default"): Promise<{ bundle_id: string; status: string }> {
+  reanalyze(id: string, tenantId?: string): Promise<{ bundle_id: string; status: string }> {
     return request<{ bundle_id: string; status: string }>(
       `/api/v1/bundles/${id}/reanalyze`,
       { method: "POST" },
@@ -224,7 +231,7 @@ export const findingApi = {
   list(
     bundleId: string,
     params?: { severity?: string; status?: string },
-    tenantId = "default"
+    tenantId?: string
   ): Promise<FindingListResponse> {
     const qs = new URLSearchParams();
     if (params?.severity) qs.set("severity", params.severity);
@@ -241,7 +248,7 @@ export const findingApi = {
     bundleId: string,
     findingId: string,
     update: FindingUpdate,
-    tenantId = "default"
+    tenantId?: string
   ): Promise<Finding> {
     return request<Finding>(
       `/api/v1/bundles/${bundleId}/findings/${findingId}`,
@@ -254,7 +261,7 @@ export const findingApi = {
     );
   },
 
-  explain(bundleId: string, findingId: string, tenantId = "default"): Promise<Finding> {
+  explain(bundleId: string, findingId: string, tenantId?: string): Promise<Finding> {
     return request<Finding>(
       `/api/v1/bundles/${bundleId}/findings/${findingId}/explain`,
       { method: "POST" },
@@ -262,13 +269,13 @@ export const findingApi = {
     );
   },
 
-  downloadReport(bundleId: string, tenantId = "default"): Promise<string> {
+  downloadReport(bundleId: string, tenantId?: string): Promise<string> {
     return requestText(`/api/v1/bundles/${bundleId}/report.md`, {}, tenantId);
   },
 };
 
 export const evidenceApi = {
-  getEvidence(bundleId: string, evidenceId: string, tenantId = "default"): Promise<EvidenceRead> {
+  getEvidence(bundleId: string, evidenceId: string, tenantId?: string): Promise<EvidenceRead> {
     return request<EvidenceRead>(
       `/api/v1/bundles/${bundleId}/evidence/${evidenceId}`,
       {},
@@ -336,7 +343,7 @@ export interface FindingEvent {
 }
 
 export const eventsApi = {
-  getEvents(bundleId: string, findingId: string, tenantId = "default"): Promise<FindingEvent[]> {
+  getEvents(bundleId: string, findingId: string, tenantId?: string): Promise<FindingEvent[]> {
     return request<FindingEvent[]>(
       `/api/v1/bundles/${bundleId}/findings/${findingId}/events`,
       {},
@@ -382,14 +389,14 @@ export interface Comment {
 }
 
 export const commentApi = {
-  list(bundleId: string, findingId: string, tenantId = "default"): Promise<Comment[]> {
+  list(bundleId: string, findingId: string, tenantId?: string): Promise<Comment[]> {
     return request<Comment[]>(
       `/api/v1/bundles/${bundleId}/findings/${findingId}/comments`,
       {},
       tenantId
     );
   },
-  create(bundleId: string, findingId: string, body: string, tenantId = "default"): Promise<Comment> {
+  create(bundleId: string, findingId: string, body: string, tenantId?: string): Promise<Comment> {
     return request<Comment>(
       `/api/v1/bundles/${bundleId}/findings/${findingId}/comments`,
       {
@@ -400,7 +407,7 @@ export const commentApi = {
       tenantId
     );
   },
-  delete(bundleId: string, findingId: string, commentId: string, tenantId = "default"): Promise<void> {
+  delete(bundleId: string, findingId: string, commentId: string, tenantId?: string): Promise<void> {
     return request<void>(
       `/api/v1/bundles/${bundleId}/findings/${findingId}/comments/${commentId}`,
       { method: "DELETE" },
@@ -420,14 +427,14 @@ export interface ChatMessage {
 }
 
 export const chatApi = {
-  list(bundleId: string, findingId: string, tenantId = "default"): Promise<ChatMessage[]> {
+  list(bundleId: string, findingId: string, tenantId?: string): Promise<ChatMessage[]> {
     return request<ChatMessage[]>(
       `/api/v1/bundles/${bundleId}/findings/${findingId}/chat`,
       {},
       tenantId
     );
   },
-  send(bundleId: string, findingId: string, message: string, tenantId = "default"): Promise<ChatMessage> {
+  send(bundleId: string, findingId: string, message: string, tenantId?: string): Promise<ChatMessage> {
     return request<ChatMessage>(
       `/api/v1/bundles/${bundleId}/findings/${findingId}/chat`,
       {
@@ -460,7 +467,7 @@ export interface ComparisonResult {
 }
 
 export const comparisonApi = {
-  compare(bundleAId: string, bundleBId: string, tenantId = "default"): Promise<ComparisonResult> {
+  compare(bundleAId: string, bundleBId: string, tenantId?: string): Promise<ComparisonResult> {
     return request<ComparisonResult>(
       `/api/v1/bundles/compare?bundle_a=${bundleAId}&bundle_b=${bundleBId}`,
       {},

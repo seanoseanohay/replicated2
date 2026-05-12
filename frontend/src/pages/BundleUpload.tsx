@@ -17,7 +17,7 @@ export default function BundleUpload() {
     setError(null);
     setUploadProgress(0);
     try {
-      const bundle = await bundleApi.uploadWithProgress(file, "default", (pct) => {
+      const bundle = await bundleApi.uploadWithProgress(file, (pct) => {
         setUploadProgress(pct);
       });
       setState("success");
