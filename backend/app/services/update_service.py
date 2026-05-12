@@ -101,7 +101,11 @@ def get_update_status() -> dict[str, Any]:
         _cache_time = datetime.now(timezone.utc)
         return result
 
-    current_version = info.get("versionLabel") or info.get("appVersion")
+    current_version = (
+        info.get("versionLabel")
+        or info.get("appVersion")
+        or info.get("currentRelease", {}).get("versionLabel")
+    )
     license_valid = info.get("license", {}).get("isValid", True)
 
     next_update = None
