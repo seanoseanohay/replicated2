@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import urllib.error
 import urllib.request
 from functools import lru_cache
@@ -7,8 +8,13 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-REPLICATED_SDK_LICENSE_URL = "http://replicated:3000/api/v1/license/info"
-REPLICATED_SDK_FIELD_URL = "http://replicated:3000/api/v1/license/fields"
+# SDK service name may vary based on Helm release name (e.g., bundle-analyzer-sdk)
+_SDK_HOST = os.environ.get("REPLICATED_SDK_HOST", "replicated")
+_SDK_PORT = os.environ.get("REPLICATED_SDK_PORT", "3000")
+_SDK_BASE = f"http://{_SDK_HOST}:{_SDK_PORT}"
+
+REPLICATED_SDK_LICENSE_URL = f"{_SDK_BASE}/api/v1/license/info"
+REPLICATED_SDK_FIELD_URL = f"{_SDK_BASE}/api/v1/license/fields"
 
 
 def _fetch_license_info() -> dict[str, Any] | None:

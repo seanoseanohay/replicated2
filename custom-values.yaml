@@ -1,0 +1,28 @@
+# Custom values for Replicated registry install
+# Used with: helm install bundle-analyzer oci://registry.replicated.com/bundle-analyzer/unstable/bundle-analyzer --version 0.1.0 -n bundle-analyzer -f custom-values.yaml
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  generateSelfSignedCert: false
+  hosts:
+    - host: bundlyzer.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: bundle-analyzer-tls
+      hosts:
+        - bundlyzer.com
+
+# Replicated SDK configuration
+# When installing from Replicated registry, the SDK will use the customer's
+# license from the registry automatically
+bundle-analyzer-sdk:
+  integration:
+    enabled: true
+  # Clear existingSecret to let the SDK pull license from registry
+  existingSecret:
+    name: ""
