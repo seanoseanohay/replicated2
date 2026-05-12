@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tests.conftest import make_manager_headers
+from tests.conftest import make_admin_headers
 
 
 def make_gzip_bytes(content: bytes = b"fake content") -> bytes:
@@ -155,7 +155,7 @@ async def test_upload_invalid_magic_bytes(client):
 
 
 @pytest.mark.asyncio
-async def test_delete_bundle(client, manager_user):
+async def test_delete_bundle(client, admin_user):
     """DELETE /api/v1/bundles/{id} returns 204 and bundle is gone from subsequent GET."""
     mock_storage = MagicMock()
     mock_storage.upload_bundle.return_value = "default/bundle.tar.gz"
@@ -163,7 +163,7 @@ async def test_delete_bundle(client, manager_user):
 
     file_content = make_gzip_bytes(b"bundle to delete")
     bundle_id = None
-    mgr_headers = make_manager_headers(manager_user)
+    mgr_headers = make_admin_headers(admin_user)
 
     with (
         patch("app.api.routes.bundles.storage_service", mock_storage),
@@ -192,23 +192,23 @@ async def test_delete_bundle(client, manager_user):
 
 
 @pytest.mark.asyncio
-async def test_delete_bundle_not_found(client, manager_user):
+async def test_delete_bundle_not_found(client, admin_user):
     """DELETE /api/v1/bundles/{nonexistent} returns 404."""
     fake_id = str(uuid.uuid4())
     response = await client.delete(
-        f"/api/v1/bundles/{fake_id}", headers=make_manager_headers(manager_user)
+        f"/api/v1/bundles/{fake_id}", headers=make_admin_headers(admin_user)
     )
     assert response.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_delete_bundle_tenant_isolation(client, manager_user):
+async def test_delete_bundle_tenant_isolation(client, admin_user):
     """DELETE /api/v1/bundles/{id} with wrong tenant returns 404."""
     mock_storage = MagicMock()
     mock_storage.upload_bundle.return_value = "default/bundle.tar.gz"
 
     file_content = make_gzip_bytes(b"owned bundle")
-    mgr_headers = make_manager_headers(manager_user)
+    mgr_headers = make_admin_headers(admin_user)
 
     with (
         patch("app.api.routes.bundles.storage_service", mock_storage),
@@ -226,7 +226,7 @@ async def test_delete_bundle_tenant_isolation(client, manager_user):
         bundle_id = upload_resp.json()["id"]
 
     # Manager from a different tenant trying to delete
-    other_mgr_headers = make_manager_headers(manager_user, tenant_id="tenant-other")
+    other_mgr_headers = make_admin_headers(admin_user, tenant_id="tenant-other")
     del_resp = await client.delete(
         f"/api/v1/bundles/{bundle_id}", headers=other_mgr_headers
     )

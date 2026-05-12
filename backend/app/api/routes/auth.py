@@ -27,12 +27,47 @@ from app.schemas.auth import (
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
-ALPHANUM = string.ascii_uppercase + string.digits
+_ALPHANUM = string.ascii_uppercase + string.digits
+_MAX_KEY_RETRIES = 10
 
 
-def _generate_org_key() -> str:
+def _random_org_key() -> str:
     """Generate an 8-character random org key."""
-    return "".join(secrets.choice(ALPHANUM) for _ in range(8))
+    return "".join(secrets.choice(_ALPHANUM) for _ in range(8))
+
+
+async def _generate_unique_org_key(db: AsyncSession) -> str:
+    """Generate a random org key, retrying until we find one not in the DB."""
+    for _attempt in range(_MAX_KEY_RETRIES):
+        candidate = _random_org_key()
+        taken = await db.execute(select(User).where(User.org_key == candidate))
+        if taken.scalar_one_or_none() is None:
+            return candidate
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Failed to generate unique org key",
+    )
+
+
+async def _resolve_tenant(body: RegisterRequest, db: AsyncSession) -> tuple[str, str, str | None]:
+    """Return (tenant_id, role, org_key) for this registration.
+
+    If an org_key is provided, join that admin's tenant as a user.
+    Otherwise create a brand-new tenant and become its admin.
+    """
+    if not body.org_key:
+        tenant_id = str(uuid.uuid4())
+        org_key = await _generate_unique_org_key(db)
+        return tenant_id, "admin", org_key
+
+    result = await db.execute(select(User).where(User.org_key == body.org_key))
+    admin_user = result.scalar_one_or_none()
+    if admin_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid org key",
+        )
+    return admin_user.tenant_id, "user", None
 
 
 def _build_token_response(user: User) -> TokenResponse:
@@ -64,46 +99,12 @@ async def register(
             detail="Registration is disabled",
         )
 
-    # Determine target tenant and role based on org_key
-    if body.org_key:
-        # Look up the admin that owns this org_key
-        admin_result = await db.execute(
-            select(User).where(User.org_key == body.org_key)
-        )
-        admin_user = admin_result.scalar_one_or_none()
-        if admin_user is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid org key",
-            )
-        target_tenant_id = admin_user.tenant_id
-        assigned_role = "user"
-        org_key = None
-    else:
-        # Solo registration: new tenant, new org_key, admin role
-        target_tenant_id = str(uuid.uuid4())
-        assigned_role = "admin"
-        # Ensure uniqueness (collision probability is negligible but handle it)
-        for _ in range(10):
-            candidate = _generate_org_key()
-            collision_check = await db.execute(
-                select(User).where(User.org_key == candidate)
-            )
-            if collision_check.scalar_one_or_none() is None:
-                org_key = candidate
-                break
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to generate unique org key",
-            )
+    tenant_id, role, org_key = await _resolve_tenant(body, db)
 
-    # Check email not already taken in this tenant
     result = await db.execute(
-        select(User).where(User.email == body.email, User.tenant_id == target_tenant_id)
+        select(User).where(User.email == body.email, User.tenant_id == tenant_id)
     )
-    existing = result.scalar_one_or_none()
-    if existing is not None:
+    if result.scalar_one_or_none() is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered in this tenant",
@@ -114,8 +115,8 @@ async def register(
         email=body.email,
         hashed_password=hash_password(body.password),
         full_name=body.full_name,
-        role=assigned_role,
-        tenant_id=target_tenant_id,
+        role=role,
+        tenant_id=tenant_id,
         org_key=org_key,
         is_active=True,
     )

@@ -31,7 +31,7 @@ async def tenant_user(db_session):
         id=uuid.uuid4(),
         email=f"dash-{uuid.uuid4().hex[:8]}@test.example.com",
         hashed_password=hash_password("testpass1"),
-        role="analyst",
+        role="user",
         tenant_id="tenant-dash",
         is_active=True,
     )
@@ -47,7 +47,7 @@ async def other_tenant_user(db_session):
         id=uuid.uuid4(),
         email=f"other-{uuid.uuid4().hex[:8]}@test.example.com",
         hashed_password=hash_password("testpass1"),
-        role="analyst",
+        role="user",
         tenant_id="tenant-other",
         is_active=True,
     )

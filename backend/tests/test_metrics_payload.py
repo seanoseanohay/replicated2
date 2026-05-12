@@ -4,8 +4,6 @@ No app dependencies required — mocks DB and SDK.
 """
 
 import json
-from unittest.mock import MagicMock, patch
-from datetime import datetime
 
 
 def test_metrics_payload_structure():

@@ -23,12 +23,12 @@ def _token(user: User) -> dict:
 
 
 @pytest_asyncio.fixture()
-async def manager_notif(db_session):
+async def admin_notif(db_session):
     user = User(
         id=uuid.uuid4(),
-        email=f"mgr-notif-{uuid.uuid4().hex[:6]}@test.com",
+        email=f"admin-notif-{uuid.uuid4().hex[:6]}@test.com",
         hashed_password=hash_password("pass"),
-        role="manager",
+        role="admin",
         tenant_id="notif-tenant",
         is_active=True,
     )
@@ -39,12 +39,12 @@ async def manager_notif(db_session):
 
 
 @pytest_asyncio.fixture()
-async def analyst_notif(db_session):
+async def user_notif(db_session):
     user = User(
         id=uuid.uuid4(),
-        email=f"analyst-notif-{uuid.uuid4().hex[:6]}@test.com",
+        email=f"user-notif-{uuid.uuid4().hex[:6]}@test.com",
         hashed_password=hash_password("pass"),
-        role="analyst",
+        role="user",
         tenant_id="notif-tenant",
         is_active=True,
     )
@@ -55,15 +55,15 @@ async def analyst_notif(db_session):
 
 
 @pytest.mark.asyncio
-async def test_get_config_forbidden_for_analyst(client, analyst_notif):
-    headers = _token(analyst_notif)
+async def test_get_config_forbidden_for_user(client, user_notif):
+    headers = _token(user_notif)
     resp = await client.get("/api/v1/notifications/config", headers=headers)
     assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_post_config_forbidden_for_analyst(client, analyst_notif):
-    headers = _token(analyst_notif)
+async def test_post_config_forbidden_for_user(client, user_notif):
+    headers = _token(user_notif)
     resp = await client.post(
         "/api/v1/notifications/config",
         json={"email_enabled": True},
@@ -73,8 +73,8 @@ async def test_post_config_forbidden_for_analyst(client, analyst_notif):
 
 
 @pytest.mark.asyncio
-async def test_post_config_updates_for_manager(client, db_session, manager_notif):
-    headers = _token(manager_notif)
+async def test_post_config_updates_for_admin(client, db_session, admin_notif):
+    headers = _token(admin_notif)
     resp = await client.post(
         "/api/v1/notifications/config",
         json={
@@ -92,10 +92,10 @@ async def test_post_config_updates_for_manager(client, db_session, manager_notif
 
 
 @pytest.mark.asyncio
-async def test_get_config_returns_existing_for_manager(
-    client, db_session, manager_notif
+async def test_get_config_returns_existing_for_admin(
+    client, db_session, admin_notif
 ):
-    headers = _token(manager_notif)
+    headers = _token(admin_notif)
     # Create config
     await client.post(
         "/api/v1/notifications/config",

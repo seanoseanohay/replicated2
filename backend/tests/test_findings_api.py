@@ -12,7 +12,7 @@ from app.core.auth import hash_password
 from app.models.bundle import Bundle
 from app.models.finding import Finding
 from app.models.user import User
-from tests.conftest import make_manager_headers
+from tests.conftest import make_admin_headers
 
 
 @pytest_asyncio.fixture()
@@ -52,13 +52,13 @@ async def finding(db_session, bundle):
 
 @pytest_asyncio.fixture()
 async def eng_user(db_session):
-    """Analyst user whose email is used to stamp reviewed_by."""
+    """User whose email is used to stamp reviewed_by."""
     u = User(
         id=uuid.uuid4(),
         email="eng@example.com",
         hashed_password=hash_password("password"),
         full_name="Test Engineer",
-        role="analyst",
+        role="user",
         tenant_id="tenant-1",
         is_active=True,
     )
@@ -117,7 +117,7 @@ async def test_list_findings_severity_filter(client, bundle, finding):
 async def test_patch_finding_status(client, bundle, finding, eng_user):
     resp = await client.patch(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}",
-        headers=make_manager_headers(eng_user, tenant_id="tenant-1"),
+        headers=make_admin_headers(eng_user, tenant_id="tenant-1"),
         json={"status": "acknowledged"},
     )
     assert resp.status_code == 200

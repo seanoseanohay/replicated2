@@ -52,16 +52,6 @@ async def require_admin(user: User = Depends(require_auth)) -> User:
     return user
 
 
-async def require_manager(user: User = Depends(require_auth)) -> User:
-    """Raises 403 if not admin or manager."""
-    if user.role not in ("admin", "manager"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Manager or admin role required",
-        )
-    return user
-
-
 async def get_tenant_id(
     user: User | None = Depends(get_current_user),
     x_tenant_id: str = Header(default="default"),

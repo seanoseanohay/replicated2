@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_tenant_id, require_manager
+from app.core.deps import get_tenant_id, require_admin
 from app.core.logging import get_logger
 from app.models.notification_config import NotificationConfig
 from app.models.user import User
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 @router.get("/config", response_model=NotificationConfigRead)
 async def get_notification_config(
     tenant_id: str = Depends(get_tenant_id),
-    _manager: User = Depends(require_manager),
+    _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> NotificationConfigRead:
     result = await db.execute(
@@ -48,7 +48,7 @@ async def get_notification_config(
 async def update_notification_config(
     update: NotificationConfigUpdate,
     tenant_id: str = Depends(get_tenant_id),
-    _manager: User = Depends(require_manager),
+    _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> NotificationConfigRead:
     result = await db.execute(

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.deps import get_tenant_id, require_manager
+from app.core.deps import get_tenant_id, require_admin
 from app.core.limiter import limiter
 from app.core.logging import get_logger
 from app.models.bundle import Bundle
@@ -280,7 +280,7 @@ async def reanalyze_bundle_endpoint(
 async def delete_bundle(
     bundle_id: uuid.UUID,
     tenant_id: str = Depends(get_tenant_id),
-    _manager: User = Depends(require_manager),
+    _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     result = await db.execute(

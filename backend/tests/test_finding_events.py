@@ -12,7 +12,7 @@ from app.models.finding_event import FindingEvent
 from app.models.user import User
 
 
-def _make_manager_token(user: User) -> dict:
+def _make_admin_token(user: User) -> dict:
     token = create_access_token(
         {
             "sub": str(user.id),
@@ -24,7 +24,7 @@ def _make_manager_token(user: User) -> dict:
     return {"Authorization": f"Bearer {token}", "X-Tenant-ID": user.tenant_id}
 
 
-def _make_analyst_token(user: User) -> dict:
+def _make_user_token(user: User) -> dict:
     token = create_access_token(
         {
             "sub": str(user.id),
@@ -37,12 +37,12 @@ def _make_analyst_token(user: User) -> dict:
 
 
 @pytest_asyncio.fixture()
-async def manager(db_session):
+async def admin(db_session):
     user = User(
         id=uuid.uuid4(),
-        email=f"mgr-{uuid.uuid4().hex[:6]}@test.com",
+        email=f"admin-{uuid.uuid4().hex[:6]}@test.com",
         hashed_password=hash_password("pass"),
-        role="manager",
+        role="admin",
         tenant_id="tenant-events",
         is_active=True,
     )
@@ -85,10 +85,10 @@ async def bundle_with_finding(db_session):
 
 @pytest.mark.asyncio
 async def test_patch_finding_creates_status_changed_event(
-    client, db_session, manager, bundle_with_finding
+    client, db_session, admin, bundle_with_finding
 ):
     bundle, finding = bundle_with_finding
-    headers = _make_manager_token(manager)
+    headers = _make_admin_token(admin)
 
     resp = await client.patch(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}",
@@ -110,15 +110,15 @@ async def test_patch_finding_creates_status_changed_event(
     assert len(events) == 1
     assert events[0].old_value == "open"
     assert events[0].new_value == "acknowledged"
-    assert events[0].actor == manager.email
+    assert events[0].actor == admin.email
 
 
 @pytest.mark.asyncio
 async def test_patch_finding_creates_note_added_event(
-    client, db_session, manager, bundle_with_finding
+    client, db_session, admin, bundle_with_finding
 ):
     bundle, finding = bundle_with_finding
-    headers = _make_manager_token(manager)
+    headers = _make_admin_token(admin)
 
     resp = await client.patch(
         f"/api/v1/bundles/{bundle.id}/findings/{finding.id}",
@@ -142,10 +142,10 @@ async def test_patch_finding_creates_note_added_event(
 
 @pytest.mark.asyncio
 async def test_get_events_returns_correct_history(
-    client, db_session, manager, bundle_with_finding
+    client, db_session, admin, bundle_with_finding
 ):
     bundle, finding = bundle_with_finding
-    headers = _make_manager_token(manager)
+    headers = _make_admin_token(admin)
 
     # Create multiple events via PATCH
     await client.patch(

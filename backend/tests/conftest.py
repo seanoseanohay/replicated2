@@ -75,7 +75,7 @@ def make_admin_headers(user: User, tenant_id: str = "default") -> dict:
     return {"Authorization": f"Bearer {token}", "X-Tenant-ID": tenant_id}
 
 
-def make_manager_headers(user: User, tenant_id: str = "default") -> dict:
+def make_auth_headers(user: User, tenant_id: str = "default") -> dict:
     """Build Authorization + X-Tenant-ID headers for any authenticated user."""
     token = create_access_token(
         {
@@ -88,18 +88,4 @@ def make_manager_headers(user: User, tenant_id: str = "default") -> dict:
     return {"Authorization": f"Bearer {token}", "X-Tenant-ID": tenant_id}
 
 
-@pytest_asyncio.fixture()
-async def manager_user(db_session):
-    """A manager-role user for tests that require manager permissions."""
-    user = User(
-        id=uuid.uuid4(),
-        email=f"manager-{uuid.uuid4().hex[:8]}@test.example.com",
-        hashed_password=hash_password("managerpass1"),
-        role="manager",
-        tenant_id="default",
-        is_active=True,
-    )
-    db_session.add(user)
-    await db_session.flush()
-    await db_session.refresh(user)
-    return user
+
