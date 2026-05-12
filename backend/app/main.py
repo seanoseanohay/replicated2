@@ -140,6 +140,7 @@ from app.api.routes.chat import router as chat_router  # noqa: E402
 from app.api.routes.admin import router as admin_router  # noqa: E402
 from app.api.routes.metrics import router as metrics_router  # noqa: E402
 from app.api.routes.license import router as license_router  # noqa: E402
+from app.api.routes.updates import router as updates_router  # noqa: E402
 
 app.include_router(health_router)
 app.include_router(auth_router)
@@ -148,6 +149,7 @@ app.include_router(bundles_router)
 app.include_router(chat_router)
 app.include_router(metrics_router)
 app.include_router(license_router)
+app.include_router(updates_router)
 app.include_router(comments_router)
 app.include_router(dashboard_router)
 app.include_router(evidence_router)

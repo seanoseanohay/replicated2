@@ -511,6 +511,21 @@ export const licenseApi = {
   },
 };
 
+// ---- Updates ----
+export interface UpdateStatus {
+  available: boolean;
+  version: string | null;
+  notes: string | null;
+  license_valid: boolean | null;
+  current_version: string | null;
+}
+
+export const updateApi = {
+  getStatus(): Promise<UpdateStatus> {
+    return request<UpdateStatus>("/api/v1/updates/status");
+  },
+};
+
 // ---- Admin ----
 export interface AdminUser {
   id: string;

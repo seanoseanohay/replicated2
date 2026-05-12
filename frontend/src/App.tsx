@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
 import Navbar from "./components/Navbar";
+import UpdateBanner from "./components/UpdateBanner";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import BundleUpload from "./pages/BundleUpload";
@@ -29,6 +30,7 @@ function ProtectedLayout() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
+      <UpdateBanner />
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

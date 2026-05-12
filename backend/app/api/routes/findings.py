@@ -18,11 +18,11 @@ from app.models.finding import Finding
 from app.models.finding_event import FindingEvent
 from app.models.user import User
 from app.schemas.finding import (
-    FindingEventRead,
     FindingListResponse,
     FindingRead,
     FindingUpdate,
 )
+from app.schemas.finding_event import FindingEventRead
 from app.services.metrics_reporter import collect_and_send_metrics_sync
 from app.services.license_service import check_ai_chat_entitlement
 

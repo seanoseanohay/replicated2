@@ -17,5 +17,5 @@ async def read_license_status(
 ) -> LicenseStatusRead:
     """Return current Replicated license status and entitlements."""
     status = get_license_status()
-    logger.info("license_status_fetched", user=current_user.email)
+    logger.info("license_status_fetched", user=current_user.email if current_user else None)
     return LicenseStatusRead.model_validate(status)
