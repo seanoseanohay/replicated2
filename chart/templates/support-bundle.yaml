@@ -146,6 +146,25 @@ stringData:
                   message: "Cluster has less than 2 CPU cores total. Bundle Analyzer requires at least 2 cores. Please add nodes or reduce existing workload."
               - pass:
                   message: "Cluster has sufficient CPU and memory resources"
+        - nodeResources:
+            checkName: All nodes are Ready
+            outcomes:
+              - fail:
+                  when: "nodeCondition(Ready) == False"
+                  message: "At least one node is not Ready. Bundle Analyzer requires Ready nodes for pod scheduling. Check node status with 'kubectl get nodes' and investigate NotReady conditions."
+              - fail:
+                  when: "nodeCondition(Ready) == Unknown"
+                  message: "At least one node has unknown Ready status. Check node status with 'kubectl get nodes'."
+              - pass:
+                  message: "All nodes are Ready."
+        - storageClass:
+            checkName: Default StorageClass available
+            outcomes:
+              - fail:
+                  when: "not exists"
+                  message: "No default StorageClass found. Bundle Analyzer requires a default StorageClass for dynamic provisioning of PostgreSQL, Redis, and MinIO persistent volumes. Create a default StorageClass or explicitly configure one in values."
+              - pass:
+                  message: "Default StorageClass is present."
         {{- if .Values.postgresql.primary.persistence.storageClass }}
         - storageClass:
             checkName: Required StorageClass available
