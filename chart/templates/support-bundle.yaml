@@ -267,3 +267,15 @@ stringData:
               - pass:
                   when: "statusCode == 200"
                   message: "Backend health endpoint is reachable and reporting ready (PostgreSQL, Redis, and S3 all accessible)."
+        - textAnalyze:
+            checkName: Backend health endpoint reports ready status
+            collectorName: backend-health
+            fileName: "backend-health.json"
+            regex: '"status"\s*:\s*"ready"'
+            outcomes:
+              - fail:
+                  when: "false"
+                  message: "Backend health endpoint did not report 'ready' status. The backend may be running but unable to reach PostgreSQL, Redis, or S3. Check the health endpoint response in the support bundle for details."
+              - pass:
+                  when: "true"
+                  message: "Backend health endpoint reports 'ready' status — PostgreSQL, Redis, and S3 are all accessible."
