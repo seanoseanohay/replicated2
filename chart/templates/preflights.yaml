@@ -61,6 +61,16 @@ stringData:
                   message: "AKS is a supported distribution"
               - warn:
                   message: "Unable to determine the Kubernetes distribution. Proceed with caution."
+        {{- if .Values.postgresql.primary.persistence.storageClass }}
+        - storageClass:
+            checkName: Required StorageClass available
+            storageClassName: "{{ .Values.postgresql.primary.persistence.storageClass }}"
+            outcomes:
+              - fail:
+                  message: "Required StorageClass '{{ .Values.postgresql.primary.persistence.storageClass }}' not found. Bundle Analyzer requires this StorageClass for PostgreSQL, Redis, and MinIO persistent volumes."
+              - pass:
+                  message: "Required StorageClass '{{ .Values.postgresql.primary.persistence.storageClass }}' is present."
+        {{- end }}
         {{- if not .Values.postgresql.enabled }}
         - postgres:
             checkName: External PostgreSQL connectivity

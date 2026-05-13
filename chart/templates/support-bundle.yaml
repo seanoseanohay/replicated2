@@ -20,48 +20,60 @@ stringData:
             selector:
               - app.kubernetes.io/component=backend
               - app.kubernetes.io/instance={{ .Release.Name }}
-            maxLines: 10000
-            maxAge: 720h
+            limits:
+              maxLines: 10000
+              maxAge: 720h
+              maxBytes: 5000000
         - logs:
             collectorName: worker-logs
             namespace: "{{ .Release.Namespace }}"
             selector:
               - app.kubernetes.io/component=worker
               - app.kubernetes.io/instance={{ .Release.Name }}
-            maxLines: 10000
-            maxAge: 720h
+            limits:
+              maxLines: 10000
+              maxAge: 720h
+              maxBytes: 5000000
         - logs:
             collectorName: beat-logs
             namespace: "{{ .Release.Namespace }}"
             selector:
               - app.kubernetes.io/component=beat
               - app.kubernetes.io/instance={{ .Release.Name }}
-            maxLines: 10000
-            maxAge: 720h
+            limits:
+              maxLines: 10000
+              maxAge: 720h
+              maxBytes: 5000000
         - logs:
             collectorName: frontend-logs
             namespace: "{{ .Release.Namespace }}"
             selector:
               - app.kubernetes.io/component=frontend
               - app.kubernetes.io/instance={{ .Release.Name }}
-            maxLines: 10000
-            maxAge: 720h
+            limits:
+              maxLines: 10000
+              maxAge: 720h
+              maxBytes: 5000000
         - logs:
             collectorName: sdk-logs
             namespace: "{{ .Release.Namespace }}"
             selector:
               - app.kubernetes.io/name=bundle-analyzer-sdk
               - app.kubernetes.io/instance={{ .Release.Name }}
-            maxLines: 10000
-            maxAge: 720h
+            limits:
+              maxLines: 10000
+              maxAge: 720h
+              maxBytes: 5000000
         - logs:
             collectorName: minio-logs
             namespace: "{{ .Release.Namespace }}"
             selector:
               - app.kubernetes.io/component=minio
               - app.kubernetes.io/instance={{ .Release.Name }}
-            maxLines: 10000
-            maxAge: 720h
+            limits:
+              maxLines: 10000
+              maxAge: 720h
+              maxBytes: 5000000
         - logs:
             collectorName: postgresql-logs
             namespace: "{{ .Release.Namespace }}"
@@ -69,8 +81,10 @@ stringData:
               - app.kubernetes.io/component=primary
               - app.kubernetes.io/name=postgresql
               - app.kubernetes.io/instance={{ .Release.Name }}
-            maxLines: 10000
-            maxAge: 720h
+            limits:
+              maxLines: 10000
+              maxAge: 720h
+              maxBytes: 5000000
         - logs:
             collectorName: redis-logs
             namespace: "{{ .Release.Namespace }}"
@@ -78,6 +92,136 @@ stringData:
               - app.kubernetes.io/component=master
               - app.kubernetes.io/name=redis
               - app.kubernetes.io/instance={{ .Release.Name }}
-            maxLines: 10000
-            maxAge: 720h
-
+            limits:
+              maxLines: 10000
+              maxAge: 720h
+              maxBytes: 5000000
+      analyzers:
+        - clusterVersion:
+            checkName: Kubernetes version
+            outcomes:
+              - fail:
+                  when: "< 1.25.0"
+                  message: "Bundle Analyzer requires Kubernetes 1.25.0 or later. Your cluster is running {{ .K8sVersion }}. Please upgrade your cluster."
+                  uri: https://kubernetes.io
+              - pass:
+                  message: "Kubernetes version meets requirements (1.25.0 or later)"
+        - nodeResources:
+            checkName: Cluster has sufficient resources
+            outcomes:
+              - fail:
+                  when: "sum(memoryAllocatable) < 4Gi"
+                  message: "Cluster has less than 4GB allocatable memory total. Bundle Analyzer requires at least 4GB across all nodes. Please add nodes or reduce existing workload."
+              - fail:
+                  when: "sum(cpuCapacity) < 2"
+                  message: "Cluster has less than 2 CPU cores total. Bundle Analyzer requires at least 2 cores. Please add nodes or reduce existing workload."
+              - pass:
+                  message: "Cluster has sufficient CPU and memory resources"
+        {{- if .Values.postgresql.primary.persistence.storageClass }}
+        - storageClass:
+            checkName: Required StorageClass available
+            storageClassName: "{{ .Values.postgresql.primary.persistence.storageClass }}"
+            outcomes:
+              - fail:
+                  message: "Required StorageClass '{{ .Values.postgresql.primary.persistence.storageClass }}' not found. Bundle Analyzer requires this StorageClass for PostgreSQL, Redis, and MinIO persistent volumes."
+              - pass:
+                  message: "Required StorageClass '{{ .Values.postgresql.primary.persistence.storageClass }}' is present."
+        {{- end }}
+        - deploymentStatus:
+            checkName: Backend deployment ready
+            namespace: "{{ .Release.Namespace }}"
+            name: "{{ include "bundle-analyzer.fullname" . }}-backend"
+            outcomes:
+              - fail:
+                  when: absent
+                  message: "Backend deployment not found."
+              - fail:
+                  when: "< 1"
+                  message: "Backend deployment has no ready replicas."
+              - pass:
+                  when: ">= 1"
+                  message: "Backend deployment has ready replicas."
+        - deploymentStatus:
+            checkName: Worker deployment ready
+            namespace: "{{ .Release.Namespace }}"
+            name: "{{ include "bundle-analyzer.fullname" . }}-worker"
+            outcomes:
+              - fail:
+                  when: absent
+                  message: "Worker deployment not found."
+              - fail:
+                  when: "< 1"
+                  message: "Worker deployment has no ready replicas."
+              - pass:
+                  when: ">= 1"
+                  message: "Worker deployment has ready replicas."
+        - deploymentStatus:
+            checkName: Frontend deployment ready
+            namespace: "{{ .Release.Namespace }}"
+            name: "{{ include "bundle-analyzer.fullname" . }}-frontend"
+            outcomes:
+              - fail:
+                  when: absent
+                  message: "Frontend deployment not found."
+              - fail:
+                  when: "< 1"
+                  message: "Frontend deployment has no ready replicas."
+              - pass:
+                  when: ">= 1"
+                  message: "Frontend deployment has ready replicas."
+        - deploymentStatus:
+            checkName: Beat deployment ready
+            namespace: "{{ .Release.Namespace }}"
+            name: "{{ include "bundle-analyzer.fullname" . }}-beat"
+            outcomes:
+              - fail:
+                  when: absent
+                  message: "Beat deployment not found."
+              - fail:
+                  when: "< 1"
+                  message: "Beat deployment has no ready replicas."
+              - pass:
+                  when: ">= 1"
+                  message: "Beat deployment has ready replicas."
+        - statefulsetStatus:
+            checkName: PostgreSQL StatefulSet ready
+            namespace: "{{ .Release.Namespace }}"
+            name: "{{ include "bundle-analyzer.fullname" . }}-postgresql"
+            outcomes:
+              - fail:
+                  when: absent
+                  message: "PostgreSQL StatefulSet not found."
+              - fail:
+                  when: "< 1"
+                  message: "PostgreSQL StatefulSet has insufficient ready replicas."
+              - pass:
+                  when: ">= 1"
+                  message: "PostgreSQL StatefulSet has ready replicas."
+        - statefulsetStatus:
+            checkName: Redis StatefulSet ready
+            namespace: "{{ .Release.Namespace }}"
+            name: "{{ include "bundle-analyzer.fullname" . }}-redis-master"
+            outcomes:
+              - fail:
+                  when: absent
+                  message: "Redis StatefulSet not found."
+              - fail:
+                  when: "< 1"
+                  message: "Redis StatefulSet has insufficient ready replicas."
+              - pass:
+                  when: ">= 1"
+                  message: "Redis StatefulSet has ready replicas."
+        - statefulsetStatus:
+            checkName: MinIO StatefulSet ready
+            namespace: "{{ .Release.Namespace }}"
+            name: "{{ include "bundle-analyzer.fullname" . }}-minio"
+            outcomes:
+              - fail:
+                  when: absent
+                  message: "MinIO StatefulSet not found."
+              - fail:
+                  when: "< 1"
+                  message: "MinIO StatefulSet has insufficient ready replicas."
+              - pass:
+                  when: ">= 1"
+                  message: "MinIO StatefulSet has ready replicas."
