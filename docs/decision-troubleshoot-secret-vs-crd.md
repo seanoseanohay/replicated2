@@ -212,7 +212,7 @@ The `replicatedhq/troubleshoot` examples are **generic** for the open-source eng
 1. **File mode** — pass a local file path to the CLI plugin
 2. **KOTS** — KOTS installs the CRDs and has a controller that processes them
 
-Our chart targets **arbitrary customer clusters via Helm**, where neither KOTS nor the Troubleshoot CRDs are guaranteed to exist. A `v1/Secret` is the only universally applicable resource.
+**Our constraint: No KOTS.** We target **pure Helm installations** on arbitrary customer clusters where KOTS is not present and the `troubleshoot.sh/v1beta2` CRDs are **not installed**. A `v1/Secret` is the only universally applicable resource that applies in any cluster without prerequisites.
 
 ---
 
@@ -324,10 +324,11 @@ These are **valid `v1` resources** that apply in any Kubernetes cluster, regardl
 **Use Kubernetes Secrets** (`v1/Secret` with `troubleshoot.sh/kind` labels) for both preflight and support-bundle specs in the Helm chart.
 
 **Rationale:**
-1. It is the **official Replicated documentation** for Helm-based applications
-2. It **works in any cluster** without requiring CRD installation
-3. It is **consumed by the CLI plugins** — preflight via explicit `secret/...` path or stdin, support-bundle via auto-discovery or explicit path
-4. The raw CRD examples are for **different contexts** (file-mode CLI, KOTS) and would fail to deploy in a standard Helm installation
+1. **No KOTS constraint:** We explicitly do not use KOTS. The chart must deploy on bare clusters where no `troubleshoot.sh` CRDs exist.
+2. It is the **official Replicated documentation** for Helm-based applications
+3. It **works in any cluster** without requiring CRD installation
+4. It is **consumed by the CLI plugins** — preflight via explicit `secret/...` path or stdin, support-bundle via auto-discovery or explicit path
+5. The raw CRD examples are for **different contexts** (file-mode CLI, KOTS) and would fail to deploy in our target environment
 
 ## Embedded Cluster v3 Consideration
 
@@ -337,7 +338,7 @@ Embedded Cluster v3 includes KOTS in the management layer, and KOTS **does** ins
 
 However, we keep the **Secret for all deployment targets** because:
 
-1. **One chart, multiple paths:** The same Helm chart must work for both Helm-only customers (no KOTS, no CRDs) and EC v3 customers. A raw CRD would fail `helm install` on Helm-only clusters.
+1. **No KOTS is a hard constraint:** We explicitly do not target KOTS. The same Helm chart must work for **Helm-only** customers where KOTS is not present and CRDs are not installed. A raw CRD would fail `helm install` on these clusters.
 
 2. **Official docs specify Secret for Helm universally:** The Replicated Helm docs make no exception for EC v3. They say "create a Kubernetes Secret" for all Helm chart templates.
 
@@ -345,13 +346,13 @@ However, we keep the **Secret for all deployment targets** because:
 
 4. **Timing safety:** Even in EC v3, the order of operations is: EC installer → KOTS + CRDs → app Helm chart. If the chart contains raw CRDs, Helm might try to create them before KOTS has finished installing the CRD definitions, causing a race. A `v1/Secret` has no such dependency.
 
-| Deployment Target | CRDs Present? | Raw CRD `helm install` | Secret `helm install` | Official Docs Say |
-|-------------------|--------------|------------------------|----------------------|-------------------|
-| **Helm-only** (existing path) | ❌ No | ❌ Fails | ✅ Works | Secret |
-| **KOTS** (not our target) | ✅ Yes (KOTS installs) | ✅ Works | ✅ Works | Raw CRD |
-| **Embedded Cluster v3** | ✅ Yes (KOTS embedded) | ✅ Likely works | ✅ Works | Secret |
+| Deployment Target | KOTS Present? | CRDs Present? | Raw CRD `helm install` | Secret `helm install` | Our Target? |
+|-------------------|--------------|--------------|------------------------|----------------------|-------------|
+| **Helm-only** | ❌ No | ❌ No | ❌ Fails | ✅ Works | ✅ **Yes** |
+| **KOTS** | ✅ Yes | ✅ Yes | ✅ Works | ✅ Works | ❌ No |
+| **Embedded Cluster v3** | ✅ Yes (embedded) | ✅ Yes | ✅ Likely works | ✅ Works | ✅ Yes, but chart must also work Helm-only |
 
-**Conclusion for EC v3:** The Secret wrapper remains correct. It is the only format that is safe for Helm-only and also valid for EC v3, without requiring branching logic or conditional CRD installation.
+**Conclusion for EC v3:** The Secret wrapper remains correct. Even though EC v3 has KOTS and CRDs, our chart must support the Helm-only path (no KOTS, no CRDs). The Secret is the only format that works in both contexts without branching.
 
 ---
 
