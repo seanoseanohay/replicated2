@@ -269,7 +269,6 @@ stringData:
                   message: "Backend health endpoint is reachable and reporting ready (PostgreSQL, Redis, and S3 all accessible)."
         - textAnalyze:
             checkName: Backend health endpoint reports ready status
-            collectorName: backend-health
             fileName: "backend-health.json"
             regex: '"status"\s*:\s*"ready"'
             outcomes:
@@ -279,3 +278,14 @@ stringData:
               - pass:
                   when: "true"
                   message: "Backend health endpoint reports 'ready' status — PostgreSQL, Redis, and S3 are all accessible."
+        - textAnalyze:
+            checkName: Critical application errors in pod logs
+            fileName: "bundle-analyzer-*/*.log"
+            regex: '(?i)(Failed to process bundle|bundle_upload_s3_error|Failed to reanalyze bundle|cleanup_stuck_bundles failed|report_custom_metrics failed|Metrics collection failed)'
+            outcomes:
+              - fail:
+                  when: "true"
+                  message: "Critical application errors detected in pod logs. This indicates bundle processing failures, S3 upload errors, stuck bundle cleanup failures, or metrics reporting failures. Search the support bundle log files for the matched error pattern to identify the affected component and root cause."
+              - pass:
+                  when: "false"
+                  message: "No critical application errors found in collected pod logs."
