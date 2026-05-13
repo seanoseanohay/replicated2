@@ -57,7 +57,11 @@ textAnalyze analyzers require a `fileName` pointing to collected log files insid
 
 All failed despite the files existing in the bundle.
 
-**Root cause (likely):** The textAnalyze collector may not support glob patterns or nested paths inside the tar.gz, or the `collectorName` → file path mapping doesn't work the way we assumed. No error message indicates what path it was actually looking for.
+**Root cause (confirmed):** Official troubleshoot project PRs prove this is a known bug. `textAnalyze` constructs search paths using only `collectorName + fileName`, missing intermediate namespace/pod directories for `exec`/`runPod` collectors, and failing entirely on `http` collector output files. The fix was merged in PR #1865 (Sep 2025) into the v1beta3 branch — our plugin v0.128.1 predates it.
+
+References:
+- PR #576 — "Fix run collector text analyze file path mismatch" (May 2022): https://github.com/replicatedhq/troubleshoot/pull/576
+- PR #1865 — "Fix/exec textanalyze path clean" (Sep 2025): https://github.com/replicatedhq/troubleshoot/pull/1865
 
 **The Fix:**
 Cut the textAnalyze analyzers entirely. They were trying to regex-scan logs for `error|exception|traceback` — but our app uses structured logging where those strings appear in benign contexts ("error handler initialized"). The signal-to-noise ratio was poor anyway.
