@@ -151,3 +151,21 @@ Run `kubectl support-bundle -n bundle-analyzer --interactive=false`. Output: arc
      1447  cluster-resources/pods/logs/.../redis.log          ← stateful service
 ```
 Each collector sets `maxLines: 10000`, `maxAge: 720h`, and `maxBytes: 5000000` per official examples.
+
+## Phase 3.3 — HTTP Health Check Collector + Analyzers ✓ COMPLETE
+Goal: Collect and analyze the backend health endpoint response to verify runtime dependencies
+Deliverables: `http` collector hitting `/health/ready`, `http` analyzer for status code, `textAnalyze` for response body
+Success: Support bundle includes health check response and analyzers verify backend can reach DB, Redis, and S3
+Built: `http` collector to `http://bundle-analyzer-backend.bundle-analyzer.svc.cluster.local:8000/health/ready` with 10s timeout; `http` analyzer checks `statusCode == 200` (pass) vs `statusCode != 200`/`error` (fail); `textAnalyze` analyzer searches `backend-health.json` for `"status": "ready"` using root-relative path (no `collectorName` required for http collector output); verified in healthy state: both analyzers pass showing backend is ready with DB, Redis, and S3 all accessible; textAnalyze plugin v0.128.1 has known file-path resolution bugs with `runPod`/`exec`/`http`/`logs` collectors when `collectorName` is used — files are placed at bundle root and must be referenced with root-relative paths
+
+## Phase 3.4 — Workload Status Analyzers + Failure Induction ✓ COMPLETE
+Goal: Surface which specific workload is down and why it matters operationally
+Deliverables: `deploymentStatus` + `statefulsetStatus` analyzers with actionable failure messages
+Success: Scaling any deployment to 0 produces a `severity: error` result naming the component and describing user impact
+Built: 4 `deploymentStatus` analyzers (backend, worker, frontend, beat) and 3 `statefulsetStatus` analyzers (postgresql, redis, minio); all failure messages include component name + operational impact + remediation step (e.g., "Backend deployment has no ready replicas. The application API is unavailable — users cannot upload bundles, view findings, or interact with the system. Check pod events and logs for crash loops or readiness probe failures."); failure induction demo: scaled backend deployment to 0 replicas → support bundle analysis surfaced `severity: error` with exact message; restored to 1 replica → analysis returned to `severity: debug` pass
+
+## Phase 3.5 — textAnalyze Catches Known App Failure Patterns ✓ COMPLETE
+Goal: Search collected log files for application-specific error patterns that indicate real failures
+Deliverables: `textAnalyze` analyzer with regex matching known backend error log patterns
+Success: Analyzer searches all collected pod logs and would catch failures when they appear
+Built: `textAnalyze` analyzer searches `bundle-analyzer-*/*.log` (all app pod logs at bundle root from `logs` collectors) with regex matching 6 known failure patterns extracted from backend source code: `Failed to process bundle`, `bundle_upload_s3_error`, `Failed to reanalyze bundle`, `cleanup_stuck_bundles failed`, `report_custom_metrics failed`, `Metrics collection failed`; verified in healthy cluster: correctly reports "No critical application errors found" (debug) with no false positives; regex correctness proven via synthetic `data` collector test: embedded sample log lines with failure patterns → analyzer fired `severity: error` catching both patterns; also removed `collectorName` from existing backend-health `textAnalyze` so it correctly resolves `backend-health.json` at bundle root
