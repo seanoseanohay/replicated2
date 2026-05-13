@@ -49,3 +49,8 @@ Tradeoffs: APScheduler adds a lightweight thread; metrics are best-effort (fire-
 Decision: Helm `lookup` + `helm.sh/resource-policy: keep` for self-signed certs
 Reason: Prevents certificate regeneration on every `helm upgrade`, avoiding browser cache warnings and Ingress TLS disruption
 Tradeoffs: Slightly more complex template; explicit `regenerateSelfSignedCert=true` required to force rotation
+
+## Troubleshoot Spec Embedding (Preflights & Support Bundles)
+Decision: Kubernetes Secret wrapper (`v1/Secret` with `troubleshoot.sh/kind` labels) instead of raw `troubleshoot.sh/v1beta2` CRDs
+Reason: Raw CRDs require the `troubleshoot.sh/v1beta2` CRDs to be installed in the cluster, which is not true for arbitrary customer clusters. A `v1/Secret` applies everywhere. The `troubleshoot.sh/kind` label enables CLI plugin discovery. This matches the official Replicated Helm documentation (which mandates Secrets) rather than the open-source troubleshoot examples (which are for file-mode or KOTS).
+Tradeoffs: Adds a layer of indirection; spec is nested under `stringData` keys; preflight plugin cannot auto-scan by label (must use explicit `secret/ns/name/key` or stdin). See `docs/decision-troubleshoot-secret-vs-crd.md` for exhaustive analysis, test outputs, plugin behavior matrices, and the raw CRD failure logs.

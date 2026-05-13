@@ -1,3 +1,25 @@
+# NOTE: Why a Secret instead of a raw troubleshoot.sh/v1beta2 CRD?
+#
+# The open-source troubleshoot examples (replicatedhq/troubleshoot) use raw CRDs.
+# HOWEVER, those examples are for:
+#   1. File-mode CLI usage: kubectl support-bundle ./file.yaml (reads file directly)
+#   2. KOTS environments: KOTS pre-installs the troubleshoot.sh CRDs
+#
+# For Replicated Helm charts, the official docs REQUIRE a Secret wrapper:
+#   https://docs.replicated.com/vendor/preflight-defining
+#   https://docs.replicated.com/vendor/support-bundle-customizing
+#
+# Why the Secret is necessary:
+#   - Standard Kubernetes clusters do NOT have troubleshoot.sh/v1beta2 CRDs installed.
+#     kubectl apply of a raw Preflight/SupportBundle CRD fails with:
+#     "no matches for kind 'SupportBundle' in version 'troubleshoot.sh/v1beta2'"
+#   - A v1/Secret applies in ANY cluster with zero prerequisites.
+#   - The 'troubleshoot.sh/kind' label enables CLI plugin discovery.
+#   - Preflight specs live under stringData.preflight.yaml (key name matters).
+#   - Support-bundle specs live under stringData.support-bundle-spec (key name matters).
+#
+# See docs/decision-troubleshoot-secret-vs-crd.md for full analysis, test outputs,
+# plugin behavior matrices, and references.
 apiVersion: v1
 kind: Secret
 metadata:
