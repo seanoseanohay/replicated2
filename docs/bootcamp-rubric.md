@@ -69,7 +69,7 @@
 | 3.2 | Log collection covers all components | Separate logs collector per component; maxLines/maxAge limits; all log dirs non-empty | ✅ COMPLETE | 8 collectors, all with `limits:`; verified all 8 components non-empty |
 | 3.3 | Health endpoint checked with http collector + textAnalyze | http collector hits `/health` endpoint; textAnalyze parses response for pass/fail | ✅ COMPLETE | http collector → `/health/ready`; analyzer checks `statusCode == 200` / `error` / `!= 200` |
 | 3.4 | Status analyzers for all workload types | deploymentStatus, statefulsetStatus, jobStatus, replicasetStatus as applicable | ✅ COMPLETE | 4× deploymentStatus + 3× statefulsetStatus (no jobs or replicasets in app) |
-| 3.5 | textAnalyze catches known app failure pattern | textAnalyze with regex on log file; analyzer fires on pattern; clear remediation message | ⏳ PENDING | textAnalyze on log files failed with "No matching files" (plugin bug with paths). Need to revisit — maybe use `data` collector or exact path. |
+| 3.5 | textAnalyze catches known app failure pattern | textAnalyze with regex on log file; analyzer fires on pattern; clear remediation message | ✅ COMPLETE | textAnalyze searches `bundle-analyzer-*/*.log` with regex matching 6 known backend error patterns (Failed to process bundle, bundle_upload_s3_error, etc.); verified no false positives in healthy state; regex proven via synthetic `data` collector test |
 | 3.6 | Storage class and node readiness verified | storageClass analyzer fails when no default SC; nodeResources fails when node not Ready | ✅ COMPLETE | `nodeResources` checks CPU+memory; `storageClass` conditional on explicit config |
 | 3.7 | Support bundle generated from app UI + uploaded to Vendor Portal | "Generate Support Bundle" button in UI; uploads to Vendor Portal; visible on Instance Details | ⏳ PENDING | Need to add UI button + SDK upload endpoint integration |
 
@@ -135,25 +135,24 @@
 | 0 | Build It | 7 | 7 | 0 | 0 | |
 | 1 | Automate It | 4 | 3 | 0 | 1 | 1.4 (Stable email) pending |
 | 2 | Ship It with Helm | 10 | 10 | 0 | 0 | |
-| 3 | Support It | 7 | 5 | 0 | 2 | 3.5 (textAnalyze logs), 3.7 (UI bundle upload) pending |
+| 3 | Support It | 7 | 6 | 0 | 1 | 3.7 (UI bundle upload) pending |
 | 4 | Ship It on a VM | 5 | 0 | 0 | 5 | All require EC v3 install |
 | 5 | Config Screen | 5 | 0 | 0 | 5 | KOTS-specific; may adapt for Helm |
 | 6 | Deliver It | 9 | 0 | 0 | 9 | Enterprise Portal v2 |
 | 7 | Operationalize It | 4 | 1 | 0 | 3 | 7.1 notifications done |
 
-**Total Complete: 26 / 51 tasks (51%)**
+**Total Complete: 27 / 51 tasks (53%)**
 
 ---
 
 ## Next Priority Tasks
 
-1. **3.5** — textAnalyze catches known failure pattern (find a way to make log textAnalyze work, or use alternative collector)
-2. **3.7** — Support bundle generated from app UI + uploaded to Vendor Portal
-3. **1.4** — Email notifications on Stable promotion
-4. **4.1** — EC v3 install on bare VM (requires CMX credits or local VM)
-5. **4.3** — Air-gapped install (requires air gap bundle build)
-6. **6.1–6.4** — Enterprise Portal setup (branding, custom domain, docs)
-7. **7.2–7.4** — Security, signing, network policy
+1. **3.7** — Support bundle generated from app UI + uploaded to Vendor Portal
+2. **1.4** — Email notifications on Stable promotion
+3. **4.1** — EC v3 install on bare VM (requires CMX credits or local VM)
+4. **4.3** — Air-gapped install (requires air gap bundle build)
+5. **6.1–6.4** — Enterprise Portal setup (branding, custom domain, docs)
+6. **7.2–7.4** — Security, signing, network policy
 
 ---
 
