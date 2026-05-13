@@ -169,3 +169,9 @@ Goal: Search collected log files for application-specific error patterns that in
 Deliverables: `textAnalyze` analyzer with regex matching known backend error log patterns
 Success: Analyzer searches all collected pod logs and would catch failures when they appear
 Built: `textAnalyze` analyzer searches `bundle-analyzer-*/*.log` (all app pod logs at bundle root from `logs` collectors) with regex matching 6 known failure patterns extracted from backend source code: `Failed to process bundle`, `bundle_upload_s3_error`, `Failed to reanalyze bundle`, `cleanup_stuck_bundles failed`, `report_custom_metrics failed`, `Metrics collection failed`; verified in healthy cluster: correctly reports "No critical application errors found" (debug) with no false positives; regex correctness proven via synthetic `data` collector test: embedded sample log lines with failure patterns → analyzer fired `severity: error` catching both patterns; also removed `collectorName` from existing backend-health `textAnalyze` so it correctly resolves `backend-health.json` at bundle root
+
+## Phase 3.6 — Storage Class and Node Readiness ✓ COMPLETE
+Goal: Verify cluster infrastructure prerequisites: default StorageClass exists and all nodes are Ready
+Deliverables: Unconditional `storageClass` analyzer + `nodeResources` node readiness analyzer
+Success: Both analyzers report pass on healthy cluster; would fail if no default SC or any node NotReady
+Built: Unconditional `storageClass` check with `when: "not exists"` (no `storageClassName` required) — verifies dynamic provisioning prerequisite for PostgreSQL, Redis, MinIO; `nodeResources` check with `nodeCondition(Ready) == False` and `nodeCondition(Ready) == Unknown` outcomes — catches nodes that are down or unreachable despite having sufficient CPU/memory; both verified passing on healthy OrbStack cluster

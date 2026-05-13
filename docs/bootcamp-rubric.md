@@ -70,7 +70,7 @@
 | 3.3 | Health endpoint checked with http collector + textAnalyze | http collector hits `/health` endpoint; textAnalyze parses response for pass/fail | ✅ COMPLETE | http collector → `/health/ready`; analyzer checks `statusCode == 200` / `error` / `!= 200` |
 | 3.4 | Status analyzers for all workload types | deploymentStatus, statefulsetStatus, jobStatus, replicasetStatus as applicable | ✅ COMPLETE | 4× deploymentStatus + 3× statefulsetStatus (no jobs or replicasets in app) |
 | 3.5 | textAnalyze catches known app failure pattern | textAnalyze with regex on log file; analyzer fires on pattern; clear remediation message | ✅ COMPLETE | textAnalyze searches `bundle-analyzer-*/*.log` with regex matching 6 known backend error patterns (Failed to process bundle, bundle_upload_s3_error, etc.); verified no false positives in healthy state; regex proven via synthetic `data` collector test |
-| 3.6 | Storage class and node readiness verified | storageClass analyzer fails when no default SC; nodeResources fails when node not Ready | ✅ COMPLETE | `nodeResources` checks CPU+memory; `storageClass` conditional on explicit config |
+| 3.6 | Storage class and node readiness verified | storageClass analyzer fails when no default SC; nodeResources fails when node not Ready | ✅ COMPLETE | Unconditional `storageClass` check for default SC (`when: "not exists"`); `nodeResources` check for `nodeCondition(Ready) == False/Unknown`
 | 3.7 | Support bundle generated from app UI + uploaded to Vendor Portal | "Generate Support Bundle" button in UI; uploads to Vendor Portal; visible on Instance Details | ⏳ PENDING | Need to add UI button + SDK upload endpoint integration |
 
 ---
