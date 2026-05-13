@@ -7,6 +7,20 @@
 
 ---
 
+## TL;DR
+
+When you look at Replicated's [official Helm docs](https://docs.replicated.com/vendor/preflight-defining) and the [open-source troubleshoot examples](https://github.com/replicatedhq/troubleshoot) side by side, they seem to disagree. The open-source examples use a custom resource type called `Preflight`; the Replicated docs wrap everything inside a standard Kubernetes `Secret`. They look like two different answers to the same question.
+
+They're actually solving two different problems.
+
+The custom resource (`kind: Preflight`) only works if the cluster has been specifically taught what a `Preflight` is — that happens when KOTS is installed, which registers the type. Without KOTS, every standard Kubernetes cluster will reject it outright. We confirmed this: applying a raw `Preflight` resource to a plain k3s cluster returns an error.
+
+A `Secret`, on the other hand, is a built-in Kubernetes type that every cluster already understands. The troubleshoot tools (the `kubectl preflight` and `kubectl support-bundle` plugins) are designed to find your specs by looking for Secrets with a special label — so the spec lives safely inside a Secret, and the tools know how to find it. The [Replicated support bundle docs](https://docs.replicated.com/vendor/support-bundle-customizing) confirm this is the intended approach for Helm charts.
+
+**Bottom line:** We use Secrets because our Helm chart has to work on any customer cluster, and we can't assume KOTS is installed. The Secret format is what Replicated's own documentation specifies for Helm, and it's the only option that works everywhere without extra setup.
+
+---
+
 ## The Question
 
 Should our Replicated Helm chart embed `troubleshoot.sh` preflight and support-bundle specs as:
