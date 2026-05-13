@@ -101,3 +101,15 @@ Goal: Surface pending app updates to end users inside the UI
 Deliverables: Update status endpoint, in-memory cache, dismissible banner
 Success: Users see a blue banner when a newer release is available; yellow banner when license is invalid
 Built: `update_service.py` fetches Replicated SDK `/api/v1/app/info` (current version + license validity) and `/api/v1/app/updates` (available releases) with 5-minute in-memory TTL cache; version comparison by `versionLabel` (available when next != current); `GET /api/v1/updates/status` returns `UpdateStatusRead` (`available`, `version`, `notes`, `license_valid`, `current_version`) with `require_auth` dependency; `UpdateBanner.tsx` mounts inside `ProtectedLayout`, shows blue info banner for available updates, yellow warning banner for invalid license, dismissible via localStorage key per version; 8 backend tests covering no-update, new-version, invalid-license, SDK-unreachable, empty updates list, multiple-updates picks newest, and auth-required
+
+## Phase 2.7 — Optional Ingress ✓ COMPLETE
+Goal: Make the Ingress resource optional and off by default so the chart deploys on clusters without an ingress controller
+Deliverables: Conditional Ingress template, off-by-default toggle
+Success: `helm template` with defaults renders no Ingress; with `ingress.enabled=true` renders a working Ingress routing to the frontend service
+Built: `chart/templates/ingress.yaml` wrapped in `{{- if .Values.ingress.enabled }}`; `chart/values.yaml` sets `ingress.enabled: false` by default; Ingress routes `/.Values.ingress.hosts[].paths[]` to `bundle-analyzer-frontend` service on port 3000; supports TLS via cert-manager, manually uploaded secrets, or self-signed certificates (via `tls-secret.yaml` lookup + `helm.sh/resource-policy: keep`); `nginx.ingress.kubernetes.io/force-ssl-redirect: "true"` annotation for HTTP→HTTPS redirect; end-to-end verified with `helm template` (no Ingress with defaults, Ingress present when enabled) and deployed cluster returning HTTP 200 via ingress IP
+
+## Phase 2.8 — Service Type Configurable ✓ COMPLETE
+Goal: Allow the frontend service type to be configured so the app is reachable even without an ingress controller
+Deliverables: Parameterized service type in frontend and backend service templates
+Success: `helm template --set frontend.service.type=NodePort` renders NodePort; `=LoadBalancer` renders LoadBalancer; default remains ClusterIP for use with Ingress
+Built: `chart/templates/frontend-service.yaml` uses `{{ .Values.frontend.service.type }}`; `chart/templates/backend-service.yaml` uses `{{ .Values.backend.service.type }}`; `chart/values.yaml` defaults both to `ClusterIP`; all three types verified with `helm template`: default=ClusterIP, NodePort=NodePort, LoadBalancer=LoadBalancer; frontend service targets pod port 3000, backend targets 8000
