@@ -35,7 +35,14 @@ stringData:
     spec:
       collectors:
         - clusterInfo: {}
-        - clusterResources: {}
+        - clusterResources:
+            namespaces:
+              - "{{ .Release.Namespace }}"
+        - http:
+            collectorName: backend-health
+            get:
+              url: "http://{{ include "bundle-analyzer.fullname" . }}-backend.{{ .Release.Namespace }}.svc.cluster.local:8000/health/ready"
+              timeout: 10s
         - logs:
             collectorName: backend-logs
             namespace: "{{ .Release.Namespace }}"
@@ -247,3 +254,16 @@ stringData:
               - pass:
                   when: ">= 1"
                   message: "MinIO StatefulSet has ready replicas."
+        - http:
+            checkName: Backend health endpoint reachable and serving
+            collectorName: backend-health
+            outcomes:
+              - fail:
+                  when: "error"
+                  message: "Cannot reach backend health endpoint. Check if the backend pod is running and the service is accessible."
+              - fail:
+                  when: "statusCode != 200"
+                  message: "Backend health endpoint returned a non-200 status. The backend may be running but unable to reach PostgreSQL, Redis, or S3. Check the health endpoint response for details."
+              - pass:
+                  when: "statusCode == 200"
+                  message: "Backend health endpoint is reachable and reporting ready (PostgreSQL, Redis, and S3 all accessible)."
