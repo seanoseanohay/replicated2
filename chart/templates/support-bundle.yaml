@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    troubleshoot.sh/kind: support-bundle
+  name: "{{ .Release.Name }}-support-bundle-config"
+stringData:
+  support-bundle-spec: |
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: SupportBundle
+    metadata:
+      name: bundle-analyzer-support-bundle
+    spec:
+      collectors:
+        - clusterInfo: {}
+        - clusterResources: {}
+        - logs:
+            collectorName: backend-logs
+            namespace: "{{ .Release.Namespace }}"
+            selector:
+              - app.kubernetes.io/component=backend
+              - app.kubernetes.io/instance={{ .Release.Name }}
+            maxLines: 10000
+            maxAge: 720h
+        - logs:
+            collectorName: worker-logs
+            namespace: "{{ .Release.Namespace }}"
+            selector:
+              - app.kubernetes.io/component=worker
+              - app.kubernetes.io/instance={{ .Release.Name }}
+            maxLines: 10000
+            maxAge: 720h
+        - logs:
+            collectorName: beat-logs
+            namespace: "{{ .Release.Namespace }}"
+            selector:
+              - app.kubernetes.io/component=beat
+              - app.kubernetes.io/instance={{ .Release.Name }}
+            maxLines: 10000
+            maxAge: 720h
+        - logs:
+            collectorName: frontend-logs
+            namespace: "{{ .Release.Namespace }}"
+            selector:
+              - app.kubernetes.io/component=frontend
+              - app.kubernetes.io/instance={{ .Release.Name }}
+            maxLines: 10000
+            maxAge: 720h
+        - logs:
+            collectorName: sdk-logs
+            namespace: "{{ .Release.Namespace }}"
+            selector:
+              - app.kubernetes.io/name=bundle-analyzer-sdk
+              - app.kubernetes.io/instance={{ .Release.Name }}
+            maxLines: 10000
+            maxAge: 720h
+        - logs:
+            collectorName: minio-logs
+            namespace: "{{ .Release.Namespace }}"
+            selector:
+              - app.kubernetes.io/component=minio
+              - app.kubernetes.io/instance={{ .Release.Name }}
+            maxLines: 10000
+            maxAge: 720h
+        - logs:
+            collectorName: postgresql-logs
+            namespace: "{{ .Release.Namespace }}"
+            selector:
+              - app.kubernetes.io/component=primary
+              - app.kubernetes.io/name=postgresql
+              - app.kubernetes.io/instance={{ .Release.Name }}
+            maxLines: 10000
+            maxAge: 720h
+        - logs:
+            collectorName: redis-logs
+            namespace: "{{ .Release.Namespace }}"
+            selector:
+              - app.kubernetes.io/component=master
+              - app.kubernetes.io/name=redis
+              - app.kubernetes.io/instance={{ .Release.Name }}
+            maxLines: 10000
+            maxAge: 720h
+
