@@ -1,4 +1,5 @@
 import logging
+import os
 import urllib.request
 import urllib.error
 import json
@@ -11,7 +12,9 @@ from app.models.user import User
 
 log = logging.getLogger(__name__)
 
-REPLICATED_SDK_METRICS_URL = "http://replicated:3000/api/v1/app/custom-metrics"
+_SDK_HOST = os.environ.get("REPLICATED_SDK_HOST", "replicated")
+_SDK_PORT = os.environ.get("REPLICATED_SDK_PORT", "3000")
+REPLICATED_SDK_METRICS_URL = f"http://{_SDK_HOST}:{_SDK_PORT}/api/v1/app/custom-metrics"
 
 
 def _send_metrics(payload: dict) -> bool:
