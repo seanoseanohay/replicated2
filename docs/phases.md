@@ -122,6 +122,12 @@ Built: Instance `a81dbf1` running in cluster with all 18 resources reporting "re
 
 ## Phase 2.10 — Services Healthy in Instance Reporting ✓ COMPLETE
 Goal: All app services show up as healthy in Replicated instance reporting
-Deliverables: SDK `app/status` endpoint returning all workloads as ready
-Success: SDK `/api/v1/app/status` returns 18 resources (deployments, statefulsets, services, PVCs) all with state "ready"
+Deliverables: SDK app/status endpoint returning all workloads as ready
+Success: SDK /api/v1/app/status returns 18 resources (deployments, statefulsets, services, PVCs) all with state "ready"
 Built: Replicated SDK auto-discovers and watches all K8s resources in the release namespace; backend, frontend, worker, beat deployments all "ready"; postgresql, redis, minio statefulsets all "ready"; all services and PVCs "ready"; app status shows "Ready" with 100% uptime in Vendor Portal
+
+## Phase 3.1 — Preflight Checks ✓ COMPLETE
+Goal: Validate deployment prerequisites before installation to prevent failed installs
+Deliverables: troubleshoot.sh preflight spec with 5 required checks, embedded in Helm chart as Secret
+Success: Preflights run via kubectl preflight plugin; show passing and failing scenarios with clear, actionable messages
+Built: chart/templates/preflights.yaml — Kubernetes Secret with troubleshoot.sh/kind: preflight label containing preflight.yaml spec; 5 checks: (1) clusterVersion requires K8s >= 1.25.0, (2) nodeResources requires >= 4Gi memory and >= 2 CPU cores, (3) distribution fails on docker-desktop and microk8s with links to supported options, (4) postgres connectivity only when externalPostgresql configured (conditional via Helm template), (5) textAnalyze on HTTP collector checks Anthropic API reachability; all failure messages explain what went wrong and how to fix it; verified with kubectl preflight plugin on passing scenario (embedded PostgreSQL, 2 pass + 2 warn = overall PASS) and failing scenario (bad external DB host, DB connectivity FAIL with hostname resolution error = overall FAIL)
