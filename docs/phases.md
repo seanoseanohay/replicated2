@@ -113,3 +113,15 @@ Goal: Allow the frontend service type to be configured so the app is reachable e
 Deliverables: Parameterized service type in frontend and backend service templates
 Success: `helm template --set frontend.service.type=NodePort` renders NodePort; `=LoadBalancer` renders LoadBalancer; default remains ClusterIP for use with Ingress
 Built: `chart/templates/frontend-service.yaml` uses `{{ .Values.frontend.service.type }}`; `chart/templates/backend-service.yaml` uses `{{ .Values.backend.service.type }}`; `chart/values.yaml` defaults both to `ClusterIP`; all three types verified with `helm template`: default=ClusterIP, NodePort=NodePort, LoadBalancer=LoadBalancer; frontend service targets pod port 3000, backend targets 8000
+
+## Phase 2.9 — Instance Live, Named, Tagged ✓ COMPLETE
+Goal: Instance reports as healthy in Vendor Portal, shows custom metrics, and is identifiable
+Deliverables: Live instance with custom metrics visible, friendly name, and tags
+Success: Vendor Portal Instance Details page shows Ready status, 100% uptime, custom metrics with real app data, named "bundle-analyzer-prod", tagged "environment:production"
+Built: Instance `a81dbf1` running in cluster with all 18 resources reporting "ready"; custom metrics sent via `PATCH /api/v1/app/custom-metrics` showing bundles_ingested=2, open findings by severity, total_users=4; instance named "bundle-analyzer-prod" and tagged "environment:production" via Vendor Portal UI
+
+## Phase 2.10 — Services Healthy in Instance Reporting ✓ COMPLETE
+Goal: All app services show up as healthy in Replicated instance reporting
+Deliverables: SDK `app/status` endpoint returning all workloads as ready
+Success: SDK `/api/v1/app/status` returns 18 resources (deployments, statefulsets, services, PVCs) all with state "ready"
+Built: Replicated SDK auto-discovers and watches all K8s resources in the release namespace; backend, frontend, worker, beat deployments all "ready"; postgresql, redis, minio statefulsets all "ready"; all services and PVCs "ready"; app status shows "Ready" with 100% uptime in Vendor Portal
