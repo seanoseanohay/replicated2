@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    troubleshoot.sh/kind: preflight
+  name: "{{ .Release.Name }}-preflight-config"
+stringData:
+  preflight.yaml: |
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: Preflight
+    metadata:
+      name: bundle-analyzer-preflights
+    spec:
+      collectors:
+        {{- if not .Values.postgresql.enabled }}
+        - postgres:
+            collectorName: external-postgres
+            uri: "postgres://{{ .Values.externalPostgresql.username }}:{{ .Values.externalPostgresql.password }}@{{ .Values.externalPostgresql.host }}:{{ .Values.externalPostgresql.port }}/{{ .Values.externalPostgresql.database }}?sslmode=disable"
+        {{- end }}
+        - http:
+            collectorName: anthropic-api
+            get:
+              url: "https://api.anthropic.com/v1/health"
+      analyzers:
+        - clusterVersion:
+            outcomes:
+              - fail:
+                  when: "< 1.25.0"
+                  message: "Bundle Analyzer requires Kubernetes 1.25.0 or later. Your cluster is running {{ .K8sVersion }}. Please upgrade your cluster."
+                  uri: https://kubernetes.io
+              - pass:
+                  message: "Kubernetes version meets requirements (1.25.0 or later)"
+        - nodeResources:
+            checkName: Cluster has sufficient resources
+            outcomes:
+              - fail:
+                  when: "sum(memoryAllocatable) < 4Gi"
+                  message: "Cluster has less than 4GB allocatable memory total. Bundle Analyzer requires at least 4GB across all nodes. Please add nodes or reduce existing workload."
+              - fail:
+                  when: "sum(cpuCapacity) < 2"
+                  message: "Cluster has less than 2 CPU cores total. Bundle Analyzer requires at least 2 cores. Please add nodes or reduce existing workload."
+              - pass:
+                  message: "Cluster has sufficient CPU and memory resources"
+        - distribution:
+            checkName: Kubernetes distribution
+            outcomes:
+              - fail:
+                  when: "== docker-desktop"
+                  message: "Docker Desktop is not supported for production deployments. Use a managed cluster (EKS, GKE, AKS), k0s, or Replicated Embedded Cluster. See: https://k0sproject.io"
+              - fail:
+                  when: "== microk8s"
+                  message: "MicroK8s is not supported. Use a managed cluster (EKS, GKE, AKS), k0s, or Replicated Embedded Cluster. See: https://k0sproject.io"
+              - pass:
+                  when: "== eks"
+                  message: "EKS is a supported distribution"
+              - pass:
+                  when: "== gke"
+                  message: "GKE is a supported distribution"
+              - pass:
+                  when: "== aks"
+                  message: "AKS is a supported distribution"
+              - warn:
+                  message: "Unable to determine the Kubernetes distribution. Proceed with caution."
+        {{- if not .Values.postgresql.enabled }}
+        - postgres:
+            checkName: External PostgreSQL connectivity
+            collectorName: external-postgres
+            outcomes:
+              - fail:
+                  when: "connected == false"
+                  message: "Cannot connect to external PostgreSQL at {{ .Values.externalPostgresql.host }}:{{ .Values.externalPostgresql.port }}. Verify the host, port, username, password, and network connectivity."
+              - pass:
+                  message: "External PostgreSQL is reachable"
+        {{- end }}
+        - textAnalyze:
+            checkName: External API connectivity
+            fileName: anthropic-api.json
+            regex: '"status": 200'
+            outcomes:
+              - warn:
+                  when: "false"
+                  message: "Cannot reach Anthropic API. AI features will be unavailable. Check internet connectivity from the cluster."
+              - pass:
+                  when: "true"
+                  message: "External API (Anthropic) is reachable"
