@@ -377,5 +377,101 @@ def report_custom_metrics() -> dict:
         return {"error": str(exc)}
 
 
+@celery_app.task(name="tasks.generate_and_upload_support_bundle", bind=True, max_retries=2)
+def generate_and_upload_support_bundle(self, namespace: str, spec_secret: str) -> dict:
+    """Generate a support bundle and upload it to the Replicated Vendor Portal via SDK."""
+    import subprocess
+    import os
+    import tempfile
+    import uuid as uuid_mod
+
+    bundle_path = f"/tmp/support-bundle-{uuid_mod.uuid4().hex}.tar.gz"
+    sdk_host = os.environ.get("REPLICATED_SDK_HOST", "bundle-analyzer-sdk")
+    sdk_url = f"http://{sdk_host}:3000/api/v1/supportbundle"
+
+    log.info("support_bundle_generation_start", spec_secret=spec_secret, namespace=namespace)
+
+    try:
+        # 1. Generate support bundle
+        cmd = [
+            "kubectl", "support-bundle",
+            f"secret/{namespace}/{spec_secret}",
+            "--load-cluster-specs=false",
+            "-o", bundle_path,
+        ]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if result.returncode != 0:
+            log.error(
+                "support_bundle_generation_failed",
+                stdout=result.stdout,
+                stderr=result.stderr,
+            )
+            raise self.retry(
+                exc=RuntimeError(
+                    f"kubectl support-bundle failed: {result.stderr or result.stdout}"
+                ),
+                countdown=10,
+            )
+
+        bundle_size = os.path.getsize(bundle_path)
+        log.info("support_bundle_generated", path=bundle_path, size=bundle_size)
+
+        # 2. Upload to SDK
+        import httpx
+
+        with open(bundle_path, "rb") as f:
+            response = httpx.post(
+                sdk_url,
+                content=f.read(),
+                headers={
+                    "Content-Type": "application/gzip",
+                    "Content-Length": str(bundle_size),
+                },
+                timeout=120,
+            )
+
+        if response.status_code == 201:
+            data = response.json()
+            log.info(
+                "support_bundle_uploaded",
+                bundle_id=data.get("bundleId"),
+                slug=data.get("slug"),
+            )
+            return {
+                "status": "uploaded",
+                "bundle_id": data.get("bundleId"),
+                "slug": data.get("slug"),
+            }
+        else:
+            log.error(
+                "support_bundle_upload_failed",
+                status_code=response.status_code,
+                body=response.text[:500],
+            )
+            raise self.retry(
+                exc=RuntimeError(
+                    f"SDK upload failed: {response.status_code} {response.text[:200]}"
+                ),
+                countdown=10,
+            )
+
+    except subprocess.TimeoutExpired:
+        log.error("support_bundle_generation_timeout")
+        raise self.retry(exc=RuntimeError("Bundle generation timed out"), countdown=30)
+    except Exception as exc:
+        log.error("support_bundle_unexpected_error", error=str(exc))
+        raise self.retry(exc=exc, countdown=10)
+    finally:
+        # Clean up temp bundle file
+        if os.path.exists(bundle_path):
+            os.unlink(bundle_path)
+            log.info("support_bundle_cleaned_up", path=bundle_path)
+
+
 # Make celery_app importable as `app` for the CLI command
 app = celery_app

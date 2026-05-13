@@ -22,7 +22,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     libmagic1 \
     curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Install kubectl and support-bundle plugin for in-cluster support bundle generation
+ARG TARGETARCH
+ARG KUBECTL_VERSION=v1.32.0
+ARG SUPPORT_BUNDLE_VERSION=v0.128.1
+RUN curl -fsSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${TARGETARCH}/kubectl" -o /usr/local/bin/kubectl \
+    && chmod +x /usr/local/bin/kubectl \
+    && curl -fsSL "https://github.com/replicatedhq/troubleshoot/releases/download/${SUPPORT_BUNDLE_VERSION}/support-bundle_linux_${TARGETARCH}.tar.gz" | tar -xz -C /tmp \
+    && mv /tmp/support-bundle /usr/local/bin/kubectl-support_bundle \
+    && chmod +x /usr/local/bin/kubectl-support_bundle
 
 # Create non-root user
 RUN groupadd --gid 1001 appgroup && \

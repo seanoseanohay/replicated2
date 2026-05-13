@@ -11,6 +11,7 @@ import BundleDetail from "./pages/BundleDetail";
 import BundleCompare from "./pages/BundleCompare";
 import NotificationSettings from "./pages/NotificationSettings";
 import AdminPanel from "./pages/AdminPanel";
+import Troubleshoot from "./pages/Troubleshoot";
 import LoginPage from "./pages/LoginPage";
 
 function ProtectedLayout() {
@@ -42,6 +43,7 @@ function ProtectedLayout() {
           <Route path="/upload" element={<BundleUpload />} />
           <Route path="/bundles/:id" element={<BundleDetail />} />
           <Route path="/settings/notifications" element={<NotificationSettings />} />
+          <Route path="/troubleshoot" element={<Troubleshoot />} />
           <Route path="/admin" element={<AdminPanel />} />
         </Routes>
       </main>

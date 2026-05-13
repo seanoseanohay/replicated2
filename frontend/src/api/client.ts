@@ -579,3 +579,32 @@ export const adminApi = {
     return request<{ org_key: string | null }>("/api/v1/admin/org-key");
   },
 };
+
+// ---- Support Bundles ----
+export interface SupportBundleTask {
+  task_id: string;
+  status: string;
+  message: string;
+}
+
+export interface TaskStatus {
+  task_id: string;
+  status: string;
+  result: { bundle_id?: string; slug?: string; error?: string } | null;
+}
+
+export const supportBundleApi = {
+  generate(namespace?: string, specSecret?: string): Promise<SupportBundleTask> {
+    return request<SupportBundleTask>("/api/v1/support-bundles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        namespace: namespace ?? "bundle-analyzer",
+        spec_secret: specSecret ?? "bundle-analyzer-support-bundle-config",
+      }),
+    });
+  },
+  getStatus(taskId: string): Promise<TaskStatus> {
+    return request<TaskStatus>(`/api/v1/support-bundles/${taskId}`);
+  },
+};

@@ -16,6 +16,7 @@ spec:
         app.kubernetes.io/component: backend
         {{- include "bundle-analyzer.selectorLabels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "bundle-analyzer.fullname" . }}-backend
 {{- include "bundle-analyzer.imagePullSecrets" . | nindent 6 }}
       initContainers:
         - name: wait-for-deps

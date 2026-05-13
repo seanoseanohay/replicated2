@@ -171,6 +171,7 @@ from app.api.routes.admin import router as admin_router  # noqa: E402
 from app.api.routes.metrics import router as metrics_router  # noqa: E402
 from app.api.routes.license import router as license_router  # noqa: E402
 from app.api.routes.updates import router as updates_router  # noqa: E402
+from app.api.routes.support_bundles import router as support_bundles_router  # noqa: E402
 
 app.include_router(health_router)
 app.include_router(auth_router)
@@ -186,3 +187,4 @@ app.include_router(evidence_router)
 app.include_router(findings_router)
 app.include_router(notifications_router)
 app.include_router(reports_router)
+app.include_router(support_bundles_router)

@@ -56,6 +56,14 @@ export default function Navbar() {
           )}
           {isAdmin && (
             <Link
+              to="/troubleshoot"
+              className="text-sm text-gray-300 hover:text-white transition-colors"
+            >
+              Troubleshoot
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
               to="/admin"
               className="text-sm text-red-400 hover:text-red-300 transition-colors font-medium"
             >
