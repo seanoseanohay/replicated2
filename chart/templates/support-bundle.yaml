@@ -163,10 +163,10 @@ stringData:
             outcomes:
               - fail:
                   when: absent
-                  message: "Backend deployment not found."
+                  message: "Backend deployment not found. The application API is completely unavailable — users cannot upload bundles, view findings, log in, or access any functionality."
               - fail:
                   when: "< 1"
-                  message: "Backend deployment has no ready replicas."
+                  message: "Backend deployment has no ready replicas. The application API is unavailable — users cannot upload bundles, view findings, or interact with the system. Check pod events and logs for crash loops or readiness probe failures."
               - pass:
                   when: ">= 1"
                   message: "Backend deployment has ready replicas."
@@ -177,10 +177,10 @@ stringData:
             outcomes:
               - fail:
                   when: absent
-                  message: "Worker deployment not found."
+                  message: "Worker deployment not found. Bundle processing pipeline is completely stopped — new uploads will queue indefinitely and never be parsed or analyzed."
               - fail:
                   when: "< 1"
-                  message: "Worker deployment has no ready replicas."
+                  message: "Worker deployment has no ready replicas. Bundle processing is stopped — new uploads will queue indefinitely. Check pod events and Celery broker connection."
               - pass:
                   when: ">= 1"
                   message: "Worker deployment has ready replicas."
@@ -191,10 +191,10 @@ stringData:
             outcomes:
               - fail:
                   when: absent
-                  message: "Frontend deployment not found."
+                  message: "Frontend deployment not found. The web UI is completely unavailable — users see a blank page or connection error."
               - fail:
                   when: "< 1"
-                  message: "Frontend deployment has no ready replicas."
+                  message: "Frontend deployment has no ready replicas. The web UI is unavailable. Check pod events and the backend service connectivity."
               - pass:
                   when: ">= 1"
                   message: "Frontend deployment has ready replicas."
@@ -205,10 +205,10 @@ stringData:
             outcomes:
               - fail:
                   when: absent
-                  message: "Beat deployment not found."
+                  message: "Beat deployment not found. Background tasks are completely stopped — no scheduled cleanup, no stuck-bundle recovery, and custom metrics will not report to the Vendor Portal."
               - fail:
                   when: "< 1"
-                  message: "Beat deployment has no ready replicas."
+                  message: "Beat deployment has no ready replicas. Background tasks are stopped — scheduled cleanup and metrics reporting will not run. Check pod events."
               - pass:
                   when: ">= 1"
                   message: "Beat deployment has ready replicas."
@@ -219,10 +219,10 @@ stringData:
             outcomes:
               - fail:
                   when: absent
-                  message: "PostgreSQL StatefulSet not found."
+                  message: "PostgreSQL StatefulSet not found. All persistent data (bundles, findings, users, audit events) is inaccessible. The application cannot start or serve requests."
               - fail:
                   when: "< 1"
-                  message: "PostgreSQL StatefulSet has insufficient ready replicas."
+                  message: "PostgreSQL StatefulSet has insufficient ready replicas. Database is unavailable — the application cannot read or write any data. Check pod events, PVC status, and storage class provisioning."
               - pass:
                   when: ">= 1"
                   message: "PostgreSQL StatefulSet has ready replicas."
@@ -233,10 +233,10 @@ stringData:
             outcomes:
               - fail:
                   when: absent
-                  message: "Redis StatefulSet not found."
+                  message: "Redis StatefulSet not found. Celery task queue, caching, and session storage are completely unavailable. Background processing and real-time features will not work."
               - fail:
                   when: "< 1"
-                  message: "Redis StatefulSet has insufficient ready replicas."
+                  message: "Redis StatefulSet has insufficient ready replicas. Task queue and cache are unavailable — background jobs will not process and API response caching is disabled. Check pod events and PVC status."
               - pass:
                   when: ">= 1"
                   message: "Redis StatefulSet has ready replicas."
@@ -247,10 +247,10 @@ stringData:
             outcomes:
               - fail:
                   when: absent
-                  message: "MinIO StatefulSet not found."
+                  message: "MinIO StatefulSet not found. Object storage is completely unavailable — bundle uploads will fail and existing bundle data is inaccessible."
               - fail:
                   when: "< 1"
-                  message: "MinIO StatefulSet has insufficient ready replicas."
+                  message: "MinIO StatefulSet has insufficient ready replicas. Object storage is unavailable — bundle uploads will fail. Check pod events, PVC status, and storage class provisioning."
               - pass:
                   when: ">= 1"
                   message: "MinIO StatefulSet has ready replicas."
