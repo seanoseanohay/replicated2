@@ -3,7 +3,7 @@ import { supportBundleApi, type SupportBundleTask, type TaskStatus } from "../ap
 import { useAuth } from "../context/AuthContext";
 
 export default function Troubleshoot() {
-  const { isManager } = useAuth();
+  const { isAdmin } = useAuth();
   const [task, setTask] = useState<SupportBundleTask | null>(null);
   const [status, setStatus] = useState<TaskStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,7 +47,7 @@ export default function Troubleshoot() {
     return () => clearInterval(id);
   }, [task]);
 
-  if (!isManager) {
+  if (!isAdmin) {
     return (
       <div className="max-w-lg mx-auto mt-16 text-center">
         <p className="text-gray-500">Manager access required to generate support bundles.</p>
