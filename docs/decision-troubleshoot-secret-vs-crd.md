@@ -19,6 +19,59 @@ This is a real point of contention because the two authoritative sources give co
 
 ---
 
+## What Is the Actual Difference?
+
+These two patterns produce **entirely different Kubernetes resources** in the cluster.
+
+### Pattern 1: Raw CRD (what the open-source examples show)
+
+```yaml
+apiVersion: troubleshoot.sh/v1beta2
+kind: Preflight          <-- A CUSTOM resource type
+metadata:
+  name: my-preflights
+spec:
+  collectors: [...]
+  analyzers: [...]
+```
+
+**What this means:**
+- `kind: Preflight` is **not** a built-in Kubernetes type.
+- The cluster's API server must have a **CustomResourceDefinition (CRD)** installed that teaches it what a `Preflight` is.
+- Without that CRD, `kubectl apply` rejects it: `no matches for kind "Preflight"`.
+- If the CRD *is* present, a controller (usually KOTS) can **watch** `Preflight` objects and run them automatically.
+
+### Pattern 2: Secret Wrapper (what Replicated Helm docs require)
+
+```yaml
+apiVersion: v1
+kind: Secret             <-- A STANDARD, built-in resource type
+metadata:
+  labels:
+    troubleshoot.sh/kind: preflight   <-- Discovery label
+  name: my-preflight-config
+stringData:
+  preflight.yaml: |      <-- The spec lives here as a STRING value
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: Preflight
+    spec:
+      collectors: [...]
+      analyzers: [...]
+```
+
+**What this means:**
+- `kind: Secret` is a **standard** Kubernetes type. Every cluster understands it.
+- No CRDs are required. This applies in **any** cluster.
+- The `troubleshoot.sh/kind: preflight` label is a **convention** — the CLI plugin scans for Secrets with this label, reads the `stringData` key, parses the YAML string inside, and executes it.
+- The actual troubleshoot spec is just **text inside the Secret**. The Kubernetes API server never sees it as a structured resource.
+
+### The One-Sentence Difference
+
+> **Raw CRD:** The cluster API server must know what a `Preflight` is (via CRD).  
+> **Secret:** The cluster only needs to know what a `Secret` is. The Troubleshoot plugin reads the spec as text after the fact.
+
+---
+
 ## Source A: The Open-Source `replicatedhq/troubleshoot` Examples
 
 Repository: `https://github.com/replicatedhq/troubleshoot`
@@ -276,4 +329,34 @@ These are **valid `v1` resources** that apply in any Kubernetes cluster, regardl
 3. It is **consumed by the CLI plugins** — preflight via explicit `secret/...` path or stdin, support-bundle via auto-discovery or explicit path
 4. The raw CRD examples are for **different contexts** (file-mode CLI, KOTS) and would fail to deploy in a standard Helm installation
 
-**Future reconsideration trigger:** If Replicated changes their official Helm guidance to use raw CRDs with a mandatory CRD-installation prerequisite, or if the Troubleshoot project adds a Helm subchart that installs CRDs automatically.
+## Embedded Cluster v3 Consideration
+
+**Does this change for EC v3?**
+
+Embedded Cluster v3 includes KOTS in the management layer, and KOTS **does** install the `troubleshoot.sh/v1beta2` CRDs. So raw CRDs would likely apply successfully in an EC v3 cluster.
+
+However, we keep the **Secret for all deployment targets** because:
+
+1. **One chart, multiple paths:** The same Helm chart must work for both Helm-only customers (no KOTS, no CRDs) and EC v3 customers. A raw CRD would fail `helm install` on Helm-only clusters.
+
+2. **Official docs specify Secret for Helm universally:** The Replicated Helm docs make no exception for EC v3. They say "create a Kubernetes Secret" for all Helm chart templates.
+
+3. **EC discovers specs from the release, not the live cluster:** The EC troubleshooting docs state that support bundles "**also include app-level details provided by any custom support bundle specs that you included in the application release**." This implies discovery happens during release packaging, where the Secret (in the chart templates) is scanned alongside the spec. The live-cluster CRD presence is irrelevant to release-level spec inclusion.
+
+4. **Timing safety:** Even in EC v3, the order of operations is: EC installer → KOTS + CRDs → app Helm chart. If the chart contains raw CRDs, Helm might try to create them before KOTS has finished installing the CRD definitions, causing a race. A `v1/Secret` has no such dependency.
+
+| Deployment Target | CRDs Present? | Raw CRD `helm install` | Secret `helm install` | Official Docs Say |
+|-------------------|--------------|------------------------|----------------------|-------------------|
+| **Helm-only** (existing path) | ❌ No | ❌ Fails | ✅ Works | Secret |
+| **KOTS** (not our target) | ✅ Yes (KOTS installs) | ✅ Works | ✅ Works | Raw CRD |
+| **Embedded Cluster v3** | ✅ Yes (KOTS embedded) | ✅ Likely works | ✅ Works | Secret |
+
+**Conclusion for EC v3:** The Secret wrapper remains correct. It is the only format that is safe for Helm-only and also valid for EC v3, without requiring branching logic or conditional CRD installation.
+
+---
+
+## Future Reconsideration Trigger
+
+- If Replicated changes their official Helm guidance to use raw CRDs with a mandatory CRD-installation prerequisite
+- If the Troubleshoot project adds a Helm subchart that installs CRDs automatically
+- If EC v3 provides a first-class mechanism to install CRDs before the app chart, AND Replicated updates the Helm docs to specify raw CRDs for EC deployments specifically
