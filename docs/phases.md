@@ -137,3 +137,17 @@ Goal: Capture logs from every app component for offline troubleshooting, plus ru
 Deliverables: troubleshoot.sh support bundle spec with logs collectors and runtime health analyzers, embedded in Helm chart as Secret
 Success: `kubectl support-bundle` generates a tar.gz containing non-empty logs for all 8 components and 10 passing analyzer results
 Built: chart/templates/support-bundle.yaml — Kubernetes Secret with troubleshoot.sh/kind: support-bundle label containing support-bundle-spec aligned with official Replicated troubleshoot.sh examples; 8 dedicated logs collectors targeting each component by label selector with `limits:` block (maxLines: 10000, maxAge: 720h, maxBytes: 5000000) matching official sample-supportbundle.yaml structure; `clusterInfo` and `clusterResources` collectors scoped to release namespace for privacy; `http` collector to backend `/health/ready` endpoint testing DB+Redis+S3 connectivity; runtime health analyzers: clusterVersion, nodeResources, deploymentStatus (backend/worker/frontend/beat), statefulsetStatus (postgresql/redis/minio), http (backend health endpoint); verified with `kubectl support-bundle` plugin — generated archive contains non-empty logs for all 8 components (backend 2.3MB, frontend 335KB, sdk 202KB, worker 29KB, postgresql 9KB, beat 9KB, redis 1.4KB, minio 504B) and all 10 analyzers report pass including backend health showing `{"status":"ready","checks":{"database":"ok","redis":"ok","storage":"ok"}}`
+
+**Proof of Acceptance Criteria (2026-05-13):**
+Run `kubectl support-bundle -n bundle-analyzer --interactive=false`. Output: archive generated, all 10 analyzers pass. Extracted log file listing confirms all 8 major components have non-empty log directories:
+```
+  2392072  cluster-resources/pods/logs/.../backend.log          ← app (backend)
+     9284  cluster-resources/pods/logs/.../beat.log             ← app (beat)
+   336166  cluster-resources/pods/logs/.../frontend.log       ← app (frontend)
+    29739  cluster-resources/pods/logs/.../worker.log         ← app (worker)
+   202522  cluster-resources/pods/logs/.../replicated.log     ← operator (sdk)
+      504  cluster-resources/pods/logs/.../minio.log          ← stateful service
+     9049  cluster-resources/pods/logs/.../postgresql.log     ← stateful service
+     1447  cluster-resources/pods/logs/.../redis.log          ← stateful service
+```
+Each collector sets `maxLines: 10000`, `maxAge: 720h`, and `maxBytes: 5000000` per official examples.
