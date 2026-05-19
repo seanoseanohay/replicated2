@@ -515,9 +515,19 @@ export interface LicenseStatus {
   entitlements: Record<string, unknown>;
 }
 
+export interface PublicConfig {
+  allow_registration: boolean;
+}
+
 export const licenseApi = {
   getStatus(): Promise<LicenseStatus> {
     return request<LicenseStatus>("/api/v1/license/status");
+  },
+};
+
+export const appConfigApi = {
+  getPublicConfig(): Promise<PublicConfig> {
+    return request<PublicConfig>("/api/v1/config");
   },
 };
 

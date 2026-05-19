@@ -3,13 +3,13 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from app.api.deps import get_current_user, require_manager
+from app.core.deps import get_current_user, require_admin
 from app.core.logging import get_logger
 from app.models.user import User
 from app.workers.tasks import celery_app, generate_and_upload_support_bundle
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/support-bundles", tags=["support-bundles"])
+router = APIRouter(prefix="/api/v1/support-bundles", tags=["support-bundles"])
 
 
 class SupportBundleRequest(BaseModel):
@@ -32,7 +32,7 @@ class TaskStatusResponse(BaseModel):
 @router.post(
     "",
     response_model=SupportBundleResponse,
-    dependencies=[Depends(require_manager)],
+    dependencies=[Depends(require_admin)],
 )
 async def create_support_bundle(
     request: SupportBundleRequest,

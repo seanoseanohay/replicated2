@@ -38,7 +38,7 @@ spec:
               memory: 32Mi
       containers:
         - name: worker
-          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.worker.image.repository .Values.worker.image.tag) }}"
+          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.worker.image .Values.worker.image.tag) }}"
           imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
           command:
             - /app/entrypoint.sh
@@ -70,5 +70,7 @@ spec:
                 secretKeyRef:
                   name: {{ include "bundle-analyzer.fullname" . }}-secret
                   key: S3_SECRET_KEY
+            - name: REPLICATED_SDK_HOST
+              value: "bundle-analyzer-sdk.{{ .Release.Namespace }}.svc.cluster.local"
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}

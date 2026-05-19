@@ -26,7 +26,7 @@ export default function Navbar() {
             to="/"
             className="text-xl font-bold text-indigo-400 tracking-tight hover:text-indigo-300 transition-colors"
           >
-            Bundle Analyzer
+            Bundle Analyzer <span className="text-xs font-normal text-green-400 ml-1 bg-green-900/30 px-1.5 py-0.5 rounded border border-green-700/50">v0.3.18</span>
           </Link>
           <Link
             to="/dashboard"

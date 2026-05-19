@@ -1,4 +1,9 @@
 appSlug: bundle-analyzer
 charts:
   - path: ./chart
-manifests: []
+manifests:
+  - ./embedded-cluster-config.yaml
+  - ./helmchart.yaml
+  - ./application.yaml
+  - ./config.yaml
+  - ./lintconfig.yaml

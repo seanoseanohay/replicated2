@@ -43,6 +43,16 @@ stringData:
             get:
               url: "http://{{ include "bundle-analyzer.fullname" . }}-backend.{{ .Release.Namespace }}.svc.cluster.local:8000/health/ready"
               timeout: 10s
+        - http:
+            collectorName: app-info
+            get:
+              url: "http://{{ include "bundle-analyzer.fullname" . }}-sdk.{{ .Release.Namespace }}.svc.cluster.local:3000/api/v1/app/info"
+              timeout: 10s
+        - http:
+            collectorName: license
+            get:
+              url: "http://{{ include "bundle-analyzer.fullname" . }}-sdk.{{ .Release.Namespace }}.svc.cluster.local:3000/api/v1/license/info"
+              timeout: 10s
         - logs:
             collectorName: backend-logs
             namespace: "{{ .Release.Namespace }}"

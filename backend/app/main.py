@@ -60,6 +60,33 @@ async def _bootstrap_admin() -> None:
         logger.info("bootstrap_admin_created", email=settings.BOOTSTRAP_ADMIN_EMAIL)
 
 
+async def _bootstrap_notification_defaults() -> None:
+    """Seed the default tenant's notification settings once from install defaults."""
+    from sqlalchemy import select as _select
+    from app.core.database import AsyncSessionLocal
+    from app.models.notification_config import NotificationConfig
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            _select(NotificationConfig).where(NotificationConfig.tenant_id == "default")
+        )
+        existing = result.scalar_one_or_none()
+        if existing is not None:
+            return
+        config = NotificationConfig(
+            tenant_id="default",
+            email_enabled=settings.DEFAULT_EMAIL_NOTIFICATIONS_ENABLED,
+            email_recipients=settings.DEFAULT_EMAIL_RECIPIENTS or None,
+            slack_enabled=settings.DEFAULT_SLACK_NOTIFICATIONS_ENABLED,
+            slack_webhook_url=settings.DEFAULT_SLACK_WEBHOOK_URL or None,
+            notify_on_severities=settings.DEFAULT_NOTIFY_ON_SEVERITIES,
+        )
+        db.add(config)
+        await db.flush()
+        await db.commit()
+        logger.info("bootstrap_notification_defaults_created", tenant_id="default")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("startup_begin")
@@ -71,6 +98,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await _bootstrap_admin()
     except Exception as exc:
         logger.warning("bootstrap_admin_failed", error=str(exc))
+    try:
+        await _bootstrap_notification_defaults()
+    except Exception as exc:
+        logger.warning("bootstrap_notification_defaults_failed", error=str(exc))
 
     # Start APScheduler for periodic metrics reporting (backend pod only)
     scheduler: BackgroundScheduler | None = None
@@ -131,6 +162,7 @@ app.add_middleware(
 _LICENSE_ALLOWLIST = {
     "/health",
     "/api/v1/auth",
+    "/api/v1/config",
     "/api/v1/license",
     "/api/v1/updates",
 }
@@ -172,6 +204,7 @@ from app.api.routes.metrics import router as metrics_router  # noqa: E402
 from app.api.routes.license import router as license_router  # noqa: E402
 from app.api.routes.updates import router as updates_router  # noqa: E402
 from app.api.routes.support_bundles import router as support_bundles_router  # noqa: E402
+from app.api.routes.public_config import router as public_config_router  # noqa: E402
 
 app.include_router(health_router)
 app.include_router(auth_router)
@@ -188,3 +221,4 @@ app.include_router(findings_router)
 app.include_router(notifications_router)
 app.include_router(reports_router)
 app.include_router(support_bundles_router)
+app.include_router(public_config_router)

@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { appConfigApi } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 
 type Tab = "signin" | "register";
@@ -15,6 +16,35 @@ export default function LoginPage() {
   const [orgKey, setOrgKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [allowRegistration, setAllowRegistration] = useState<boolean | null>(null);
+  const registrationEnabled = allowRegistration === true;
+
+  useEffect(() => {
+    let active = true;
+    appConfigApi
+      .getPublicConfig()
+      .then((config) => {
+        if (active) {
+          setAllowRegistration(config.allow_registration);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAllowRegistration(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (allowRegistration === false && tab === "register") {
+      setTab("signin");
+      setError(null);
+    }
+  }, [allowRegistration, tab]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,23 +90,25 @@ export default function LoginPage() {
                   ? "border-b-2 border-indigo-500 text-indigo-400"
                   : "text-gray-400 hover:text-gray-200"
               }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => { setTab("register"); setError(null); }}
-              className={`flex-1 pb-3 text-sm font-medium transition-colors ${
-                tab === "register"
-                  ? "border-b-2 border-indigo-500 text-indigo-400"
-                  : "text-gray-400 hover:text-gray-200"
-              }`}
-            >
-              Create Account
-            </button>
+              >
+                Sign In
+              </button>
+            {registrationEnabled && (
+              <button
+                onClick={() => { setTab("register"); setError(null); }}
+                className={`flex-1 pb-3 text-sm font-medium transition-colors ${
+                  tab === "register"
+                    ? "border-b-2 border-indigo-500 text-indigo-400"
+                    : "text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                Create Account
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {tab === "register" && (
+            {registrationEnabled && tab === "register" && (
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -106,6 +138,12 @@ export default function LoginPage() {
                   </p>
                 </div>
               </>
+            )}
+
+            {allowRegistration === false && (
+              <div className="rounded-lg bg-gray-700/60 border border-gray-600 px-3 py-2 text-xs text-gray-300">
+                Account creation is disabled for this install.
+              </div>
             )}
 
             <div>
@@ -160,7 +198,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-gray-600">
-          Bundle Analyzer v0.1.0
+          Bundle Analyzer v0.3.18
         </p>
       </div>
     </div>

@@ -1,0 +1,15 @@
+apiVersion: kots.io/v1beta1
+kind: Application
+metadata:
+  name: bundle-analyzer
+spec:
+  title: Bundle Analyzer
+  icon: data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNjM2NmYxIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6IzRmNDZlNSIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHBvbHlnb24gcG9pbnRzPSIxNiwyIDI4LDkgMjgsMjMgMTYsMzAgNCwyMyA0LDkiCiAgICBmaWxsPSJ1cmwoI2cpIiBzdHJva2U9IiMzNzMwYTMiIHN0cm9rZS13aWR0aD0iMSIvPgogIDxsaW5lIHgxPSIxMCIgeTE9IjEzIiB4Mj0iMjIiIHkyPSIxMyIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8bGluZSB4MT0iMTAiIHkxPSIxNiIgeDI9IjIyIiB5Mj0iMTYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPGxpbmUgeDE9IjEwIiB5MT0iMTkiIHgyPSIxOCIgeTI9IjE5IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K
+  statusInformers:
+    - deployment/bundle-analyzer-backend
+    - deployment/bundle-analyzer-worker
+    - deployment/bundle-analyzer-frontend
+    - statefulset/bundle-analyzer-postgresql
+    - statefulset/bundle-analyzer-redis-master
+    - statefulset/bundle-analyzer-minio
+  graphs: []

@@ -28,7 +28,7 @@ metadata:
   name: "{{ .Release.Name }}-preflight-config"
 stringData:
   preflight.yaml: |
-    apiVersion: troubleshoot.sh/v1beta2
+    apiVersion: troubleshoot.sh/v1beta3
     kind: Preflight
     metadata:
       name: bundle-analyzer-preflights

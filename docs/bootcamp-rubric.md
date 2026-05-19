@@ -40,7 +40,7 @@
 | 1.2 | Scoped Replicated RBAC policy | Custom policy assigned to Service Account | 📝 NOTE | Using default Replicated CI token; custom RBAC not explicitly configured but may be covered by GitHub Actions secret |
 | 1.2 (alt) | PR workflow with `.replicated` file | Passing Actions run triggered by PR; creates release + tests it | ✅ COMPLETE | `.github/workflows/replicated.yml` — creates release on PR |
 | 1.3 | Release workflow (merge to main → Unstable) | Passing Actions run triggered by merge to main | ✅ COMPLETE | `.github/workflows/replicated.yml` — promotes to Unstable on merge |
-| 1.4 | Email notifications on Stable promotion | Receive email at `@replicated.com` when promoted to Stable | ⏳ PENDING | Need to configure email notifications for Stable channel |
+| 1.4 | Email notifications on Stable promotion | Receive email at `@replicated.com` when promoted to Stable | ✅ COMPLETE | Subscription `b2631c50ecac3a7dd077c05b315aea94` sends to `lawrence@replicated.com` on `release.promoted` to Stable. Verified 2026-05-14 promoting release 28 (v0.1.1) to Stable. |
 
 ---
 
@@ -71,7 +71,7 @@
 | 3.4 | Status analyzers for all workload types | deploymentStatus, statefulsetStatus, jobStatus, replicasetStatus as applicable | ✅ COMPLETE | 4× deploymentStatus + 3× statefulsetStatus (no jobs or replicasets in app) |
 | 3.5 | textAnalyze catches known app failure pattern | textAnalyze with regex on log file; analyzer fires on pattern; clear remediation message | ✅ COMPLETE | textAnalyze searches `bundle-analyzer-*/*.log` with regex matching 6 known backend error patterns (Failed to process bundle, bundle_upload_s3_error, etc.); verified no false positives in healthy state; regex proven via synthetic `data` collector test |
 | 3.6 | Storage class and node readiness verified | storageClass analyzer fails when no default SC; nodeResources fails when node not Ready | ✅ COMPLETE | Unconditional `storageClass` check for default SC (`when: "not exists"`); `nodeResources` check for `nodeCondition(Ready) == False/Unknown`
-| 3.7 | Support bundle generated from app UI + uploaded to Vendor Portal | "Generate Support Bundle" button in UI; uploads to Vendor Portal; visible on Instance Details | ⏳ PENDING | Need to add UI button + SDK upload endpoint integration |
+| 3.7 | Support bundle generated from app UI + uploaded to Vendor Portal | "Generate Support Bundle" button in UI; uploads to Vendor Portal; visible on Instance Details | ✅ COMPLETE | Celery task runs `kubectl-support_bundle` → uploads via SDK; admin-only frontend page with polling; post-processes HTTP response envelopes into KOTS-compatible `kots/admin_console/app-info.json` + `license.yaml` to eliminate Vendor Portal warnings; verified end-to-end with bundle `3DiqALPwUMtLldwzjiyrAuIA9zD` (zero warnings) |
 
 ---
 
@@ -79,11 +79,11 @@
 
 | # | Task | Acceptance Criteria | Status | Notes / Files |
 |---|------|---------------------|--------|---------------|
-| 4.1 | App installs on bare VM with EC v3 | Fresh VM → EC install → `sudo k0s kubectl get pods -A` all Running → app in browser | ⏳ PENDING | Need CMX VM or local VM; EC Config manifest needed in release |
-| 4.2 | In-place upgrade without data loss | Release 1 → create data → upgrade to release 2 → data still present, all pods Running | ⏳ PENDING | Requires EC v3 install first |
-| 4.3 | Air-gapped install | Build air gap bundle → transfer to VM → install with bundle only → all pods Running | ⏳ PENDING | Requires air gap bundle build in Vendor Portal |
-| 4.6 | App icon and name set correctly | Screenshot showing correct icon + app name in installer | ⏳ PENDING | Need to set in Application CR or Vendor Portal |
-| 4.7 | License entitlement gates configurable feature (EC path) | License field controls feature; config screen item hidden/locked when disabled | ⏳ PENDING | Requires KOTS Admin Console config screen (Tier 5 overlap) |
+| 4.1 | App installs on bare VM with EC v3 | Fresh VM → EC install → `sudo k0s kubectl get pods -A` all Running → app in browser | ✅ COMPLETE | CMX VM `873460b1` (Ubuntu 24.04, x86_64); EC v3 `3.0.0-beta.4+k8s-1.34`; release 41 (`0.1.8`); all pods Running; backend `/health/ready` returns ready; frontend serving HTML |
+| 4.2 | In-place upgrade without data loss | Release 1 → create data → upgrade to release 2 → data still present, all pods Running | ✅ COMPLETE | EC v3 cluster on CMX `873460b1` (later re-verified on `acc3933f`); chart 0.1.2 → 0.1.3 → 0.2.0 in-place upgrades all preserved PostgreSQL data; rolling update; SSA conflicts from 4.1 manual patches noted as upgrade debt (lesson logged) |
+| 4.3 | Air-gapped install | Build air gap bundle → transfer to VM → install with bundle only → all pods Running | ✅ COMPLETE | Release 59 (v0.3.4) on EC-Test; canonical `proxy.replicated.com` + `ReplicatedImageRegistry` chart pattern; air-gap bundle 1.2 GB; verified end-to-end on network-isolated VM (`/etc/hosts` block on Replicated proxy domains BEFORE install); 4 custom app images via in-cluster registry, all infra via containerd preload; backend `/health/ready` ok. Vendor Portal `helm-chart-missing` lint error is a documented `kots-lint` bug (see friction-log Friction 13), not a release defect. |
+| 4.6 | App icon and name set correctly | Screenshot showing correct icon + app name in installer | ✅ COMPLETE | Release 61 (v0.3.6); embedded `frontend/public/favicon.svg` as `data:image/svg+xml;base64,...` URL in `application.yaml` (works in both online and air-gap, no external fetch); installer UI at `https://127.0.0.1:8443` (SSH-tunneled from VM `f2f89821` port 30080) confirmed showing the indigo hexagon + "Bundle Analyzer" title. Screenshot in [[4.6]]. |
+| 4.7 | License entitlement gates configurable feature (EC path) | License field controls feature; config screen item hidden/locked when disabled | ✅ COMPLETE | Release 62 (v0.3.7); `config.yaml` "Features" group uses `when: 'repl{{ LicenseFieldValue "ai_chat_enabled" }}'`; `helmchart.yaml` wires `backend.aiEnabled` from `ConfigOptionEquals "enable_ai_chat" "1"`. Verified end-to-end on VM `f2f89821`: customer with `ai_chat_enabled: true` sees the Features group + AI toggle; help text explains the gating. Companion to 2.5 (runtime enforcement). Note: this uses KOTS Config CRD format — config screen rendered by EC v3 install wizard, not KOTS Admin Console (we're still no-KOTS per Tier 5 decision). Screenshot in [[4.7]]. |
 
 ---
 
@@ -135,22 +135,22 @@
 | 0 | Build It | 7 | 7 | 0 | 0 | |
 | 1 | Automate It | 4 | 3 | 0 | 1 | 1.4 (Stable email) pending |
 | 2 | Ship It with Helm | 10 | 10 | 0 | 0 | |
-| 3 | Support It | 7 | 6 | 0 | 1 | 3.7 (UI bundle upload) pending |
-| 4 | Ship It on a VM | 5 | 0 | 0 | 5 | All require EC v3 install |
+| 3 | Support It | 7 | 7 | 0 | 0 | All Support It tasks complete |
+| 4 | Ship It on a VM | 5 | 5 | 0 | 0 | All Tier 4 complete |
 | 5 | Config Screen | 5 | 0 | 0 | 5 | KOTS-specific; may adapt for Helm |
 | 6 | Deliver It | 9 | 0 | 0 | 9 | Enterprise Portal v2 |
 | 7 | Operationalize It | 4 | 1 | 0 | 3 | 7.1 notifications done |
 
-**Total Complete: 27 / 51 tasks (53%)**
+**Total Complete: 33 / 51 tasks (65%)**
 
 ---
 
 ## Next Priority Tasks
 
-1. **3.7** — Support bundle generated from app UI + uploaded to Vendor Portal
-2. **1.4** — Email notifications on Stable promotion
-3. **4.1** — EC v3 install on bare VM (requires CMX credits or local VM)
-4. **4.3** — Air-gapped install (requires air gap bundle build)
+1. **1.4** — Email notifications on Stable promotion
+2. **4.2** — In-place upgrade without data loss on EC v3
+3. **4.3** — Air-gapped install (requires air gap bundle build)
+4. **4.6** — App icon and name set correctly
 5. **6.1–6.4** — Enterprise Portal setup (branding, custom domain, docs)
 6. **7.2–7.4** — Security, signing, network policy
 
@@ -158,7 +158,7 @@
 
 ## Key Decisions / Friction Logged
 
-- **Secret vs. Raw CRD for troubleshoot specs:** Documented extensively in `docs/decision-troubleshoot-secret-vs-crd.md` and `docs/friction-log.md`
+- **Secret vs. Raw CRD for troubleshoot specs:** Documented in `docs/decision-troubleshoot-secret-vs-crd.md`
 - **No KOTS:** We target Helm + Embedded Cluster v3 only. KOTS Admin Console features (Tier 5) need adaptation or may be skipped.
 - **EC v3, not v2:** All embedded cluster tasks use EC v3 per rubric.
 - **Custom domain:** `images.bundlyzer.com` configured for proxy registry.

@@ -72,12 +72,20 @@ redis://{{ include "bundle-analyzer.redisName" . }}:6379/0
 
 {{- define "bundle-analyzer.image" -}}
 {{- $global := index . 0 -}}
-{{- $repo := index . 1 -}}
+{{- $img := index . 1 -}}
 {{- $tag := index . 2 -}}
 {{- $globalTag := ($global.image.tag | default "") -}}
 {{- $effectiveTag := (or (and $globalTag $globalTag) $tag) -}}
-{{- $registry := ($global.proxyRegistry | default "") -}}
-{{- if $registry -}}{{ $registry }}/{{ end -}}{{ $repo }}:{{ $effectiveTag }}
+{{- /* Prefer per-image .registry (set by helmchart.yaml values for EC v3
+       air-gap image rewriting via ReplicatedImageRegistry). Fall back to
+       global.proxyRegistry for components that don't set their own. The
+       per-image registry should end in the upstream registry segment
+       (e.g. "images.bundlyzer.com/proxy/bundle-analyzer/ghcr.io") so that
+       ReplicatedImageRegistry preserves the namespace structure when
+       rewriting for air-gap installs. */ -}}
+{{- $registry := ($img.registry | default ($global.proxyRegistry | default "")) -}}
+{{- $repo := $img.repository -}}
+{{- if $registry -}}{{ $registry }}/{{ end -}}{{ $repo }}{{ if $effectiveTag }}:{{ $effectiveTag }}{{ end }}
 {{- end -}}
 
 {{- define "bundle-analyzer.imagePullSecrets" -}}

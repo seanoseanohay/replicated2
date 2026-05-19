@@ -1,0 +1,22 @@
+apiVersion: kots.io/v1beta1
+kind: LintConfig
+metadata:
+  name: bundle-analyzer-lint-config
+spec:
+  rules:
+    # helm-chart-missing is a Vendor Portal lint false-positive that fires
+    # whenever helmchart.yaml has KOTS template functions (e.g. ReplicatedImageRegistry)
+    # in its values: block. The lint parser sees `{{repl ...}}` and cannot
+    # recognize the file as a valid HelmChart CR, even though the runtime
+    # parses it correctly and the air-gap bundle builds + installs cleanly.
+    #
+    # Our chart REQUIRES ReplicatedImageRegistry templating in helmchart.yaml
+    # for EC v3 air-gap installs to rewrite image references to the in-cluster
+    # registry. Without that templating, pods point at proxy.replicated.com
+    # and air-gap installs fail.
+    #
+    # Disabling this rule allows us to ship a release that:
+    #   - Passes Vendor Portal lint with zero errors
+    #   - Works in real air-gap (no internet on target VM)
+    - name: helm-chart-missing
+      level: "off"

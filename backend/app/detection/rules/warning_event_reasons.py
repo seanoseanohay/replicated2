@@ -75,6 +75,20 @@ class WarningEventReasonsRule(BaseRule):
 
     def evaluate(self, bundle_id: uuid.UUID, session: Session) -> list[Finding]:
         findings = []
+
+        # Load current pods from the bundle to filter historical events
+        pod_result = session.execute(
+            select(Evidence).where(
+                Evidence.bundle_id == bundle_id,
+                Evidence.kind == "Pod",
+            )
+        )
+        current_pods = {
+            (p.namespace or "default", p.raw_data.get("metadata", {}).get("name", ""))
+            for p in pod_result.scalars().all()
+            if p.raw_data
+        }
+
         result = session.execute(
             select(Evidence).where(
                 Evidence.bundle_id == bundle_id,
@@ -99,6 +113,11 @@ class WarningEventReasonsRule(BaseRule):
                 obj_name = involved.get("name", "unknown")
                 obj_ref = f"{obj_kind.lower()}/{obj_name}"
                 ns = event.namespace or raw.get("metadata", {}).get("namespace", "default")
+
+                # Skip events for pods that no longer exist — they're historical
+                if obj_kind == "Pod" and (ns, obj_name) not in current_pods:
+                    continue
+
                 reason_data[reason].append((event.id, obj_ref, ns))
             except Exception:
                 continue

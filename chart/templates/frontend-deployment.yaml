@@ -35,7 +35,7 @@ spec:
               memory: 32Mi
       containers:
         - name: frontend
-          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.frontend.image.repository .Values.frontend.image.tag) }}"
+          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.frontend.image .Values.frontend.image.tag) }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
             - containerPort: 3000

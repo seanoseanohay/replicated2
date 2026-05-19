@@ -389,7 +389,7 @@ def generate_and_upload_support_bundle(self, namespace: str, spec_secret: str) -
     sdk_host = os.environ.get("REPLICATED_SDK_HOST", "bundle-analyzer-sdk")
     sdk_url = f"http://{sdk_host}:3000/api/v1/supportbundle"
 
-    log.info("support_bundle_generation_start", spec_secret=spec_secret, namespace=namespace)
+    log.info("support_bundle_generation_start spec_secret=%s namespace=%s", spec_secret, namespace)
 
     try:
         # 1. Generate support bundle
@@ -407,9 +407,9 @@ def generate_and_upload_support_bundle(self, namespace: str, spec_secret: str) -
         )
         if result.returncode != 0:
             log.error(
-                "support_bundle_generation_failed",
-                stdout=result.stdout,
-                stderr=result.stderr,
+                "support_bundle_generation_failed stdout=%s stderr=%s",
+                result.stdout,
+                result.stderr,
             )
             raise self.retry(
                 exc=RuntimeError(
@@ -419,9 +419,114 @@ def generate_and_upload_support_bundle(self, namespace: str, spec_secret: str) -
             )
 
         bundle_size = os.path.getsize(bundle_path)
-        log.info("support_bundle_generated", path=bundle_path, size=bundle_size)
+        log.info("support_bundle_generated path=%s size=%d", bundle_path, bundle_size)
 
-        # 2. Upload to SDK
+        # 2. Post-process bundle for Vendor Portal compatibility
+        import glob
+        import json
+        import tarfile
+        import shutil
+        import yaml
+
+        work_dir = tempfile.mkdtemp(prefix="sb-post-")
+        fixed_path = f"/tmp/support-bundle-fixed-{uuid_mod.uuid4().hex}.tar.gz"
+        try:
+            with tarfile.open(bundle_path, "r:gz") as tar_in:
+                tar_in.extractall(path=work_dir)
+
+            # Find files anywhere in the extracted tree (bundle may have a root dir)
+            def _find(name: str) -> str | None:
+                for p in glob.glob(os.path.join(work_dir, "**", name), recursive=True):
+                    if os.path.isfile(p):
+                        return p
+                return None
+
+            # Fix app-info.json: extract raw body from http response envelope
+            app_info_path = _find("app-info.json")
+            instance_id = None
+            if app_info_path:
+                with open(app_info_path) as f:
+                    app_info = json.load(f)
+                body = app_info.get("response", {}).get("body")
+                if body:
+                    with open(app_info_path, "w") as f:
+                        f.write(body)
+                    log.info("support_bundle_postprocessed app_info extracted raw body")
+                    # grab instance_id for kots compat below
+                    try:
+                        parsed_app_info = json.loads(body)
+                        instance_id = parsed_app_info.get("instanceID") or parsed_app_info.get("instance_id")
+                    except Exception:
+                        pass
+
+            # Fix license.json → license.yaml: extract raw body and convert to YAML
+            license_json_path = _find("license.json")
+            license_obj = None
+            if license_json_path:
+                with open(license_json_path) as f:
+                    license_data = json.load(f)
+                body = license_data.get("response", {}).get("body")
+                if body:
+                    license_obj = json.loads(body)
+                    license_yaml_path = os.path.join(
+                        os.path.dirname(license_json_path), "license.yaml"
+                    )
+                    with open(license_yaml_path, "w") as f:
+                        yaml.dump(license_obj, f, default_flow_style=False, sort_keys=False)
+                    os.unlink(license_json_path)
+                    log.info("support_bundle_postprocessed license converted json→yaml")
+
+            # Vendor Portal built-in analyzers expect KOTS-style paths and formats
+            # for license + app-info even on Helm-only apps.  Create the minimal
+            # compat files under kots/admin_console/ so the instance / license
+            # insights resolve rather than warn.
+            bundle_root = None
+            for entry in os.listdir(work_dir):
+                candidate = os.path.join(work_dir, entry)
+                if os.path.isdir(candidate):
+                    bundle_root = candidate
+                    break
+            if bundle_root and instance_id and license_obj:
+                kots_dir = os.path.join(bundle_root, "kots", "admin_console")
+                os.makedirs(kots_dir, exist_ok=True)
+
+                # minimal app-info.json with snake_case field that Vendor Portal looks for
+                kots_app_info = {"instance_id": instance_id}
+                with open(os.path.join(kots_dir, "app-info.json"), "w") as f:
+                    json.dump(kots_app_info, f)
+                log.info("support_bundle_postprocessed added kots/admin_console/app-info.json")
+
+                # KOTS License CRD yaml so Vendor Portal recognises it
+                license_cr = {
+                    "apiVersion": "kots.io/v1beta1",
+                    "kind": "License",
+                    "metadata": {
+                        "name": license_obj.get("customerName", "customer")
+                    },
+                    "spec": license_obj,
+                }
+                with open(os.path.join(kots_dir, "license.yaml"), "w") as f:
+                    yaml.dump(license_cr, f, default_flow_style=False, sort_keys=False)
+                log.info("support_bundle_postprocessed added kots/admin_console/license.yaml")
+
+            with tarfile.open(fixed_path, "w:gz") as tar_out:
+                for root, dirs, files in os.walk(work_dir):
+                    for file in files:
+                        full_path = os.path.join(root, file)
+                        arcname = os.path.relpath(full_path, work_dir)
+                        tar_out.add(full_path, arcname=arcname)
+
+            bundle_path = fixed_path
+            bundle_size = os.path.getsize(bundle_path)
+            log.info("support_bundle_repacked path=%s size=%d", bundle_path, bundle_size)
+        except Exception as pp_exc:
+            log.warning("support_bundle_postprocess_failed error=%s", pp_exc)
+            # Continue with original bundle on post-process failure
+        finally:
+            if os.path.exists(work_dir):
+                shutil.rmtree(work_dir)
+
+        # 3. Upload to SDK
         import httpx
 
         with open(bundle_path, "rb") as f:
@@ -438,9 +543,9 @@ def generate_and_upload_support_bundle(self, namespace: str, spec_secret: str) -
         if response.status_code == 201:
             data = response.json()
             log.info(
-                "support_bundle_uploaded",
-                bundle_id=data.get("bundleId"),
-                slug=data.get("slug"),
+                "support_bundle_uploaded bundle_id=%s slug=%s",
+                data.get("bundleId"),
+                data.get("slug"),
             )
             return {
                 "status": "uploaded",
@@ -449,9 +554,9 @@ def generate_and_upload_support_bundle(self, namespace: str, spec_secret: str) -
             }
         else:
             log.error(
-                "support_bundle_upload_failed",
-                status_code=response.status_code,
-                body=response.text[:500],
+                "support_bundle_upload_failed status_code=%d body=%s",
+                response.status_code,
+                response.text[:500],
             )
             raise self.retry(
                 exc=RuntimeError(
@@ -464,13 +569,13 @@ def generate_and_upload_support_bundle(self, namespace: str, spec_secret: str) -
         log.error("support_bundle_generation_timeout")
         raise self.retry(exc=RuntimeError("Bundle generation timed out"), countdown=30)
     except Exception as exc:
-        log.error("support_bundle_unexpected_error", error=str(exc))
+        log.error("support_bundle_unexpected_error error=%s", exc)
         raise self.retry(exc=exc, countdown=10)
     finally:
         # Clean up temp bundle file
         if os.path.exists(bundle_path):
             os.unlink(bundle_path)
-            log.info("support_bundle_cleaned_up", path=bundle_path)
+            log.info("support_bundle_cleaned_up path=%s", bundle_path)
 
 
 # Make celery_app importable as `app` for the CLI command
