@@ -37,7 +37,7 @@ spec:
               memory: 32Mi
       containers:
         - name: beat
-          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.beat.image .Values.beat.image.tag) }}"
+          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.beat.image (.Values.beat.image.tag | default .Chart.AppVersion)) }}"
           imagePullPolicy: {{ .Values.beat.image.pullPolicy }}
           command:
             - /app/entrypoint.sh

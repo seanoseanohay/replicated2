@@ -38,7 +38,7 @@ spec:
               memory: 32Mi
       containers:
         - name: backend
-          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.backend.image .Values.backend.image.tag) }}"
+          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.backend.image (.Values.backend.image.tag | default .Chart.AppVersion)) }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           ports:
             - containerPort: 8000

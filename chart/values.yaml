@@ -30,7 +30,9 @@ backend:
   image:
     registry: proxy.replicated.com/proxy/bundle-analyzer/ghcr.io
     repository: seanoseanohay/replicated2-backend
-    tag: 0.1.9
+    # Empty tag falls back to .Chart.AppVersion (see _helpers.tpl).
+    # Keep this empty so a single Chart.yaml version bump moves every app image.
+    tag: ""
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -64,7 +66,7 @@ worker:
   image:
     registry: proxy.replicated.com/proxy/bundle-analyzer/ghcr.io
     repository: seanoseanohay/replicated2-worker
-    tag: 0.1.9
+    tag: ""
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -79,7 +81,7 @@ beat:
   image:
     registry: proxy.replicated.com/proxy/bundle-analyzer/ghcr.io
     repository: seanoseanohay/replicated2-beat
-    tag: 0.1.9
+    tag: ""
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -94,7 +96,7 @@ frontend:
   image:
     registry: proxy.replicated.com/proxy/bundle-analyzer/ghcr.io
     repository: seanoseanohay/replicated2-frontend
-    tag: 0.2.0
+    tag: ""
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP

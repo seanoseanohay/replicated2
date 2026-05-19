@@ -38,7 +38,7 @@ spec:
               memory: 32Mi
       containers:
         - name: worker
-          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.worker.image .Values.worker.image.tag) }}"
+          image: "{{ include "bundle-analyzer.image" (list .Values.global .Values.worker.image (.Values.worker.image.tag | default .Chart.AppVersion)) }}"
           imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
           command:
             - /app/entrypoint.sh

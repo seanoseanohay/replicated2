@@ -23,6 +23,45 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Read chart version
+        id: chart-version
+        run: |
+          chart_version=$(awk -F': ' '/^version:/ {print $2; exit}' chart/Chart.yaml)
+          if [[ -z "$chart_version" ]]; then
+            echo "Unable to read version from chart/Chart.yaml"
+            exit 1
+          fi
+          echo "Chart version: ${chart_version}"
+          echo "version=${chart_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse to overwrite an existing semver image tag
+        env:
+          OWNER: ${{ github.repository_owner }}
+          VERSION: ${{ steps.chart-version.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Policy: each chart version is built exactly once. If :$VERSION already
+          # exists in GHCR for any of the backend family images, fail loudly so the
+          # author bumps the patch version instead of silently shipping new bits
+          # under an existing release label.
+          set -e
+          for image in replicated2-backend replicated2-worker replicated2-beat; do
+            url="https://ghcr.io/v2/${OWNER}/${image}/manifests/${VERSION}"
+            token=$(curl -s -u "$OWNER:$GH_TOKEN" \
+              "https://ghcr.io/token?service=ghcr.io&scope=repository:${OWNER}/${image}:pull" \
+              | awk -F'"' '/token/ {print $4; exit}')
+            status=$(curl -s -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer ${token}" \
+              -H 'Accept: application/vnd.oci.image.index.v1+json' \
+              -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' \
+              "$url")
+            if [[ "$status" == "200" ]]; then
+              echo "::error::ghcr.io/${OWNER}/${image}:${VERSION} already exists."
+              echo "Bump chart/Chart.yaml to a new patch version before pushing."
+              exit 1
+            fi
+          done
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -44,10 +83,13 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
+            ghcr.io/${{ github.repository_owner }}/replicated2-backend:${{ steps.chart-version.outputs.version }}
             ghcr.io/${{ github.repository_owner }}/replicated2-backend:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/replicated2-backend:latest
+            ghcr.io/${{ github.repository_owner }}/replicated2-worker:${{ steps.chart-version.outputs.version }}
             ghcr.io/${{ github.repository_owner }}/replicated2-worker:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/replicated2-worker:latest
+            ghcr.io/${{ github.repository_owner }}/replicated2-beat:${{ steps.chart-version.outputs.version }}
             ghcr.io/${{ github.repository_owner }}/replicated2-beat:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/replicated2-beat:latest
 
@@ -57,6 +99,39 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+
+      - name: Read chart version
+        id: chart-version
+        run: |
+          chart_version=$(awk -F': ' '/^version:/ {print $2; exit}' chart/Chart.yaml)
+          if [[ -z "$chart_version" ]]; then
+            echo "Unable to read version from chart/Chart.yaml"
+            exit 1
+          fi
+          echo "Chart version: ${chart_version}"
+          echo "version=${chart_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse to overwrite an existing semver image tag
+        env:
+          OWNER: ${{ github.repository_owner }}
+          VERSION: ${{ steps.chart-version.outputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          image=replicated2-frontend
+          token=$(curl -s -u "$OWNER:$GH_TOKEN" \
+            "https://ghcr.io/token?service=ghcr.io&scope=repository:${OWNER}/${image}:pull" \
+            | awk -F'"' '/token/ {print $4; exit}')
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${token}" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json' \
+            -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' \
+            "https://ghcr.io/v2/${OWNER}/${image}/manifests/${VERSION}")
+          if [[ "$status" == "200" ]]; then
+            echo "::error::ghcr.io/${OWNER}/${image}:${VERSION} already exists."
+            echo "Bump chart/Chart.yaml to a new patch version before pushing."
+            exit 1
+          fi
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -79,5 +154,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
+            ghcr.io/${{ github.repository_owner }}/replicated2-frontend:${{ steps.chart-version.outputs.version }}
             ghcr.io/${{ github.repository_owner }}/replicated2-frontend:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/replicated2-frontend:latest
