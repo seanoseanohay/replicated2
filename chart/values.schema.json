@@ -3,16 +3,28 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "nameOverride": { "type": "string" },
-    "fullnameOverride": { "type": "string" },
+    "nameOverride": {
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "type": "string"
+    },
+    "replicatedLicenseFields": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "imagePullSecrets": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "name": { "type": "string" }
+          "name": {
+            "type": "string"
+          }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "additionalProperties": false
       }
     },
@@ -20,46 +32,56 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "imageRegistry": { "type": "string" },
+        "imageRegistry": {
+          "type": "string"
+        },
         "imagePullSecrets": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "name": { "type": "string" }
+              "name": {
+                "type": "string"
+              }
             },
-            "required": ["name"]
+            "required": [
+              "name"
+            ]
           }
         },
         "image": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "tag": { "type": "string" }
+            "tag": {
+              "type": "string"
+            }
           }
         },
-        "replicated": { "type": "object", "additionalProperties": true },
-        "appEnv": { "type": "string" },
-        "corsAllowedOrigins": { "type": "string" },
-        "secretKey": { "type": "string" },
-        "jwtSecretKey": { "type": "string" },
-        "allowRegistration": { "type": "boolean" },
-        "appBaseUrl": { "type": "string" },
-        "proxyRegistry": { "type": "string" }
-      }
-    },
-    "initContainers": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "image": {
+        "replicated": {
           "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "repository": { "type": "string" },
-            "tag": { "type": "string" },
-            "pullPolicy": { "type": "string" }
-          }
+          "additionalProperties": true
+        },
+        "appEnv": {
+          "type": "string"
+        },
+        "corsAllowedOrigins": {
+          "type": "string"
+        },
+        "secretKey": {
+          "type": "string"
+        },
+        "jwtSecretKey": {
+          "type": "string"
+        },
+        "allowRegistration": {
+          "type": "boolean"
+        },
+        "appBaseUrl": {
+          "type": "string"
+        },
+        "proxyRegistry": {
+          "type": "string"
         }
       }
     },
@@ -71,9 +93,15 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "repository": { "type": "string" },
-            "tag": { "type": "string" },
-            "pullPolicy": { "type": "string" }
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string"
+            }
           }
         }
       }
@@ -82,101 +110,202 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "replicaCount": { "type": "integer", "minimum": 1 },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1
+        },
         "image": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "repository": { "type": "string" },
-            "tag": { "type": "string" },
-            "pullPolicy": { "type": "string" }
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string"
+            },
+            "registry": {
+              "type": "string"
+            }
           }
         },
         "service": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "type": { "type": "string" },
-            "port": { "type": "integer" }
+            "type": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer"
+            }
           }
         },
-        "resources": { "type": "object" },
+        "resources": {
+          "type": "object"
+        },
         "bootstrapAdmin": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "email": { "type": "string" },
-            "password": { "type": "string" }
+            "email": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
           }
         },
-        "aiEnabled": { "type": "boolean" },
-        "aiModel": { "type": "string" },
-        "maxBundleSizeMb": { "type": "integer" },
-        "dbPoolSize": { "type": "integer" },
-        "dbPoolOverflow": { "type": "integer" },
-        "rateLimitUpload": { "type": "string" },
-        "rateLimitAi": { "type": "string" },
-        "metricsEnabled": { "type": "boolean" }
+        "aiEnabled": {
+          "type": "string"
+        },
+        "defaultEmailNotificationsEnabled": {
+          "type": "boolean"
+        },
+        "defaultEmailRecipients": {
+          "type": "string"
+        },
+        "defaultSlackNotificationsEnabled": {
+          "type": "boolean"
+        },
+        "defaultSlackWebhookUrl": {
+          "type": "string"
+        },
+        "defaultNotifyOnSeverities": {
+          "type": "string"
+        },
+        "aiModel": {
+          "type": "string"
+        },
+        "maxBundleSizeMb": {
+          "type": "integer"
+        },
+        "dbPoolSize": {
+          "type": "integer"
+        },
+        "dbPoolOverflow": {
+          "type": "integer"
+        },
+        "rateLimitUpload": {
+          "type": "string"
+        },
+        "rateLimitAi": {
+          "type": "string"
+        },
+        "metricsEnabled": {
+          "type": "boolean"
+        }
       }
     },
     "worker": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "replicaCount": { "type": "integer", "minimum": 1 },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1
+        },
         "image": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "repository": { "type": "string" },
-            "tag": { "type": "string" },
-            "pullPolicy": { "type": "string" }
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string"
+            },
+            "registry": {
+              "type": "string"
+            }
           }
         },
-        "resources": { "type": "object" }
+        "resources": {
+          "type": "object"
+        }
       }
     },
     "beat": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "replicaCount": { "type": "integer", "minimum": 1 },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1
+        },
         "image": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "repository": { "type": "string" },
-            "tag": { "type": "string" },
-            "pullPolicy": { "type": "string" }
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string"
+            },
+            "registry": {
+              "type": "string"
+            }
           }
         },
-        "resources": { "type": "object" }
+        "resources": {
+          "type": "object"
+        }
       }
     },
     "frontend": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "replicaCount": { "type": "integer", "minimum": 1 },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1
+        },
         "image": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "repository": { "type": "string" },
-            "tag": { "type": "string" },
-            "pullPolicy": { "type": "string" }
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string"
+            },
+            "registry": {
+              "type": "string"
+            }
           }
         },
         "service": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "type": { "type": "string" },
-            "port": { "type": "integer" }
+            "type": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer"
+            }
           }
         },
-        "backendUrl": { "type": "string" },
-        "resources": { "type": "object" }
+        "backendUrl": {
+          "type": "string"
+        },
+        "resources": {
+          "type": "object"
+        }
       }
     },
     "postgresql": {
@@ -187,18 +316,24 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "host": { "type": "string" },
-        "port": { "type": "integer" },
-        "username": { "type": "string" },
-        "password": { "type": "string" },
-        "database": { "type": "string" }
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        }
       }
     },
     "redis": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "bundle-analyzer-sdk": {
       "type": "object",
       "additionalProperties": true
     },
@@ -210,70 +345,116 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
         "image": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "repository": { "type": "string" },
-            "tag": { "type": "string" }
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            }
           }
         },
-        "accessKey": { "type": "string" },
-        "secretKey": { "type": "string" },
-        "bucket": { "type": "string" },
+        "accessKey": {
+          "type": "string"
+        },
+        "secretKey": {
+          "type": "string"
+        },
+        "bucket": {
+          "type": "string"
+        },
         "persistence": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "enabled": { "type": "boolean" },
-            "size": { "type": "string" },
-            "storageClassName": { "type": "string" }
+            "enabled": {
+              "type": "boolean"
+            },
+            "size": {
+              "type": "string"
+            },
+            "storageClassName": {
+              "type": "string"
+            }
           }
         },
-        "resources": { "type": "object" }
+        "resources": {
+          "type": "object"
+        }
       }
     },
     "ingress": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "enabled": { "type": "boolean" },
-        "className": { "type": "string" },
+        "enabled": {
+          "type": "boolean"
+        },
+        "className": {
+          "type": "string"
+        },
         "annotations": {
           "type": "object",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "certManager": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "enabled": { "type": "boolean" },
-            "clusterIssuer": { "type": "string" }
+            "enabled": {
+              "type": "boolean"
+            },
+            "clusterIssuer": {
+              "type": "string"
+            }
           }
         },
-        "generateSelfSignedCert": { "type": "boolean" },
-        "regenerateSelfSignedCert": { "type": "boolean" },
+        "generateSelfSignedCert": {
+          "type": "boolean"
+        },
+        "regenerateSelfSignedCert": {
+          "type": "boolean"
+        },
         "hosts": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "host": { "type": "string" },
+              "host": {
+                "type": "string"
+              },
               "paths": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
                   "properties": {
-                    "path": { "type": "string" },
-                    "pathType": { "type": "string" }
+                    "path": {
+                      "type": "string"
+                    },
+                    "pathType": {
+                      "type": "string"
+                    }
                   },
-                  "required": ["path", "pathType"]
+                  "required": [
+                    "path",
+                    "pathType"
+                  ]
                 }
               }
             },
-            "required": ["host"]
+            "required": [
+              "host"
+            ]
           }
         },
         "tls": {

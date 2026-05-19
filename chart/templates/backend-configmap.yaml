@@ -9,8 +9,13 @@ data:
   CORS_ALLOWED_ORIGINS: {{ .Values.global.corsAllowedOrigins | quote }}
   S3_ENDPOINT_URL: http://{{ include "bundle-analyzer.minioName" . }}:9000
   S3_BUCKET_NAME: {{ .Values.minio.bucket | quote }}
-  AI_ENABLED: {{ ternary "true" "false" .Values.backend.aiEnabled | quote }}
+  AI_ENABLED: {{ .Values.backend.aiEnabled | toString | quote }}
   AI_MODEL: {{ .Values.backend.aiModel | quote }}
+  DEFAULT_EMAIL_NOTIFICATIONS_ENABLED: {{ .Values.backend.defaultEmailNotificationsEnabled | toString | quote }}
+  DEFAULT_EMAIL_RECIPIENTS: {{ .Values.backend.defaultEmailRecipients | quote }}
+  DEFAULT_SLACK_NOTIFICATIONS_ENABLED: {{ .Values.backend.defaultSlackNotificationsEnabled | toString | quote }}
+  DEFAULT_SLACK_WEBHOOK_URL: {{ .Values.backend.defaultSlackWebhookUrl | quote }}
+  DEFAULT_NOTIFY_ON_SEVERITIES: {{ .Values.backend.defaultNotifyOnSeverities | quote }}
   MAX_BUNDLE_SIZE_MB: {{ .Values.backend.maxBundleSizeMb | quote }}
   DB_POOL_SIZE: {{ .Values.backend.dbPoolSize | quote }}
   DB_POOL_OVERFLOW: {{ .Values.backend.dbPoolOverflow | quote }}

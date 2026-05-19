@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     ALLOW_REGISTRATION: bool = True
     BOOTSTRAP_ADMIN_EMAIL: str = ""
     BOOTSTRAP_ADMIN_PASSWORD: str = ""
+    DEFAULT_EMAIL_NOTIFICATIONS_ENABLED: bool = False
+    DEFAULT_EMAIL_RECIPIENTS: str = ""
+    DEFAULT_SLACK_NOTIFICATIONS_ENABLED: bool = False
+    DEFAULT_SLACK_WEBHOOK_URL: str = ""
+    DEFAULT_NOTIFY_ON_SEVERITIES: str = "critical,high"
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""

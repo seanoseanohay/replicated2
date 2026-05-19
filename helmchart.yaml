@@ -1,0 +1,59 @@
+apiVersion: kots.io/v1beta2
+kind: HelmChart
+metadata:
+  name: bundle-analyzer
+spec:
+  chart:
+    name: bundle-analyzer
+    chartVersion: 0.3.21
+    releaseName: bundle-analyzer
+  helmVersion: v3
+  useHelmInstall: true
+  weight: 0
+  builder:
+    postgresql:
+      enabled: true
+    redis:
+      enabled: true
+    minio:
+      enabled: true
+  # EC v3 air-gap image rewriting. ReplicatedImageRegistry rewrites the
+  # registry portion at install time:
+  #   - Online installs: keeps proxy.replicated.com (Replicated rewrites to
+  #     customer's custom proxy domain like images.bundlyzer.com)
+  #   - Air-gap installs: rewrites to <LocalRegistryHost>/<namespace>
+  # The chart's bundle-analyzer.image helper concatenates registry/repo:tag
+  # so a single template per image covers the full image reference.
+  #
+  # NOTE: This triggers a `helm-chart-missing` lint false-positive in Vendor
+  # Portal. Suppressed via lintconfig.yaml. The runtime parses these
+  # templates correctly; only the static lint can't.
+  values:
+    global:
+      allowRegistration: {{repl ConfigOptionEquals "allow_registration" "1" }}
+    postgresql:
+      enabled: {{repl ConfigOptionEquals "postgresql_mode" "embedded" }}
+    externalPostgresql:
+      host: '{{repl ConfigOption "external_postgresql_host" }}'
+      port: {{repl ConfigOption "external_postgresql_port" | ParseInt }}
+      username: '{{repl ConfigOption "external_postgresql_username" }}'
+      password: '{{repl ConfigOption "external_postgresql_password" }}'
+      database: '{{repl ConfigOption "external_postgresql_database" }}'
+    backend:
+      aiEnabled: '{{repl LicenseFieldValue "ai_chat_enabled" }}'
+      defaultEmailNotificationsEnabled: {{repl ConfigOptionEquals "default_email_notifications_enabled" "1" }}
+      defaultEmailRecipients: '{{repl ConfigOption "default_email_recipients" }}'
+      defaultSlackNotificationsEnabled: {{repl ConfigOptionEquals "default_slack_notifications_enabled" "1" }}
+      defaultSlackWebhookUrl: '{{repl ConfigOption "default_slack_webhook_url" }}'
+      defaultNotifyOnSeverities: '{{repl ConfigOption "default_notify_on_severities" }}'
+      image:
+        registry: '{{repl ReplicatedImageRegistry (HelmValue ".backend.image.registry") }}'
+    worker:
+      image:
+        registry: '{{repl ReplicatedImageRegistry (HelmValue ".worker.image.registry") }}'
+    beat:
+      image:
+        registry: '{{repl ReplicatedImageRegistry (HelmValue ".beat.image.registry") }}'
+    frontend:
+      image:
+        registry: '{{repl ReplicatedImageRegistry (HelmValue ".frontend.image.registry") }}'

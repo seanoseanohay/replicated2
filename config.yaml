@@ -1,0 +1,98 @@
+apiVersion: kots.io/v1beta1
+kind: Config
+metadata:
+  name: bundle-analyzer-config
+spec:
+  groups:
+    - name: general
+      title: General
+      items:
+        - name: hostname
+          title: Hostname
+          type: text
+          default: "bundle-analyzer.local"
+        - name: allow_registration
+          title: Allow User Registration
+          help_text: |
+            When enabled, new users can create their own accounts from the login screen.
+            When disabled, only existing users can sign in.
+          type: bool
+          default: "1"
+
+    - name: database
+      title: Database
+      items:
+        - name: postgresql_mode
+          title: PostgreSQL Mode
+          help_text: |
+            Choose Embedded PostgreSQL to use the bundled database in this install.
+            Choose External PostgreSQL to connect Bundle Analyzer to your own database.
+          type: radio
+          default: embedded
+          items:
+            - name: embedded
+              title: Embedded PostgreSQL
+            - name: external
+              title: External PostgreSQL
+
+    - name: external_database
+      title: External PostgreSQL Connection
+      when: repl{{ ConfigOptionEquals "postgresql_mode" "external" }}
+      items:
+        - name: external_postgresql_host
+          title: Host
+          type: text
+          help_text: PostgreSQL hostname or IP address
+        - name: external_postgresql_port
+          title: Port
+          type: text
+          default: "5432"
+          help_text: PostgreSQL TCP port
+        - name: external_postgresql_username
+          title: Username
+          type: text
+        - name: external_postgresql_password
+          title: Password
+          type: password
+        - name: external_postgresql_database
+          title: Database
+          type: text
+
+    - name: notifications
+      title: Notifications
+      items:
+        - name: default_email_notifications_enabled
+          title: Enable Email Notifications by Default
+          help_text: |
+            Seed the first tenant's notification settings with email alerts
+            enabled when the app starts.
+          type: bool
+          default: "0"
+        - name: default_email_recipients
+          title: Default Email Recipients
+          help_text: |
+            Optional comma-separated email recipients to prefill in the
+            Notification Settings page.
+          type: text
+          default: ""
+        - name: default_slack_notifications_enabled
+          title: Enable Slack Notifications by Default
+          help_text: |
+            Seed the first tenant's notification settings with Slack alerts
+            enabled when the app starts.
+          type: bool
+          default: "0"
+        - name: default_slack_webhook_url
+          title: Default Slack Webhook URL
+          help_text: |
+            Optional Slack webhook URL to prefill in the Notification Settings
+            page.
+          type: text
+          default: ""
+        - name: default_notify_on_severities
+          title: Default Notify-On Severities
+          help_text: |
+            Comma-separated severities to prefill in the Notification Settings
+            page.
+          type: text
+          default: "critical,high"

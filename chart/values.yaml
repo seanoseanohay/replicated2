@@ -28,8 +28,9 @@ initContainers:
 backend:
   replicaCount: 1
   image:
-    repository: ghcr.io/seanoseanohay/replicated2-backend
-    tag: latest
+    registry: proxy.replicated.com/proxy/bundle-analyzer/ghcr.io
+    repository: seanoseanohay/replicated2-backend
+    tag: 0.1.9
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -44,8 +45,13 @@ backend:
   bootstrapAdmin:
     email: ""
     password: ""
-  aiEnabled: false
+  aiEnabled: "false"
   aiModel: claude-haiku-4-5-20251001
+  defaultEmailNotificationsEnabled: false
+  defaultEmailRecipients: ""
+  defaultSlackNotificationsEnabled: false
+  defaultSlackWebhookUrl: ""
+  defaultNotifyOnSeverities: critical,high
   maxBundleSizeMb: 500
   dbPoolSize: 5
   dbPoolOverflow: 10
@@ -56,8 +62,9 @@ backend:
 worker:
   replicaCount: 1
   image:
-    repository: ghcr.io/seanoseanohay/replicated2-worker
-    tag: latest
+    registry: proxy.replicated.com/proxy/bundle-analyzer/ghcr.io
+    repository: seanoseanohay/replicated2-worker
+    tag: 0.1.9
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -70,8 +77,9 @@ worker:
 beat:
   replicaCount: 1
   image:
-    repository: ghcr.io/seanoseanohay/replicated2-beat
-    tag: latest
+    registry: proxy.replicated.com/proxy/bundle-analyzer/ghcr.io
+    repository: seanoseanohay/replicated2-beat
+    tag: 0.1.9
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -84,8 +92,9 @@ beat:
 frontend:
   replicaCount: 1
   image:
-    repository: ghcr.io/seanoseanohay/replicated2-frontend
-    tag: latest
+    registry: proxy.replicated.com/proxy/bundle-analyzer/ghcr.io
+    repository: seanoseanohay/replicated2-frontend
+    tag: 0.2.0
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -195,12 +204,15 @@ ingress:
           pathType: Prefix
   tls: []
 
-bundle-analyzer-sdk:
+replicatedLicenseFields:
+  aiChatEnabled: "false"
+
+replicated:
+  nameOverride: bundle-analyzer-sdk
   image:
     registry: proxy.replicated.com
     repository: library/replicated-sdk-image
     tag: "1.19.3"
   integration:
     enabled: false
-  existingSecret:
-    name: "bundle-analyzer-license"
+    licenseID: ""

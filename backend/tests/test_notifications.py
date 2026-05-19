@@ -112,6 +112,27 @@ async def test_get_config_returns_existing_for_admin(
 
 
 @pytest.mark.asyncio
+async def test_get_config_uses_install_defaults_when_missing(client, admin_notif):
+    headers = _token(admin_notif)
+    with (
+        patch("app.api.routes.notifications.settings.DEFAULT_EMAIL_NOTIFICATIONS_ENABLED", True),
+        patch("app.api.routes.notifications.settings.DEFAULT_EMAIL_RECIPIENTS", "ops@example.com"),
+        patch("app.api.routes.notifications.settings.DEFAULT_SLACK_NOTIFICATIONS_ENABLED", True),
+        patch("app.api.routes.notifications.settings.DEFAULT_SLACK_WEBHOOK_URL", "https://hooks.slack.com/default"),
+        patch("app.api.routes.notifications.settings.DEFAULT_NOTIFY_ON_SEVERITIES", "critical,high,medium"),
+    ):
+        resp = await client.get("/api/v1/notifications/config", headers=headers)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["email_enabled"] is True
+    assert data["email_recipients"] == "ops@example.com"
+    assert data["slack_enabled"] is True
+    assert data["slack_webhook_url"] == "https://hooks.slack.com/default"
+    assert data["notify_on_severities"] == "critical,high,medium"
+
+
+@pytest.mark.asyncio
 async def test_notify_bundle_findings_calls_send_functions():
     """notify_bundle_findings calls email and slack when enabled."""
     from app.services.notifications import notify_bundle_findings

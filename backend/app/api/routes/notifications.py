@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.deps import get_tenant_id, require_admin
 from app.core.logging import get_logger
@@ -32,9 +33,11 @@ async def get_notification_config(
         config = NotificationConfig(
             id=uuid.uuid4(),
             tenant_id=tenant_id,
-            email_enabled=False,
-            slack_enabled=False,
-            notify_on_severities="critical,high",
+            email_enabled=settings.DEFAULT_EMAIL_NOTIFICATIONS_ENABLED,
+            email_recipients=settings.DEFAULT_EMAIL_RECIPIENTS or None,
+            slack_enabled=settings.DEFAULT_SLACK_NOTIFICATIONS_ENABLED,
+            slack_webhook_url=settings.DEFAULT_SLACK_WEBHOOK_URL or None,
+            notify_on_severities=settings.DEFAULT_NOTIFY_ON_SEVERITIES,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
