@@ -2,8 +2,8 @@ apiVersion: v2
 name: bundle-analyzer
 description: Helm chart for the Bundle Analyzer application
 type: application
-version: 0.3.23
-appVersion: "0.3.23"
+version: 0.3.24
+appVersion: "0.3.24"
 dependencies:
   - name: postgresql
     version: ">=16.0.0 <17.0.0"

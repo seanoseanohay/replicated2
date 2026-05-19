@@ -111,6 +111,20 @@ jobs:
           echo "Chart version: ${chart_version}"
           echo "version=${chart_version}" >> "$GITHUB_OUTPUT"
 
+      - name: Verify frontend/package.json version matches chart
+        env:
+          CHART_VERSION: ${{ steps.chart-version.outputs.version }}
+        run: |
+          # Frontend embeds package.json version via Vite's __APP_VERSION__ define.
+          # If this drifts from chart/Chart.yaml, the navbar shows a different
+          # version than the release label.
+          pkg_version=$(node -p "require('./frontend/package.json').version")
+          if [[ "$pkg_version" != "$CHART_VERSION" ]]; then
+            echo "::error::frontend/package.json version ($pkg_version) != chart/Chart.yaml version ($CHART_VERSION)."
+            echo "Bump both together so the navbar reflects the release label."
+            exit 1
+          fi
+
       - name: Refuse to overwrite an existing semver image tag
         env:
           OWNER: ${{ github.repository_owner }}

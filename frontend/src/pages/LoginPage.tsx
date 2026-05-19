@@ -198,7 +198,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-gray-600">
-          Bundle Analyzer v0.3.18
+          Bundle Analyzer v{__APP_VERSION__}
         </p>
       </div>
     </div>

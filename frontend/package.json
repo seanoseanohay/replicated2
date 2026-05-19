@@ -1,6 +1,7 @@
 {
   "name": "bundle-analyzer-frontend",
-  "version": "0.1.0",
+  "version": "0.3.24",
+  "//version-policy": "Must equal chart/Chart.yaml `version`. Enforced by .github/workflows/images.yml.",
   "private": true,
   "type": "module",
   "scripts": {

@@ -36,7 +36,7 @@ export default function Layout() {
       </main>
 
       <footer className="border-t border-gray-200 text-center text-xs text-gray-400 py-4">
-        Bundle Analyzer v0.3.18
+        Bundle Analyzer v{__APP_VERSION__}
       </footer>
     </div>
   );
