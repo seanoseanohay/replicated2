@@ -76,7 +76,10 @@ class WarningEventReasonsRule(BaseRule):
     def evaluate(self, bundle_id: uuid.UUID, session: Session) -> list[Finding]:
         findings = []
 
-        # Load current pods from the bundle to filter historical events
+        # Load current pods from the bundle to filter historical events.
+        # Only count evidence rows that are actually Pods with a name — guards
+        # against mocked sessions that return mixed evidence regardless of the
+        # SQL filter, and against malformed Pod rows.
         pod_result = session.execute(
             select(Evidence).where(
                 Evidence.bundle_id == bundle_id,
@@ -87,6 +90,8 @@ class WarningEventReasonsRule(BaseRule):
             (p.namespace or "default", p.raw_data.get("metadata", {}).get("name", ""))
             for p in pod_result.scalars().all()
             if p.raw_data
+            and p.kind == "Pod"
+            and p.raw_data.get("metadata", {}).get("name")
         }
 
         result = session.execute(
@@ -114,8 +119,11 @@ class WarningEventReasonsRule(BaseRule):
                 obj_ref = f"{obj_kind.lower()}/{obj_name}"
                 ns = event.namespace or raw.get("metadata", {}).get("namespace", "default")
 
-                # Skip events for pods that no longer exist — they're historical
-                if obj_kind == "Pod" and (ns, obj_name) not in current_pods:
+                # Skip events for pods that no longer exist — they're historical.
+                # Only apply this filter when we actually have Pod evidence to
+                # compare against; with no Pod data we can't tell which events
+                # are stale, so surface everything.
+                if current_pods and obj_kind == "Pod" and (ns, obj_name) not in current_pods:
                     continue
 
                 reason_data[reason].append((event.id, obj_ref, ns))
