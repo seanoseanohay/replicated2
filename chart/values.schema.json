@@ -4,14 +4,17 @@
   "additionalProperties": false,
   "properties": {
     "nameOverride": {
-      "type": "string"
+      "type": "string",
+      "description": "Override the chart name. Used as the prefix for all rendered resource names. Defaults to the chart name `bundle-analyzer`."
     },
     "fullnameOverride": {
-      "type": "string"
+      "type": "string",
+      "description": "Fully override the rendered resource-name prefix, bypassing the chart-name + release-name composition. Use when you need exact control over generated names (rarely needed)."
     },
     "replicatedLicenseFields": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "description": "Object populated by the Replicated platform at install time containing the license fields declared in the Vendor Portal. Not customer-configurable."
     },
     "imagePullSecrets": {
       "type": "array",
@@ -26,14 +29,16 @@
           "name"
         ],
         "additionalProperties": false
-      }
+      },
+      "description": "Image pull secrets attached to every pod in the chart. Bundle Analyzer's default `enterprise-pull-secret` is added automatically when running through the Replicated platform; this list is for additional secrets only."
     },
     "global": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "imageRegistry": {
-          "type": "string"
+          "type": "string",
+          "description": "Optional global registry override for all images. Do NOT set this if any Bitnami subchart is enabled — Bitnami uses `global.imageRegistry` differently and will clobber your subchart image registries. Prefer `global.proxyRegistry` for app images instead."
         },
         "imagePullSecrets": {
           "type": "array",
@@ -47,41 +52,51 @@
             "required": [
               "name"
             ]
-          }
+          },
+          "description": "Image pull secrets propagated to every pod in the chart, including subchart pods (Bitnami honors this via `global.imagePullSecrets`)."
         },
         "image": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
             "tag": {
-              "type": "string"
+              "type": "string",
+              "description": "Optional override that forces a specific tag on every app image (backend, worker, beat, frontend). Leave empty to let each component's `image.tag` fall back to `.Chart.AppVersion`, which is the recommended pattern (release version == image tag)."
             }
           }
         },
         "replicated": {
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": true,
+          "description": "Container for values injected by the Replicated platform at install time (license, dockerconfigjson, etc.). Not customer-configurable; the SDK populates this."
         },
         "appEnv": {
-          "type": "string"
+          "type": "string",
+          "description": "Application environment string passed to the backend pod as `APP_ENV`. Common values: `development`, `production`. Affects logging verbosity and a few feature defaults."
         },
         "corsAllowedOrigins": {
-          "type": "string"
+          "type": "string",
+          "description": "Comma-separated list of origins permitted by the backend's CORS middleware. Use `*` for any origin (dev only). Set to your customer-facing domain in production, e.g. `https://bundle-analyzer.example.com`."
         },
         "secretKey": {
-          "type": "string"
+          "type": "string",
+          "description": "Application session/CSRF signing secret. Auto-generated on first install by the chart and preserved across upgrades via the lookup-based secret contract; only override for tests or local dev where you need a known value."
         },
         "jwtSecretKey": {
-          "type": "string"
+          "type": "string",
+          "description": "JWT signing key used by the backend for issuing access/refresh tokens. Auto-generated on first install and preserved across upgrades — overriding this on a running install will invalidate every customer's session."
         },
         "allowRegistration": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "When `true`, the login page exposes the Create Account flow and `POST /api/v1/auth/register` accepts new users. When `false`, the Create Account tab is hidden and the endpoint returns 403. Controlled at install time via the EC config screen `Allow User Registration` field."
         },
         "appBaseUrl": {
-          "type": "string"
+          "type": "string",
+          "description": "Canonical URL used by the backend when constructing absolute links in outbound emails (invitations, notifications). Should match how customers reach the frontend, e.g. `https://bundle-analyzer.example.com`."
         },
         "proxyRegistry": {
-          "type": "string"
+          "type": "string",
+          "description": "Default registry path for app images when a per-image `registry` isn't set. Typically points at the Replicated proxy domain (`proxy.replicated.com` for stock installs, a custom domain like `images.bundlyzer.com` for custom-proxy deployments)."
         }
       }
     },
@@ -102,7 +117,8 @@
             "pullPolicy": {
               "type": "string"
             }
-          }
+          },
+          "description": "Image used by the `wait-for-deps` init container in backend/worker/beat pods. Defaults to a small Alpine image with `nc` for TCP readiness probing."
         }
       }
     },
@@ -112,7 +128,8 @@
       "properties": {
         "replicaCount": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "description": "Number of backend FastAPI pods. Defaults to 1. Scale up if you have high concurrent API load; backend is stateless so scaling is safe."
         },
         "image": {
           "type": "object",
@@ -122,7 +139,8 @@
               "type": "string"
             },
             "tag": {
-              "type": "string"
+              "type": "string",
+              "description": "Backend image tag. Leave blank to fall back to `.Chart.AppVersion` — recommended pattern that keeps release version and image version in lockstep. Do NOT pin to `latest` in production."
             },
             "pullPolicy": {
               "type": "string"
@@ -142,61 +160,78 @@
             "port": {
               "type": "integer"
             }
-          }
+          },
+          "description": "Kubernetes Service for the backend. Default `ClusterIP` on port 8000; only change if you need direct external exposure (rare — the frontend usually fronts the backend)."
         },
         "resources": {
-          "type": "object"
+          "type": "object",
+          "description": "Standard Kubernetes resource requests/limits for the backend pod. Defaults are sized for ~10 concurrent bundle analyses; increase `limits.memory` if processing very large bundles (>200 MB)."
         },
         "bootstrapAdmin": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
             "email": {
-              "type": "string"
+              "type": "string",
+              "description": "Email address for the bootstrap admin account created at install time. The chart will fail to create a usable install if this AND `allowRegistration` are both empty/false."
             },
             "password": {
-              "type": "string"
+              "type": "string",
+              "description": "Initial password for the bootstrap admin account. Paired with `bootstrapAdmin.email`. Operators should change this through the in-app account settings after first login."
             }
           }
         },
         "aiEnabled": {
-          "type": "string"
+          "type": "string",
+          "description": "License-gated string-valued flag (`'true'` or `'false'`) injected from the customer license's `ai_chat_enabled` field via `helmchart.yaml`. The backend reads this to enable/disable the `/api/v1/findings/explain` endpoint."
         },
         "defaultEmailNotificationsEnabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Install-time default for whether email notifications are enabled in the in-app Notification Settings page on first install. Admins can override later via the UI; the chart value is seed-only."
         },
         "defaultEmailRecipients": {
-          "type": "string"
+          "type": "string",
+          "description": "Comma-separated list of email addresses pre-filled in the in-app Notification Settings on first install. Empty by default. Seed-only — does not override user edits."
         },
         "defaultSlackNotificationsEnabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Install-time default for whether Slack notifications are enabled in the in-app Notification Settings page on first install."
         },
         "defaultSlackWebhookUrl": {
-          "type": "string"
+          "type": "string",
+          "description": "Incoming-webhook URL pre-filled in the in-app Notification Settings on first install. Should be a `https://hooks.slack.com/services/...` URL generated by adding an Incoming Webhooks integration to a Slack channel."
         },
         "defaultNotifyOnSeverities": {
-          "type": "string"
+          "type": "string",
+          "description": "Comma-separated finding severities that trigger notifications on first install. Valid values: `critical`, `high`, `medium`, `low`, `info`. Default: `critical,high`."
         },
         "aiModel": {
-          "type": "string"
+          "type": "string",
+          "description": "Anthropic model ID used by the backend's AI explanation feature. Defaults to `claude-haiku-4-5-20251001`. Customers can rotate the model without redeploying via `kubectl set env deploy/bundle-analyzer-backend BACKEND_AI_MODEL=<new-model>`."
         },
         "maxBundleSizeMb": {
-          "type": "integer"
+          "type": "integer",
+          "description": "Maximum support-bundle upload size in megabytes. The backend rejects uploads larger than this with HTTP 413. Default is 500 MB. Bundle Analyzer is bottlenecked by this on memory-constrained installs — set it lower (e.g., 100) if you're running on a 2-CPU, 4-GB VM and seeing the worker OOMKill while processing large bundles."
         },
         "dbPoolSize": {
-          "type": "integer"
+          "type": "integer",
+          "description": "SQLAlchemy connection pool size (steady-state). Default 5. Match to your Postgres `max_connections` divided by the number of backend + worker replicas."
         },
         "dbPoolOverflow": {
-          "type": "integer"
+          "type": "integer",
+          "description": "SQLAlchemy connection pool overflow (temporary burst above `dbPoolSize`). Default 10. Combined with `dbPoolSize: 5` yields 15 max concurrent connections per backend pod, which fits the embedded Bitnami Postgres defaults."
         },
         "rateLimitUpload": {
-          "type": "string"
+          "type": "string",
+          "description": "SlowAPI rate-limit string for the bundle-upload endpoint, applied per source IP. Default `10/minute`. Tighten for multi-tenant deployments; loosen for trusted internal networks."
         },
         "rateLimitAi": {
-          "type": "string"
+          "type": "string",
+          "description": "SlowAPI rate-limit string for the AI-explain endpoint, applied per source IP. Default `20/minute`. AI calls cost real money — keep this conservative."
         },
         "metricsEnabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "When `true`, the backend reports custom metrics (bundles uploaded, findings count, etc.) to the Replicated SDK sidecar. Default `true`; disable only for true offline air-gap installs that want zero outbound telemetry."
         }
       }
     },
@@ -206,7 +241,8 @@
       "properties": {
         "replicaCount": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "description": "Number of Celery worker pods. Scale up when bundle-processing backlog grows. Workers are stateless so scaling is safe. Don't scale `beat` past 1 (see `beat.replicaCount`)."
         },
         "image": {
           "type": "object",
@@ -227,7 +263,8 @@
           }
         },
         "resources": {
-          "type": "object"
+          "type": "object",
+          "description": "Resource requests/limits for the Celery worker. Default 1 vCPU / 1 GiB; increase memory if processing very large bundles."
         }
       }
     },
@@ -237,7 +274,8 @@
       "properties": {
         "replicaCount": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "description": "Number of Celery beat scheduler pods. MUST remain at 1. Multiple beats produce duplicated periodic-task firings (rate limit checks, retention purges, license re-validation). The schema's `minimum: 1` enforces the floor; you should not raise above 1."
         },
         "image": {
           "type": "object",
@@ -268,7 +306,8 @@
       "properties": {
         "replicaCount": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "description": "Number of frontend nginx pods serving the React SPA. Default 1; scale up only if you have very high concurrent web traffic — the frontend is just serving static assets, not doing computation."
         },
         "image": {
           "type": "object",
@@ -301,7 +340,8 @@
           }
         },
         "backendUrl": {
-          "type": "string"
+          "type": "string",
+          "description": "URL the frontend uses to reach the backend API. Leave empty to use the in-cluster Service DNS name (`http://bundle-analyzer-backend:8000`). Override only if the frontend runs outside the cluster (e.g. served from a CDN), in which case point at the public backend URL."
         },
         "resources": {
           "type": "object"
@@ -310,43 +350,52 @@
     },
     "postgresql": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "description": "Bitnami PostgreSQL subchart configuration. When `postgresql.enabled` is `true`, the chart deploys an embedded Postgres. The application user password is auto-generated by the chart and preserved across upgrades. See Bitnami's chart docs for the full set of subchart values."
     },
     "externalPostgresql": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "host": {
-          "type": "string"
+          "type": "string",
+          "description": "DNS hostname or IP of an external PostgreSQL server, used when `postgresql.enabled` is `false`. Must be reachable from inside the Kubernetes cluster."
         },
         "port": {
-          "type": "integer"
+          "type": "integer",
+          "description": "TCP port of the external PostgreSQL server. Default 5432."
         },
         "username": {
-          "type": "string"
+          "type": "string",
+          "description": "PostgreSQL role Bundle Analyzer will connect as. Must already exist with full privileges on the `database` named below."
         },
         "password": {
-          "type": "string"
+          "type": "string",
+          "description": "Password for the external PostgreSQL role. Stored as a Kubernetes Secret in the bundle-analyzer namespace."
         },
         "database": {
-          "type": "string"
+          "type": "string",
+          "description": "Name of the existing PostgreSQL database Bundle Analyzer will connect to. The chart does NOT create the database — it must exist before install."
         }
       }
     },
     "redis": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "description": "Bitnami Redis subchart configuration. Redis is the Celery broker + result backend; required for worker/beat to function. The chart does not currently support pointing at an external Redis."
     },
     "replicated": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "description": "Replicated SDK subchart configuration. The SDK runs as a sidecar to the backend and handles license validation, custom metrics reporting, and update notifications."
     },
     "minio": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "enabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Toggle for whether to deploy the embedded MinIO StatefulSet for bundle tarball storage. Default `true`; only disable if pointing at an external S3-compatible store (not currently supported by the chart)."
         },
         "image": {
           "type": "object",
@@ -361,26 +410,32 @@
           }
         },
         "accessKey": {
-          "type": "string"
+          "type": "string",
+          "description": "MinIO root access key. Auto-generated to a random value on first install via the chart's secret contract and preserved across upgrades; only override for local dev where you need a known value."
         },
         "secretKey": {
-          "type": "string"
+          "type": "string",
+          "description": "MinIO root secret key. Auto-generated on first install and preserved across upgrades — overriding on a running install will rotate the credential and break the backend's connection until pods restart with the new value."
         },
         "bucket": {
-          "type": "string"
+          "type": "string",
+          "description": "MinIO bucket name where bundle tarballs are stored. Default `bundles`. Created automatically on first install."
         },
         "persistence": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
             "enabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "When `true`, MinIO data lives on a PersistentVolumeClaim. Default `true`. Disabling makes the install non-persistent — bundle tarballs are lost on pod restart."
             },
             "size": {
-              "type": "string"
+              "type": "string",
+              "description": "Requested PVC size for MinIO bundle storage. Default 10Gi. Each support bundle is typically 5-50 MB, so 10Gi holds a few hundred bundles. Increase based on retention policy."
             },
             "storageClassName": {
-              "type": "string"
+              "type": "string",
+              "description": "Explicit StorageClass name for the MinIO PVC. Leave empty to use the cluster's default StorageClass."
             }
           }
         },
@@ -394,34 +449,41 @@
       "additionalProperties": false,
       "properties": {
         "enabled": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "When `true`, the chart creates a Kubernetes Ingress for the frontend. Default `false` — most installs use NodePort or port-forward access during early evaluation."
         },
         "className": {
-          "type": "string"
+          "type": "string",
+          "description": "Ingress class name (e.g. `nginx`, `traefik`). Required when `enabled: true`; without it, no Ingress controller will claim the resource."
         },
         "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
-          }
+          },
+          "description": "Free-form Ingress annotations. Use for cert-manager hints, SSL redirects, body size limits, etc."
         },
         "certManager": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
             "enabled": {
-              "type": "boolean"
+              "type": "boolean",
+              "description": "When `true`, the chart adds the `cert-manager.io/cluster-issuer` annotation to the Ingress so cert-manager auto-issues a real TLS cert. Mutually exclusive with `generateSelfSignedCert: true`."
             },
             "clusterIssuer": {
-              "type": "string"
+              "type": "string",
+              "description": "Name of the cert-manager ClusterIssuer to use (e.g. `letsencrypt-prod`). Required when `certManager.enabled: true`."
             }
           }
         },
         "generateSelfSignedCert": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "When `true`, the chart generates a self-signed TLS cert via `tls-secret.yaml` on first install and never overwrites it on upgrades (preserved via Helm `lookup` + `helm.sh/resource-policy: keep`). For production, set `false` and use `certManager.enabled` instead."
         },
         "regenerateSelfSignedCert": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "When `true`, forces regeneration of the self-signed cert on upgrade even if one exists. Use only when intentionally rotating the cert; will invalidate any cached cert pins in customer browsers."
         },
         "hosts": {
           "type": "array",
