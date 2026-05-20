@@ -9,13 +9,22 @@ spec:
       items:
         - name: hostname
           title: Hostname
+          help_text: |
+            The DNS name customers will use to reach this install. Used by
+            the backend to build absolute links in emails and by the
+            frontend as the canonical URL.
+            Valid format: a lowercase DNS name (letters, digits, hyphens,
+            dots), no protocol or trailing slash. Example:
+            bundle-analyzer.example.com
           type: text
           default: "bundle-analyzer.local"
         - name: allow_registration
           title: Allow User Registration
           help_text: |
-            When enabled, new users can create their own accounts from the login screen.
-            When disabled, only existing users can sign in.
+            When enabled, anyone reaching the login page can create a new
+            account. When disabled, only existing admins can sign in and
+            new accounts must be created from the Admin Panel.
+            Valid values: enabled (checked) or disabled (unchecked).
           type: bool
           default: "1"
 
@@ -25,8 +34,11 @@ spec:
         - name: postgresql_mode
           title: PostgreSQL Mode
           help_text: |
-            Choose Embedded PostgreSQL to use the bundled database in this install.
-            Choose External PostgreSQL to connect Bundle Analyzer to your own database.
+            Choose Embedded PostgreSQL to run a managed Postgres instance
+            inside this install (data lives in a PVC on the cluster).
+            Choose External PostgreSQL to point Bundle Analyzer at a
+            database you already operate (RDS, Cloud SQL, on-prem, etc).
+            Valid values: embedded, external.
           type: radio
           default: embedded
           items:
@@ -34,6 +46,32 @@ spec:
               title: Embedded PostgreSQL
             - name: external
               title: External PostgreSQL
+        - name: embedded_postgresql_password
+          title: Embedded PostgreSQL Password (auto-generated)
+          help_text: |
+            Auto-generated random password for the embedded PostgreSQL
+            instance's application user. Generated once on first install
+            via the KOTS RandomString function and preserved across
+            upgrades — operators do not need to set, view, or remember it.
+            Hidden from the config UI because it is fully managed by the
+            platform.
+            Valid format: 32-character random alphanumeric string.
+          type: password
+          hidden: true
+          value: '{{repl RandomString 32}}'
+          when: 'repl{{ ConfigOptionEquals "postgresql_mode" "embedded" }}'
+        - name: embedded_postgresql_postgres_password
+          title: Embedded PostgreSQL Superuser Password (auto-generated)
+          help_text: |
+            Auto-generated random password for the PostgreSQL superuser
+            account on the embedded instance. Generated once on first
+            install and preserved across upgrades. Not customer-facing;
+            used only by the bundled Postgres pod's bootstrap.
+            Valid format: 32-character random alphanumeric string.
+          type: password
+          hidden: true
+          value: '{{repl RandomString 32}}'
+          when: 'repl{{ ConfigOptionEquals "postgresql_mode" "embedded" }}'
 
     - name: external_database
       title: External PostgreSQL Connection
@@ -41,21 +79,54 @@ spec:
       items:
         - name: external_postgresql_host
           title: Host
+          help_text: |
+            DNS hostname or IP address of your external PostgreSQL server.
+            Must be reachable from inside the Kubernetes cluster.
+            Valid format: lowercase DNS name (letters, digits, dots,
+            hyphens) or IPv4 address. Examples: db.internal.example.com,
+            10.0.1.42.
           type: text
-          help_text: PostgreSQL hostname or IP address
+          validation:
+            regex:
+              pattern: '^[a-zA-Z0-9]([a-zA-Z0-9.-]{0,253}[a-zA-Z0-9])?$'
+              message: 'Must be a valid hostname or IP address (letters, digits, dots, and hyphens only; no protocol or path).'
         - name: external_postgresql_port
           title: Port
+          help_text: |
+            TCP port where your external PostgreSQL is listening. Most
+            installations use the default 5432; adjust if your DBA has
+            placed Postgres on a non-standard port.
+            Valid format: integer between 1 and 65535.
           type: text
           default: "5432"
-          help_text: PostgreSQL TCP port
+          validation:
+            regex:
+              pattern: '^([1-9][0-9]{0,4})$'
+              message: 'Must be a positive integer between 1 and 65535 (no letters, no spaces, no leading zeros).'
         - name: external_postgresql_username
           title: Username
+          help_text: |
+            The PostgreSQL role Bundle Analyzer uses to connect. This role
+            must already exist on your external database and have full
+            privileges on the database named below.
+            Valid format: a PostgreSQL identifier — letters, digits, and
+            underscores; must start with a letter or underscore.
           type: text
         - name: external_postgresql_password
           title: Password
+          help_text: |
+            Password for the PostgreSQL role specified above. Stored
+            encrypted as a Kubernetes Secret; never logged.
+            Valid format: any string accepted by your PostgreSQL server.
           type: password
         - name: external_postgresql_database
           title: Database
+          help_text: |
+            Name of the existing PostgreSQL database Bundle Analyzer will
+            connect to. The database must already exist; this install does
+            not create it.
+            Valid format: a PostgreSQL identifier — letters, digits, and
+            underscores; must start with a letter or underscore.
           type: text
 
     - name: notifications
@@ -64,35 +135,50 @@ spec:
         - name: default_email_notifications_enabled
           title: Enable Email Notifications by Default
           help_text: |
-            Seed the first tenant's notification settings with email alerts
-            enabled when the app starts.
+            Seed the first tenant's notification settings with email
+            alerts enabled at install time. Admins can change this later
+            from the in-app Notifications page; this option only sets the
+            initial state.
+            Valid values: enabled (checked) or disabled (unchecked).
           type: bool
           default: "0"
         - name: default_email_recipients
           title: Default Email Recipients
           help_text: |
-            Optional comma-separated email recipients to prefill in the
-            Notification Settings page.
+            Comma-separated list of email addresses to prefill in the
+            in-app Notifications page on first install. Leave blank if
+            the customer admin will configure recipients later in the UI.
+            Valid format: zero or more email addresses separated by
+            commas. Example: ops@example.com,alerts@example.com
           type: text
           default: ""
         - name: default_slack_notifications_enabled
           title: Enable Slack Notifications by Default
           help_text: |
-            Seed the first tenant's notification settings with Slack alerts
-            enabled when the app starts.
+            Seed the first tenant's notification settings with Slack
+            alerts enabled at install time. Admins can change this later
+            from the in-app Notifications page.
+            Valid values: enabled (checked) or disabled (unchecked).
           type: bool
           default: "0"
         - name: default_slack_webhook_url
           title: Default Slack Webhook URL
           help_text: |
-            Optional Slack webhook URL to prefill in the Notification Settings
-            page.
+            Incoming-webhook URL to prefill in the in-app Notifications
+            page. Generated by Slack when you add an Incoming Webhooks
+            integration to a channel. Leave blank to configure later.
+            Valid format: an HTTPS URL of the form
+            https://hooks.slack.com/services/<T...>/<B...>/<...>
           type: text
           default: ""
         - name: default_notify_on_severities
           title: Default Notify-On Severities
           help_text: |
-            Comma-separated severities to prefill in the Notification Settings
-            page.
+            Comma-separated list of finding severities that should
+            trigger notifications. Used to prefill the in-app
+            Notifications page on first install.
+            Valid values, in order of urgency: critical, high, medium,
+            low, info. Pick one or more, separated by commas. Example:
+            critical,high
           type: text
           default: "critical,high"
