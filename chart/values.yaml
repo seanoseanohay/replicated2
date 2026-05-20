@@ -407,9 +407,9 @@ ingress:
   # Then reinstall. For local dev with a custom domain, use mkcert
   # instead of self-signed to avoid browser trust issues.
   generateSelfSignedCert: false
-  # @docs:internal
   # DEPRECATED: regenerateSelfSignedCert is permanently ignored.
   # The chart will never regenerate an existing TLS secret.
+  # @docs:internal
   regenerateSelfSignedCert: false
   hosts:
     - host: bundle-analyzer.local
@@ -418,11 +418,12 @@ ingress:
           pathType: Prefix
   tls: []
 
-# @docs:skip
 # Platform-injected license fields. Replicated populates this at install
 # time based on the customer's Vendor Portal license — not customer-set
 # and not surfaced in the customer reference page.
+# @docs:skip
 replicatedLicenseFields:
+  # @docs:skip
   aiChatEnabled: "false"
 
 # Replicated SDK subchart. The SDK runs as a sidecar to the backend and
