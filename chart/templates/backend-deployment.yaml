@@ -46,6 +46,8 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ include "bundle-analyzer.fullname" . }}-secret
+            - secretRef:
+                name: {{ include "bundle-analyzer.fullname" . }}-app-secrets
             - configMapRef:
                 name: {{ include "bundle-analyzer.fullname" . }}-backend-config
           env:
