@@ -5,7 +5,7 @@ metadata:
 spec:
   chart:
     name: bundle-analyzer
-    chartVersion: 0.3.31
+    chartVersion: 0.3.32
     releaseName: bundle-analyzer
   helmVersion: v3
   useHelmInstall: true
@@ -30,9 +30,9 @@ spec:
   # templates correctly; only the static lint can't.
   values:
     global:
-      allowRegistration: {{repl ConfigOptionEquals "allow_registration" "1" }}
+      allowRegistration: repl{{ ConfigOptionEquals "allow_registration" "1" }}
     postgresql:
-      enabled: {{repl ConfigOptionEquals "postgresql_mode" "embedded" }}
+      enabled: repl{{ ConfigOptionEquals "postgresql_mode" "embedded" }}
       # Phase 5.2 — auto-generated install-time defaults preserved on upgrade.
       # KOTS computes these RandomString values once when the Config item is
       # first rendered and stores them; on `helm upgrade` the same values
@@ -43,15 +43,15 @@ spec:
         postgresPassword: '{{repl ConfigOption "embedded_postgresql_postgres_password" }}'
     externalPostgresql:
       host: '{{repl ConfigOption "external_postgresql_host" }}'
-      port: {{repl ConfigOption "external_postgresql_port" | ParseInt }}
+      port: repl{{ ConfigOption "external_postgresql_port" | ParseInt }}
       username: '{{repl ConfigOption "external_postgresql_username" }}'
       password: '{{repl ConfigOption "external_postgresql_password" }}'
       database: '{{repl ConfigOption "external_postgresql_database" }}'
     backend:
       aiEnabled: '{{repl LicenseFieldValue "ai_chat_enabled" }}'
-      defaultEmailNotificationsEnabled: {{repl ConfigOptionEquals "default_email_notifications_enabled" "1" }}
+      defaultEmailNotificationsEnabled: repl{{ ConfigOptionEquals "default_email_notifications_enabled" "1" }}
       defaultEmailRecipients: '{{repl ConfigOption "default_email_recipients" }}'
-      defaultSlackNotificationsEnabled: {{repl ConfigOptionEquals "default_slack_notifications_enabled" "1" }}
+      defaultSlackNotificationsEnabled: repl{{ ConfigOptionEquals "default_slack_notifications_enabled" "1" }}
       defaultSlackWebhookUrl: '{{repl ConfigOption "default_slack_webhook_url" }}'
       defaultNotifyOnSeverities: '{{repl ConfigOption "default_notify_on_severities" }}'
       image:
