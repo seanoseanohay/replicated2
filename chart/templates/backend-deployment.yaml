@@ -71,16 +71,9 @@ spec:
                 secretKeyRef:
                   name: {{ include "bundle-analyzer.fullname" . }}-secret
                   key: S3_SECRET_KEY
-            - name: SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "bundle-analyzer.fullname" . }}-secret
-                  key: SECRET_KEY
-            - name: JWT_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "bundle-analyzer.fullname" . }}-secret
-                  key: JWT_SECRET_KEY
+            # SECRET_KEY and JWT_SECRET_KEY are provided via the envFrom
+            # secretRef on -app-secrets above. Don't re-declare them here as
+            # explicit secretKeyRefs to the wrong Secret name.
             - name: BOOTSTRAP_ADMIN_EMAIL
               valueFrom:
                 secretKeyRef:
