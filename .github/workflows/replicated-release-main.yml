@@ -59,7 +59,7 @@ jobs:
           echo "Matching entries for configured app reference:"
           replicated app ls | grep -F "${app_ref}" || true
 
-      - name: Ensure release channel
+      - name: Ensure release channels
         id: release-channel
         run: |
           set -o pipefail
@@ -74,21 +74,31 @@ jobs:
           channel_output_file=$(mktemp)
           replicated --app "$app_slug" channel ls | tee "$channel_output_file"
 
-          channel_id=$(awk '$2 == "Unstable" {print $1; exit}' "$channel_output_file")
-          if [[ -z "$channel_id" ]]; then
+          # Promote to BOTH Unstable (dev cadence) and EC-Test (where the
+          # bootcamp dev VM is subscribed). Hardcoding to Unstable only meant
+          # every release stranded EC-Test on the install-time version.
+          unstable_id=$(awk '$2 == "Unstable" {print $1; exit}' "$channel_output_file")
+          if [[ -z "$unstable_id" ]]; then
             echo 'Channel "Unstable" is not visible; creating it.'
             replicated --app "$app_slug" channel create --name Unstable | tee "$channel_output_file"
-            channel_id=$(awk '$2 == "Unstable" {print $1; exit}' "$channel_output_file")
+            unstable_id=$(awk '$2 == "Unstable" {print $1; exit}' "$channel_output_file")
           fi
-
-          if [[ -z "$channel_id" ]]; then
+          if [[ -z "$unstable_id" ]]; then
             echo 'Unable to find or create channel "Unstable"'
             exit 1
           fi
 
-          echo "Release channel: ${channel_id}"
+          ectest_id=$(awk '$2 == "EC-Test" {print $1; exit}' "$channel_output_file")
+          # EC-Test is optional — only promote if it exists. Don't auto-create.
+          if [[ -z "$ectest_id" ]]; then
+            echo 'Channel "EC-Test" not visible; skipping EC-Test promotion.'
+          fi
+
+          echo "Unstable channel: ${unstable_id}"
+          echo "EC-Test channel:  ${ectest_id:-<skip>}"
           echo "app_slug=${app_slug}" >> "$GITHUB_OUTPUT"
-          echo "channel_id=${channel_id}" >> "$GITHUB_OUTPUT"
+          echo "unstable_id=${unstable_id}" >> "$GITHUB_OUTPUT"
+          echo "ectest_id=${ectest_id}" >> "$GITHUB_OUTPUT"
 
       - name: Create release
         id: create-release
@@ -109,9 +119,14 @@ jobs:
           echo "Release sequence: ${sequence}"
           echo "sequence=${sequence}" >> "$GITHUB_OUTPUT"
 
-      - name: Promote release
+      - name: Promote release to Unstable
         run: |
-          replicated --app "${{ steps.release-channel.outputs.app_slug }}" release promote "${{ steps.create-release.outputs.sequence }}" "${{ steps.release-channel.outputs.channel_id }}" --version "${{ steps.chart-version.outputs.version }}"
+          replicated --app "${{ steps.release-channel.outputs.app_slug }}" release promote "${{ steps.create-release.outputs.sequence }}" "${{ steps.release-channel.outputs.unstable_id }}" --version "${{ steps.chart-version.outputs.version }}"
+
+      - name: Promote release to EC-Test
+        if: steps.release-channel.outputs.ectest_id != ''
+        run: |
+          replicated --app "${{ steps.release-channel.outputs.app_slug }}" release promote "${{ steps.create-release.outputs.sequence }}" "${{ steps.release-channel.outputs.ectest_id }}" --version "${{ steps.chart-version.outputs.version }}"
 
       - name: Test release
         run: |

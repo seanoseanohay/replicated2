@@ -61,7 +61,20 @@ async def _bootstrap_admin() -> None:
 
 
 async def _bootstrap_notification_defaults() -> None:
-    """Seed the default tenant's notification settings once from install defaults."""
+    """Seed the default tenant's notification settings from install defaults.
+
+    Two responsibilities:
+      1. Create the row on first startup if it doesn't exist.
+      2. Hydrate nullable string fields (email_recipients, slack_webhook_url) from
+         env vars when the existing row has them as NULL — covers the case where
+         a prior install seeded with empty env and now EC config has values.
+
+    Distinguishes "never set" (NULL → hydrate) from "user cleared in UI"
+    (empty string → leave alone). The POST /config endpoint writes "" when a
+    user clears a field, so empty strings are user-intent and we don't touch
+    them. Booleans and notify_on_severities are seed-only — once written, the
+    user owns them.
+    """
     from sqlalchemy import select as _select
     from app.core.database import AsyncSessionLocal
     from app.models.notification_config import NotificationConfig
@@ -71,20 +84,37 @@ async def _bootstrap_notification_defaults() -> None:
             _select(NotificationConfig).where(NotificationConfig.tenant_id == "default")
         )
         existing = result.scalar_one_or_none()
-        if existing is not None:
+
+        if existing is None:
+            config = NotificationConfig(
+                tenant_id="default",
+                email_enabled=settings.DEFAULT_EMAIL_NOTIFICATIONS_ENABLED,
+                email_recipients=settings.DEFAULT_EMAIL_RECIPIENTS or None,
+                slack_enabled=settings.DEFAULT_SLACK_NOTIFICATIONS_ENABLED,
+                slack_webhook_url=settings.DEFAULT_SLACK_WEBHOOK_URL or None,
+                notify_on_severities=settings.DEFAULT_NOTIFY_ON_SEVERITIES,
+            )
+            db.add(config)
+            await db.flush()
+            await db.commit()
+            logger.info("bootstrap_notification_defaults_created", tenant_id="default")
             return
-        config = NotificationConfig(
-            tenant_id="default",
-            email_enabled=settings.DEFAULT_EMAIL_NOTIFICATIONS_ENABLED,
-            email_recipients=settings.DEFAULT_EMAIL_RECIPIENTS or None,
-            slack_enabled=settings.DEFAULT_SLACK_NOTIFICATIONS_ENABLED,
-            slack_webhook_url=settings.DEFAULT_SLACK_WEBHOOK_URL or None,
-            notify_on_severities=settings.DEFAULT_NOTIFY_ON_SEVERITIES,
-        )
-        db.add(config)
-        await db.flush()
-        await db.commit()
-        logger.info("bootstrap_notification_defaults_created", tenant_id="default")
+
+        hydrated = []
+        if existing.email_recipients is None and settings.DEFAULT_EMAIL_RECIPIENTS:
+            existing.email_recipients = settings.DEFAULT_EMAIL_RECIPIENTS
+            hydrated.append("email_recipients")
+        if existing.slack_webhook_url is None and settings.DEFAULT_SLACK_WEBHOOK_URL:
+            existing.slack_webhook_url = settings.DEFAULT_SLACK_WEBHOOK_URL
+            hydrated.append("slack_webhook_url")
+        if hydrated:
+            await db.flush()
+            await db.commit()
+            logger.info(
+                "bootstrap_notification_defaults_hydrated",
+                tenant_id="default",
+                fields=hydrated,
+            )
 
 
 @asynccontextmanager
