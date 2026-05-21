@@ -345,7 +345,12 @@ redis:
 minio:
   image:
     repository: index.docker.io/minio/minio
-    tag: latest
+    # Pinned to a specific MinIO RELEASE tag (not :latest) so the Replicated
+    # airgap-bundle builder can mirror image layers reliably. :latest moves
+    # and previously-mirrored layer blobs get rotated out, causing the
+    # builder to fail with "blob unknown to registry" on subsequent
+    # promotions. Pinning to a specific RELEASE tag is reproducible.
+    tag: "RELEASE.2025-04-22T22-12-26Z"
   # MinIO root access key. Auto-generated to a random value on first
   # install via the chart's secret contract and preserved across
   # upgrades; only override for local dev where you need a known value.
