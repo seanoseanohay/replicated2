@@ -35,16 +35,19 @@ jobs:
           echo "Chart version: ${chart_version}"
           echo "version=${chart_version}" >> "$GITHUB_OUTPUT"
 
-      - name: Refuse to overwrite an existing semver image tag
+      - name: Check if backend-family version already published
+        id: backend-tag-check
         env:
           OWNER: ${{ github.repository_owner }}
           VERSION: ${{ steps.chart-version.outputs.version }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Policy: each chart version is built exactly once. If :$VERSION already
-          # exists in GHCR for any of the backend family images, fail loudly so the
-          # author bumps the patch version instead of silently shipping new bits
-          # under an existing release label.
+          # exists in GHCR for any backend-family image, skip the rebuild + re-sign
+          # silently — the published bytes are immutable and re-pushing would
+          # either be a no-op or a violation of the single-build-per-version
+          # invariant. Docs-only commits on an unchanged chart version should
+          # therefore land green, not red.
           set -e
           for image in replicated2-backend replicated2-worker replicated2-beat; do
             url="https://ghcr.io/v2/${OWNER}/${image}/manifests/${VERSION}"
@@ -57,19 +60,23 @@ jobs:
               -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' \
               "$url")
             if [[ "$status" == "200" ]]; then
-              echo "::error::ghcr.io/${OWNER}/${image}:${VERSION} already exists."
-              echo "Bump chart/Chart.yaml to a new patch version before pushing."
-              exit 1
+              echo "::notice::ghcr.io/${OWNER}/${image}:${VERSION} already published; skipping rebuild + re-sign."
+              echo "already_published=true" >> "$GITHUB_OUTPUT"
+              exit 0
             fi
           done
+          echo "already_published=false" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
+        if: steps.backend-tag-check.outputs.already_published != 'true'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        if: steps.backend-tag-check.outputs.already_published != 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
+        if: steps.backend-tag-check.outputs.already_published != 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -77,6 +84,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push backend, worker, and beat images
+        if: steps.backend-tag-check.outputs.already_published != 'true'
         id: build-backend-family
         uses: docker/build-push-action@v6
         with:
@@ -96,9 +104,11 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/replicated2-beat:latest
 
       - name: Install cosign
+        if: steps.backend-tag-check.outputs.already_published != 'true'
         uses: sigstore/cosign-installer@v3
 
       - name: Sign backend, worker, and beat images (keyless via GitHub OIDC → sigstore)
+        if: steps.backend-tag-check.outputs.already_published != 'true'
         env:
           DIGEST: ${{ steps.build-backend-family.outputs.digest }}
           OWNER: ${{ github.repository_owner }}
@@ -143,12 +153,16 @@ jobs:
             exit 1
           fi
 
-      - name: Refuse to overwrite an existing semver image tag
+      - name: Check if frontend version already published
+        id: frontend-tag-check
         env:
           OWNER: ${{ github.repository_owner }}
           VERSION: ${{ steps.chart-version.outputs.version }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Same skip-instead-of-fail policy as the backend job: if :$VERSION is
+          # already in GHCR, the immutable signed bytes are already there and we
+          # should not republish.
           set -e
           image=replicated2-frontend
           token=$(curl -s -u "$OWNER:$GH_TOKEN" \
@@ -160,18 +174,22 @@ jobs:
             -H 'Accept: application/vnd.docker.distribution.manifest.list.v2+json' \
             "https://ghcr.io/v2/${OWNER}/${image}/manifests/${VERSION}")
           if [[ "$status" == "200" ]]; then
-            echo "::error::ghcr.io/${OWNER}/${image}:${VERSION} already exists."
-            echo "Bump chart/Chart.yaml to a new patch version before pushing."
-            exit 1
+            echo "::notice::ghcr.io/${OWNER}/${image}:${VERSION} already published; skipping rebuild + re-sign."
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up QEMU
+        if: steps.frontend-tag-check.outputs.already_published != 'true'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        if: steps.frontend-tag-check.outputs.already_published != 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
+        if: steps.frontend-tag-check.outputs.already_published != 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -179,6 +197,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push frontend image
+        if: steps.frontend-tag-check.outputs.already_published != 'true'
         id: build-frontend
         uses: docker/build-push-action@v6
         with:
@@ -192,9 +211,11 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/replicated2-frontend:latest
 
       - name: Install cosign
+        if: steps.frontend-tag-check.outputs.already_published != 'true'
         uses: sigstore/cosign-installer@v3
 
       - name: Sign frontend image (keyless via GitHub OIDC → sigstore)
+        if: steps.frontend-tag-check.outputs.already_published != 'true'
         env:
           DIGEST: ${{ steps.build-frontend.outputs.digest }}
           OWNER: ${{ github.repository_owner }}
