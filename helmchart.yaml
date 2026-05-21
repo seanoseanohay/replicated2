@@ -5,7 +5,7 @@ metadata:
 spec:
   chart:
     name: bundle-analyzer
-    chartVersion: 0.3.35
+    chartVersion: 0.3.36
     releaseName: bundle-analyzer
   helmVersion: v3
   useHelmInstall: true

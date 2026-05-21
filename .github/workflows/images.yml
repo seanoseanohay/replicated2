@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 env:
   REGISTRY: ghcr.io
@@ -76,6 +77,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push backend, worker, and beat images
+        id: build-backend-family
         uses: docker/build-push-action@v6
         with:
           context: ./backend
@@ -92,6 +94,22 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/replicated2-beat:${{ steps.chart-version.outputs.version }}
             ghcr.io/${{ github.repository_owner }}/replicated2-beat:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/replicated2-beat:latest
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign backend, worker, and beat images (keyless via GitHub OIDC → sigstore)
+        env:
+          DIGEST: ${{ steps.build-backend-family.outputs.digest }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          # The backend, worker, and beat images are built once from the same
+          # Dockerfile and pushed under three different repo names pointing at
+          # the same manifest digest. Cosign tracks signatures per-repo, so we
+          # sign each repo path explicitly even though the digest is shared.
+          for image in replicated2-backend replicated2-worker replicated2-beat; do
+            cosign sign --yes "ghcr.io/${OWNER}/${image}@${DIGEST}"
+          done
 
   build-frontend:
     name: Build and Push Frontend Image
@@ -161,6 +179,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push frontend image
+        id: build-frontend
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
@@ -171,3 +190,13 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/replicated2-frontend:${{ steps.chart-version.outputs.version }}
             ghcr.io/${{ github.repository_owner }}/replicated2-frontend:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/replicated2-frontend:latest
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign frontend image (keyless via GitHub OIDC → sigstore)
+        env:
+          DIGEST: ${{ steps.build-frontend.outputs.digest }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          cosign sign --yes "ghcr.io/${OWNER}/replicated2-frontend@${DIGEST}"
